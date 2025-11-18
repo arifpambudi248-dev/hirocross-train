@@ -32,6 +32,15 @@ export const Navigation = () => {
                 activeClassName="bg-secondary text-foreground"
               >
                 <Calendar className="h-4 w-4" />
+                Dashboard
+              </NavLink>
+              
+              <NavLink
+                to="/annual-plan"
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                activeClassName="bg-secondary text-foreground"
+              >
+                <Calendar className="h-4 w-4" />
                 Annual Plan
               </NavLink>
               
