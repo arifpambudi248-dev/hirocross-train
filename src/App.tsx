@@ -11,6 +11,7 @@ import ProgramLatihan from "./pages/ProgramLatihan";
 import TesFisik from "./pages/TesFisik";
 import Readiness from "./pages/Readiness";
 import AnalisLoad from "./pages/AnalisLoad";
+import AnnualPlan from "./pages/AnnualPlan";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/annual-plan" element={<AnnualPlan />} />
             <Route path="/program-latihan" element={<ProgramLatihan />} />
             <Route path="/tes-fisik" element={<TesFisik />} />
             <Route path="/readiness" element={<Readiness />} />
