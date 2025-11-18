@@ -43,7 +43,7 @@ export default function Readiness() {
       setUserId(user.id);
       
       // Load baseline
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
         .from("profiles")
         .select("baseline_vj, baseline_rhr")
         .eq("id", user.id)
@@ -60,7 +60,7 @@ export default function Readiness() {
   };
 
   const loadLogs = async (uid: string) => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("readiness_logs")
       .select("*")
       .eq("athlete_id", uid)
@@ -84,7 +84,7 @@ export default function Readiness() {
       baselineRhr
     );
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("readiness_logs")
       .insert([{
         athlete_id: userId,
