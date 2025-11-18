@@ -41,7 +41,7 @@ export default function AnalisLoad() {
       return;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("training_sessions")
       .select("date, load_final")
       .eq("athlete_id", userId)

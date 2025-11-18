@@ -61,7 +61,7 @@ export default function TesFisik() {
   };
 
   const loadTests = async (uid: string) => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("physical_tests")
       .select("*")
       .eq("athlete_id", uid)
@@ -80,7 +80,7 @@ export default function TesFisik() {
       return;
     }
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("physical_tests")
       .insert([{
         athlete_id: userId,
@@ -105,7 +105,7 @@ export default function TesFisik() {
   };
 
   const deleteTest = async (id: string) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("physical_tests")
       .delete()
       .eq("id", id);

@@ -37,7 +37,7 @@ export default function Auth() {
         // Create profile
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await supabase.from("profiles").insert([{
+          await (supabase as any).from("profiles").insert([{
             id: user.id,
             baseline_vj: 40,
             baseline_rhr: 60,

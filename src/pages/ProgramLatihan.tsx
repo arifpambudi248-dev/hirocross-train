@@ -45,7 +45,7 @@ export default function ProgramLatihan() {
 
   const loadSessions = async (uid: string) => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("training_sessions")
       .select("*")
       .eq("athlete_id", uid)
@@ -118,7 +118,7 @@ export default function ProgramLatihan() {
     };
 
     if (session.id) {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("training_sessions")
         .update(payload as any)
         .eq("id", session.id);
@@ -129,7 +129,7 @@ export default function ProgramLatihan() {
         toast.success("Sesi berhasil diupdate");
       }
     } else {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("training_sessions")
         .insert([payload as any])
         .select()
@@ -148,7 +148,7 @@ export default function ProgramLatihan() {
 
   const deleteSession = async (session: TrainingSession, index: number) => {
     if (session.id) {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("training_sessions")
         .delete()
         .eq("id", session.id);
