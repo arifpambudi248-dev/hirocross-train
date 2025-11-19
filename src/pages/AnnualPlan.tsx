@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { differenceInDays, addDays, format } from "date-fns";
+import { differenceInDays, addDays, format, parseISO, isWithinInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { Switch } from "@/components/ui/switch";
 
 type Phase = {
   name: string;
@@ -17,10 +19,18 @@ type Phase = {
   percentage: number;
 };
 
+type PhaseWithLoad = Phase & {
+  plannedLoad: number;
+  actualLoad: number;
+};
+
 export default function AnnualPlan() {
   const [startDate, setStartDate] = useState("");
   const [competitionDate, setCompetitionDate] = useState("");
   const [phases, setPhases] = useState<Phase[]>([]);
+  const [phasesWithLoad, setPhasesWithLoad] = useState<PhaseWithLoad[]>([]);
+  const [showActualLoad, setShowActualLoad] = useState(true);
+  const [trainingSessions, setTrainingSessions] = useState<any[]>([]);
 
   const generatePlan = () => {
     if (!startDate || !competitionDate) {
@@ -99,6 +109,61 @@ export default function AnnualPlan() {
 
     setPhases(newPhases);
     toast.success("Annual plan berhasil dibuat");
+    fetchTrainingSessions(format(start, "yyyy-MM-dd"), format(competition, "yyyy-MM-dd"));
+  };
+
+  const fetchTrainingSessions = async (start: string, end: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("training_sessions")
+        .select("*")
+        .gte("date", start)
+        .lte("date", end)
+        .order("date", { ascending: true });
+
+      if (error) throw error;
+      setTrainingSessions(data || []);
+    } catch (error) {
+      console.error("Error fetching training sessions:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (phases.length > 0 && trainingSessions.length > 0) {
+      calculateLoadPerPhase();
+    }
+  }, [phases, trainingSessions]);
+
+  const calculateLoadPerPhase = () => {
+    const phasesWithLoadData: PhaseWithLoad[] = phases.map((phase) => {
+      const phaseStart = parseISO(phase.startDate);
+      const phaseEnd = parseISO(phase.endDate);
+
+      // Calculate actual load from training sessions
+      const actualLoad = trainingSessions
+        .filter((session) => {
+          const sessionDate = parseISO(session.date);
+          return isWithinInterval(sessionDate, { start: phaseStart, end: phaseEnd });
+        })
+        .reduce((sum, session) => sum + (session.load_final || 0), 0);
+
+      // Calculate planned load based on phase type and duration
+      let plannedLoadPerDay = 0;
+      if (phase.name.includes("GPP")) plannedLoadPerDay = 250;
+      else if (phase.name.includes("SPP")) plannedLoadPerDay = 350;
+      else if (phase.name.includes("Pra")) plannedLoadPerDay = 300;
+      else plannedLoadPerDay = 200;
+
+      const plannedLoad = plannedLoadPerDay * phase.durationDays;
+
+      return {
+        ...phase,
+        plannedLoad,
+        actualLoad,
+      };
+    });
+
+    setPhasesWithLoad(phasesWithLoadData);
   };
 
   const formatDate = (dateStr: string) => {
@@ -146,34 +211,139 @@ export default function AnnualPlan() {
           <>
             <Card>
               <CardHeader>
-                <CardTitle>Timeline Periodisasi</CardTitle>
+                <CardTitle>Gantt Chart Periodisasi</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {phases.map((phase, index) => (
-                    <div key={index} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{phase.name}</span>
-                        <span className="text-muted-foreground">
-                          {phase.durationDays} hari ({phase.percentage}%)
-                        </span>
-                      </div>
-                      <div className="w-full h-8 rounded-lg overflow-hidden bg-muted">
-                        <div
-                          className={`h-full ${phase.color} flex items-center px-3 text-xs font-medium text-primary-foreground`}
-                          style={{
-                            width: `${phase.percentage * 2.5}%`,
-                            minWidth: "20%",
-                          }}
-                        >
-                          {formatDate(phase.startDate)} - {formatDate(phase.endDate)}
-                        </div>
+                <div className="space-y-4">
+                  {/* Timeline scale */}
+                  <div className="relative">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-2">
+                      <span>{formatDate(startDate)}</span>
+                      <span>{formatDate(competitionDate)}</span>
+                    </div>
+                    <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="absolute inset-0 flex">
+                        {phases.map((phase, index) => (
+                          <div
+                            key={index}
+                            className={`${phase.color} h-full`}
+                            style={{ width: `${phase.percentage}%` }}
+                          />
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Phase bars */}
+                  <div className="space-y-3">
+                    {phases.map((phase, index) => {
+                      const totalDays = differenceInDays(
+                        new Date(competitionDate),
+                        new Date(startDate)
+                      );
+                      const startOffset =
+                        (differenceInDays(new Date(phase.startDate), new Date(startDate)) /
+                          totalDays) *
+                        100;
+                      const width = (phase.durationDays / totalDays) * 100;
+
+                      return (
+                        <div key={index} className="relative">
+                          <div className="flex items-center gap-3">
+                            <div className="w-40 text-sm font-medium truncate">
+                              {phase.name}
+                            </div>
+                            <div className="flex-1 relative h-10">
+                              <div
+                                className={`absolute h-full ${phase.color} rounded-lg flex items-center px-3 text-xs font-medium text-primary-foreground shadow-lg hover:shadow-xl transition-shadow cursor-pointer`}
+                                style={{
+                                  left: `${startOffset}%`,
+                                  width: `${width}%`,
+                                }}
+                                title={`${formatDate(phase.startDate)} - ${formatDate(phase.endDate)}`}
+                              >
+                                <span className="truncate">
+                                  {phase.durationDays} hari ({phase.percentage}%)
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </CardContent>
             </Card>
+
+            {phasesWithLoad.length > 0 && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Perbandingan Planned vs Actual Load</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="show-actual" className="text-sm">
+                      Tampilkan Actual Load
+                    </Label>
+                    <Switch
+                      id="show-actual"
+                      checked={showActualLoad}
+                      onCheckedChange={setShowActualLoad}
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {phasesWithLoad.map((phase, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded ${phase.color}`}></div>
+                            <span className="font-medium text-sm">{phase.name}</span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Planned: {phase.plannedLoad.toLocaleString()} AU
+                            {showActualLoad && (
+                              <span className="ml-2">
+                                | Actual: {phase.actualLoad.toLocaleString()} AU (
+                                {phase.plannedLoad > 0
+                                  ? Math.round((phase.actualLoad / phase.plannedLoad) * 100)
+                                  : 0}
+                                %)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="relative h-8 bg-muted rounded-lg overflow-hidden">
+                          {/* Planned load bar */}
+                          <div
+                            className="absolute h-full bg-muted-foreground/30 rounded-lg"
+                            style={{
+                              width: "100%",
+                            }}
+                          />
+                          {/* Actual load bar */}
+                          {showActualLoad && (
+                            <div
+                              className={`absolute h-full ${phase.color} rounded-lg transition-all`}
+                              style={{
+                                width: `${phase.plannedLoad > 0 ? Math.min((phase.actualLoad / phase.plannedLoad) * 100, 100) : 0}%`,
+                              }}
+                            />
+                          )}
+                          <div className="absolute inset-0 flex items-center px-3 text-xs font-medium">
+                            <span className="text-foreground">
+                              {showActualLoad
+                                ? `${phase.actualLoad.toLocaleString()} / ${phase.plannedLoad.toLocaleString()} AU`
+                                : `${phase.plannedLoad.toLocaleString()} AU`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>
