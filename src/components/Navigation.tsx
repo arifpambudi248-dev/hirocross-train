@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
 import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
@@ -7,6 +8,36 @@ import { toast } from "sonner";
 
 export const Navigation = () => {
   const navigate = useNavigate();
+  const [athleteName, setAthleteName] = useState<string>("");
+
+  useEffect(() => {
+    fetchProfile();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        fetchProfile();
+      } else {
+        setAthleteName("");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("athlete_name")
+        .eq("id", session.user.id)
+        .single();
+      
+      if (data) {
+        setAthleteName(data.athlete_name);
+      }
+    }
+  };
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -82,15 +113,20 @@ export const Navigation = () => {
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="flex items-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-4">
+            {athleteName && (
+              <span className="text-sm text-muted-foreground font-medium">{athleteName}</span>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
     </nav>
