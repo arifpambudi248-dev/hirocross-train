@@ -14,7 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      training_sessions: {
+        Row: {
+          athlete_name: string
+          created_at: string
+          date: string
+          duration_minutes: number | null
+          id: string
+          load_auto: number | null
+          load_final: number | null
+          load_manual: number | null
+          notes: string | null
+          rpe: number | null
+          session_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          athlete_name: string
+          created_at?: string
+          date: string
+          duration_minutes?: number | null
+          id?: string
+          load_auto?: number | null
+          load_final?: number | null
+          load_manual?: number | null
+          notes?: string | null
+          rpe?: number | null
+          session_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          athlete_name?: string
+          created_at?: string
+          date?: string
+          duration_minutes?: number | null
+          id?: string
+          load_auto?: number | null
+          load_final?: number | null
+          load_manual?: number | null
+          notes?: string | null
+          rpe?: number | null
+          session_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
