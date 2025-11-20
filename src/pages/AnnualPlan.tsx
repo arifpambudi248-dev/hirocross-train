@@ -10,7 +10,16 @@ import { id as localeId } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from "recharts";
-import { Pencil } from "lucide-react";
+import { Pencil, Save, FolderOpen, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type Phase = {
   name: string;
@@ -34,6 +43,7 @@ type EditablePercentages = {
 };
 
 export default function AnnualPlan() {
+  const [userId, setUserId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState("");
   const [competitionDate, setCompetitionDate] = useState("");
   const [phases, setPhases] = useState<Phase[]>([]);
@@ -49,6 +59,118 @@ export default function AnnualPlan() {
   });
   const [isEditingLoads, setIsEditingLoads] = useState(false);
   const [editableLoads, setEditableLoads] = useState<{ [key: string]: number }>({});
+  const [savedPlans, setSavedPlans] = useState<any[]>([]);
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
+  const [planName, setPlanName] = useState("");
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [autoAdjust, setAutoAdjust] = useState(false);
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      loadSavedPlans();
+    }
+  }, [userId]);
+
+  const loadUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setUserId(user.id);
+    }
+  };
+
+  const loadSavedPlans = async () => {
+    if (!userId) return;
+    const { data, error } = await supabase
+      .from("annual_plans")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Gagal memuat rencana tersimpan: " + error.message);
+    } else {
+      setSavedPlans(data || []);
+    }
+  };
+
+  const savePlan = async () => {
+    if (!userId || !planName || !startDate || !competitionDate) {
+      toast.error("Harap lengkapi semua field");
+      return;
+    }
+
+    const planData = {
+      user_id: userId,
+      plan_name: planName,
+      start_date: startDate,
+      competition_date: competitionDate,
+      percentages: editablePercentages,
+      planned_loads: editableLoads,
+    };
+
+    if (currentPlanId) {
+      const { error } = await supabase
+        .from("annual_plans")
+        .update(planData)
+        .eq("id", currentPlanId);
+
+      if (error) {
+        toast.error("Gagal update: " + error.message);
+      } else {
+        toast.success("Rencana berhasil diperbarui");
+        loadSavedPlans();
+        setShowSaveDialog(false);
+      }
+    } else {
+      const { error } = await supabase
+        .from("annual_plans")
+        .insert([planData]);
+
+      if (error) {
+        toast.error("Gagal simpan: " + error.message);
+      } else {
+        toast.success("Rencana berhasil disimpan");
+        loadSavedPlans();
+        setShowSaveDialog(false);
+      }
+    }
+  };
+
+  const loadPlan = (planId: string) => {
+    const selectedPlan = savedPlans.find(p => p.id === planId);
+    if (selectedPlan) {
+      setCurrentPlanId(selectedPlan.id);
+      setPlanName(selectedPlan.plan_name);
+      setStartDate(selectedPlan.start_date);
+      setCompetitionDate(selectedPlan.competition_date);
+      setEditablePercentages(selectedPlan.percentages);
+      setEditableLoads(selectedPlan.planned_loads || {});
+      setShowLoadDialog(false);
+      setTimeout(() => {
+        generatePlan();
+      }, 100);
+    }
+  };
+
+  const createNewPlan = () => {
+    setCurrentPlanId(null);
+    setPlanName("");
+    setStartDate("");
+    setCompetitionDate("");
+    setPhases([]);
+    setEditablePercentages({
+      gpp: 40,
+      spp: 30,
+      pre: 20,
+      comp: 10,
+    });
+    setEditableLoads({});
+  };
 
   const generatePlan = () => {
     if (!startDate || !competitionDate) {
@@ -153,7 +275,7 @@ export default function AnnualPlan() {
   }, [phases, trainingSessions]);
 
   const calculateLoadPerPhase = () => {
-    const phasesWithLoadData: PhaseWithLoad[] = phases.map((phase) => {
+    const phasesWithLoadData: PhaseWithLoad[] = phases.map((phase, phaseIndex) => {
       const phaseStart = parseISO(phase.startDate);
       const phaseEnd = parseISO(phase.endDate);
 
@@ -165,10 +287,9 @@ export default function AnnualPlan() {
         })
         .reduce((sum, session) => sum + (session.load_final || 0), 0);
 
-      // Calculate planned load based on phase type and duration
-      // Check if there's a manual override in editableLoads
-      let plannedLoad = 0;
+      // Calculate planned load with auto-adjust
       const phaseKey = phase.name;
+      let plannedLoad = 0;
       
       if (editableLoads[phaseKey] !== undefined) {
         plannedLoad = editableLoads[phaseKey];
@@ -178,6 +299,32 @@ export default function AnnualPlan() {
         else if (phase.name.includes("SPP")) plannedLoadPerDay = 350;
         else if (phase.name.includes("Pra")) plannedLoadPerDay = 300;
         else plannedLoadPerDay = 200;
+
+        // Auto-adjust based on previous phase performance
+        if (autoAdjust && phaseIndex > 0 && trainingSessions.length > 0) {
+          const previousPhase = phases[phaseIndex - 1];
+          const prevStart = parseISO(previousPhase.startDate);
+          const prevEnd = parseISO(previousPhase.endDate);
+
+          const prevActual = trainingSessions
+            .filter((s) => {
+              const sd = parseISO(s.date);
+              return isWithinInterval(sd, { start: prevStart, end: prevEnd });
+            })
+            .reduce((sum, s) => sum + (s.load_final || 0), 0);
+
+          const prevPlanned = phasesWithLoad[phaseIndex - 1]?.plannedLoad || (plannedLoadPerDay * previousPhase.durationDays);
+
+          if (prevActual > 0 && prevPlanned > 0) {
+            const ratio = prevActual / prevPlanned;
+            // Adjust load based on performance
+            if (ratio < 0.8) {
+              plannedLoadPerDay = plannedLoadPerDay * 0.9; // Reduce by 10%
+            } else if (ratio > 1.2) {
+              plannedLoadPerDay = plannedLoadPerDay * 1.1; // Increase by 10%
+            }
+          }
+        }
 
         plannedLoad = plannedLoadPerDay * phase.durationDays;
       }
@@ -240,10 +387,88 @@ export default function AnnualPlan() {
       <div className="container mx-auto px-4 py-8 space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Annual Plan Periodization</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Annual Plan Periodization</CardTitle>
+              <div className="flex gap-2">
+                <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      <FolderOpen className="h-4 w-4" />
+                      Muat Rencana
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Muat Rencana Tersimpan</DialogTitle>
+                      <DialogDescription>
+                        Pilih rencana yang ingin dimuat
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {savedPlans.map((p) => (
+                        <Button
+                          key={p.id}
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => loadPlan(p.id)}
+                        >
+                          <div className="text-left">
+                            <div className="font-medium">{p.plan_name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {p.start_date} - {p.competition_date}
+                            </div>
+                          </div>
+                        </Button>
+                      ))}
+                      {savedPlans.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Belum ada rencana tersimpan
+                        </p>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Button onClick={createNewPlan} variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Rencana Baru
+                </Button>
+                <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="gap-2">
+                      <Save className="h-4 w-4" />
+                      Simpan Rencana
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Simpan Rencana Tahunan</DialogTitle>
+                      <DialogDescription>
+                        Beri nama rencana untuk menyimpannya
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Nama Rencana</Label>
+                        <Input
+                          value={planName}
+                          onChange={(e) => setPlanName(e.target.value)}
+                          placeholder="Contoh: Rencana Kompetisi 2025"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                        Batal
+                      </Button>
+                      <Button onClick={savePlan}>Simpan</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Tanggal Mulai Latihan</Label>
                 <Input
@@ -261,6 +486,19 @@ export default function AnnualPlan() {
                   value={competitionDate}
                   onChange={(e) => setCompetitionDate(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="autoAdjust">Auto-Adjust Load</Label>
+                <div className="flex items-center h-10 space-x-2">
+                  <Switch
+                    id="autoAdjust"
+                    checked={autoAdjust}
+                    onCheckedChange={setAutoAdjust}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Otomatis sesuaikan
+                  </span>
+                </div>
               </div>
               <div className="flex items-end">
                 <Button onClick={generatePlan} className="w-full">

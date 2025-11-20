@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      annual_plans: {
+        Row: {
+          competition_date: string
+          created_at: string
+          id: string
+          notes: string | null
+          percentages: Json
+          plan_name: string
+          planned_loads: Json | null
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          competition_date: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          percentages?: Json
+          plan_name: string
+          planned_loads?: Json | null
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          competition_date?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          percentages?: Json
+          plan_name?: string
+          planned_loads?: Json | null
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       physical_tests: {
         Row: {
           athlete_id: string
