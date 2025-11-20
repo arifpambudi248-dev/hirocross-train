@@ -25,36 +25,36 @@ import { Plus, Trash2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import type { PhysicalTest } from "@/types/database";
 
-// Benchmark values for each category
+// Benchmark values for each category (5-scale: Elite, Excellent, Good, Average, Poor)
 const BENCHMARKS = {
   endurance: [
-    { testName: "VO2max", excellent: 60, good: 50, average: 40, unit: "ml/kg/min", inverse: false },
-    { testName: "Cooper Test", excellent: 3000, good: 2600, average: 2200, unit: "m", inverse: false },
-    { testName: "Beep Test", excellent: 13, good: 10, average: 7, unit: "level", inverse: false },
+    { testName: "VO2max", elite: 65, excellent: 60, good: 50, average: 40, poor: 35, unit: "ml/kg/min", inverse: false },
+    { testName: "Cooper Test", elite: 3200, excellent: 3000, good: 2600, average: 2200, poor: 1900, unit: "m", inverse: false },
+    { testName: "Beep Test", elite: 15, excellent: 13, good: 10, average: 7, poor: 5, unit: "level", inverse: false },
   ],
   speed: [
-    { testName: "10m Sprint", excellent: 1.7, good: 1.85, average: 2.0, unit: "s", inverse: true },
-    { testName: "20m Sprint", excellent: 3.0, good: 3.2, average: 3.5, unit: "s", inverse: true },
-    { testName: "40m Sprint", excellent: 5.2, good: 5.6, average: 6.0, unit: "s", inverse: true },
+    { testName: "10m Sprint", elite: 1.6, excellent: 1.7, good: 1.85, average: 2.0, poor: 2.2, unit: "s", inverse: true },
+    { testName: "20m Sprint", elite: 2.8, excellent: 3.0, good: 3.2, average: 3.5, poor: 3.8, unit: "s", inverse: true },
+    { testName: "40m Sprint", elite: 4.9, excellent: 5.2, good: 5.6, average: 6.0, poor: 6.5, unit: "s", inverse: true },
   ],
   strength: [
-    { testName: "Squat 1RM", excellent: 2.0, good: 1.5, average: 1.2, unit: "x BW", inverse: false },
-    { testName: "Bench Press 1RM", excellent: 1.5, good: 1.2, average: 1.0, unit: "x BW", inverse: false },
-    { testName: "Deadlift 1RM", excellent: 2.5, good: 2.0, average: 1.5, unit: "x BW", inverse: false },
+    { testName: "Squat 1RM", elite: 2.5, excellent: 2.0, good: 1.5, average: 1.2, poor: 1.0, unit: "x BW", inverse: false },
+    { testName: "Bench Press 1RM", elite: 1.8, excellent: 1.5, good: 1.2, average: 1.0, poor: 0.8, unit: "x BW", inverse: false },
+    { testName: "Deadlift 1RM", elite: 3.0, excellent: 2.5, good: 2.0, average: 1.5, poor: 1.2, unit: "x BW", inverse: false },
   ],
   agility: [
-    { testName: "T-Test", excellent: 9.0, good: 10.0, average: 11.0, unit: "s", inverse: true },
-    { testName: "Illinois Test", excellent: 15.0, good: 16.5, average: 18.0, unit: "s", inverse: true },
-    { testName: "505 Agility", excellent: 2.2, good: 2.4, average: 2.6, unit: "s", inverse: true },
+    { testName: "T-Test", elite: 8.5, excellent: 9.0, good: 10.0, average: 11.0, poor: 12.0, unit: "s", inverse: true },
+    { testName: "Illinois Test", elite: 14.0, excellent: 15.0, good: 16.5, average: 18.0, poor: 19.5, unit: "s", inverse: true },
+    { testName: "505 Agility", elite: 2.0, excellent: 2.2, good: 2.4, average: 2.6, poor: 2.8, unit: "s", inverse: true },
   ],
   flexibility: [
-    { testName: "Sit and Reach", excellent: 20, good: 15, average: 10, unit: "cm", inverse: false },
-    { testName: "Shoulder Flexibility", excellent: 0, good: 5, average: 10, unit: "cm", inverse: true },
+    { testName: "Sit and Reach", elite: 25, excellent: 20, good: 15, average: 10, poor: 5, unit: "cm", inverse: false },
+    { testName: "Shoulder Flexibility", elite: -5, excellent: 0, good: 5, average: 10, poor: 15, unit: "cm", inverse: true },
   ],
   power: [
-    { testName: "CMJ", excellent: 55, good: 45, average: 35, unit: "cm", inverse: false },
-    { testName: "Broad Jump", excellent: 280, good: 240, average: 200, unit: "cm", inverse: false },
-    { testName: "Medicine Ball Throw", excellent: 12, good: 10, average: 8, unit: "m", inverse: false },
+    { testName: "CMJ", elite: 65, excellent: 55, good: 45, average: 35, poor: 25, unit: "cm", inverse: false },
+    { testName: "Broad Jump", elite: 310, excellent: 280, good: 240, average: 200, poor: 170, unit: "cm", inverse: false },
+    { testName: "Medicine Ball Throw", elite: 14, excellent: 12, good: 10, average: 8, poor: 6, unit: "m", inverse: false },
   ],
 };
 
@@ -185,21 +185,23 @@ export default function TesFisik() {
       if (benchmark.inverse) {
         // For inverse metrics (lower is better), invert the calculation
         athleteScore = Math.max(0, Math.min(100, 
-          ((benchmark.average - latestTest.value) / (benchmark.average - benchmark.excellent)) * 100
+          ((benchmark.poor - latestTest.value) / (benchmark.poor - benchmark.elite)) * 100
         ));
       } else {
         // For normal metrics (higher is better)
         athleteScore = Math.max(0, Math.min(100, 
-          (latestTest.value / benchmark.excellent) * 100
+          (latestTest.value / benchmark.elite) * 100
         ));
       }
       
       return {
         subject: benchmark.testName,
         athlete: Math.round(athleteScore),
-        excellent: 100,
-        good: 75,
+        elite: 100,
+        excellent: 85,
+        good: 65,
         average: 50,
+        poor: 30,
       };
     });
   })();
@@ -356,6 +358,13 @@ export default function TesFisik() {
                         fillOpacity={0.6}
                       />
                       <Radar 
+                        name="Elite" 
+                        dataKey="elite" 
+                        stroke="#8b5cf6" 
+                        fill="#8b5cf6" 
+                        fillOpacity={0.1}
+                      />
+                      <Radar 
                         name="Excellent" 
                         dataKey="excellent" 
                         stroke="#22c55e" 
@@ -365,15 +374,22 @@ export default function TesFisik() {
                       <Radar 
                         name="Good" 
                         dataKey="good" 
-                        stroke="#eab308" 
-                        fill="#eab308" 
+                        stroke="#3b82f6" 
+                        fill="#3b82f6" 
                         fillOpacity={0.1}
                       />
                       <Radar 
                         name="Average" 
                         dataKey="average" 
-                        stroke="#f97316" 
-                        fill="#f97316" 
+                        stroke="#eab308" 
+                        fill="#eab308" 
+                        fillOpacity={0.1}
+                      />
+                      <Radar 
+                        name="Poor" 
+                        dataKey="poor" 
+                        stroke="#ef4444" 
+                        fill="#ef4444" 
                         fillOpacity={0.1}
                       />
                       <Legend />
@@ -397,9 +413,11 @@ export default function TesFisik() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nama Tes</TableHead>
+                      <TableHead className="text-purple-500">Elite</TableHead>
                       <TableHead className="text-green-500">Excellent</TableHead>
-                      <TableHead className="text-yellow-500">Good</TableHead>
-                      <TableHead className="text-orange-500">Average</TableHead>
+                      <TableHead className="text-blue-500">Good</TableHead>
+                      <TableHead className="text-yellow-500">Average</TableHead>
+                      <TableHead className="text-red-500">Poor</TableHead>
                       <TableHead>Satuan</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -407,9 +425,11 @@ export default function TesFisik() {
                     {(BENCHMARKS[selectedCategory as keyof typeof BENCHMARKS] || []).map((benchmark, idx) => (
                       <TableRow key={idx}>
                         <TableCell className="font-medium">{benchmark.testName}</TableCell>
+                        <TableCell className="text-purple-500">{benchmark.elite}</TableCell>
                         <TableCell className="text-green-500">{benchmark.excellent}</TableCell>
-                        <TableCell className="text-yellow-500">{benchmark.good}</TableCell>
-                        <TableCell className="text-orange-500">{benchmark.average}</TableCell>
+                        <TableCell className="text-blue-500">{benchmark.good}</TableCell>
+                        <TableCell className="text-yellow-500">{benchmark.average}</TableCell>
+                        <TableCell className="text-red-500">{benchmark.poor}</TableCell>
                         <TableCell className="text-muted-foreground">{benchmark.unit}</TableCell>
                       </TableRow>
                     ))}
