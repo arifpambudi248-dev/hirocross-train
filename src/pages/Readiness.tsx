@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceLine } from "recharts";
-import { computeReadinessScore } from "@/lib/trainingLoad";
+import { computeReadinessScore } from "@/lib/readiness";
 import type { ReadinessLog, Profile } from "@/types/database";
 
 export default function Readiness() {
@@ -43,7 +43,7 @@ export default function Readiness() {
       setUserId(user.id);
       
       // Load baseline
-      const { data: profile } = await (supabase as any)
+      const { data: profile } = await supabase
         .from("profiles")
         .select("baseline_vj, baseline_rhr")
         .eq("id", user.id)
@@ -60,7 +60,7 @@ export default function Readiness() {
   };
 
   const loadLogs = async (uid: string) => {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("readiness_logs")
       .select("*")
       .eq("athlete_id", uid)
@@ -84,7 +84,7 @@ export default function Readiness() {
       baselineRhr
     );
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("readiness_logs")
       .insert([{
         athlete_id: userId,
@@ -94,9 +94,9 @@ export default function Readiness() {
         vj_score: result.vjScore,
         rhr_score: result.rhrScore,
         readiness_score: result.readinessScore,
-        readiness_zone: result.readinessZone,
+        readiness_zone: result.zone,
         notes: formData.notes,
-      } as any]);
+      }]);
 
     if (error) {
       toast.error("Gagal simpan: " + error.message);
