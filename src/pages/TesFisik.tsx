@@ -307,10 +307,60 @@ export default function TesFisik() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Radar Chart First - Most Important View */}
+            {radarData.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4">Profil Performa vs Benchmark (Jaring Laba-laba)</h3>
+                <ResponsiveContainer width="100%" height={400}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarAngleAxis dataKey="test" stroke="hsl(var(--foreground))" />
+                    <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="hsl(var(--muted-foreground))" />
+                    <Radar
+                      name="Skor Atlet"
+                      dataKey="score"
+                      stroke="hsl(var(--primary))"
+                      fill="hsl(var(--primary))"
+                      fillOpacity={0.6}
+                    />
+                    <Radar
+                      name="Elite"
+                      dataKey="elite"
+                      stroke="hsl(var(--chart-1))"
+                      fill="hsl(var(--chart-1))"
+                      fillOpacity={0.1}
+                    />
+                    <Radar
+                      name="Excellent"
+                      dataKey="excellent"
+                      stroke="hsl(var(--chart-2))"
+                      fill="hsl(var(--chart-2))"
+                      fillOpacity={0.1}
+                    />
+                    <Radar
+                      name="Good"
+                      dataKey="good"
+                      stroke="hsl(var(--chart-3))"
+                      fill="hsl(var(--chart-3))"
+                      fillOpacity={0.1}
+                    />
+                    <Legend />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                      }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Performance Trend Chart */}
+            <div className="grid grid-cols-1 gap-6">
               {chartData.length > 0 && (
                 <div className="h-80">
-                  <h3 className="text-sm font-medium mb-4">Tren Performa</h3>
+                  <h3 className="text-sm font-medium mb-4">Tren Performa Detail (Per Kategori)</h3>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -407,7 +457,7 @@ export default function TesFisik() {
 
             {/* Benchmark Reference Table */}
             <div className="mt-6">
-              <h3 className="text-sm font-medium mb-3">Referensi Benchmark</h3>
+              <h3 className="text-lg font-semibold mb-4">Referensi Benchmark (5 Skala)</h3>
               <div className="rounded-lg border border-border overflow-hidden">
                 <Table>
                   <TableHeader>

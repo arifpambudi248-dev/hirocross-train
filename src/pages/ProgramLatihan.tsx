@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -24,9 +26,10 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
-import { format } from "date-fns";
+import { generateWeeklyPlan } from "@/lib/weeklyPlanning";
+import { format, subDays, startOfWeek, endOfWeek, addWeeks } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Lightbulb, Calendar as CalendarIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 type TrainingSession = {
@@ -48,6 +51,8 @@ export default function ProgramLatihan() {
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [athleteName, setAthleteName] = useState<string>("");
+  const [weeklyPlan, setWeeklyPlan] = useState<any>(null);
+  const [competitionDate, setCompetitionDate] = useState<Date | null>(null);
 
   // Form state
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -81,6 +86,68 @@ export default function ProgramLatihan() {
     }
     
     fetchSessions(session.user.id);
+    loadWeeklyPlanData(session.user.id);
+  };
+
+  const loadWeeklyPlanData = async (userId: string) => {
+    // Load competition date from annual plan
+    const { data: plans } = await supabase
+      .from("annual_plans")
+      .select("competition_date")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const compDate = plans?.competition_date ? new Date(plans.competition_date) : addWeeks(new Date(), 12);
+    setCompetitionDate(compDate);
+
+    // Load readiness data
+    const { data: readiness } = await supabase
+      .from("readiness_logs")
+      .select("readiness_score, readiness_zone")
+      .eq("athlete_id", userId)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!readiness) return;
+
+    // Load previous week and average load
+    const now = new Date();
+    const lastWeekStart = format(startOfWeek(subDays(now, 7), { weekStartsOn: 1 }), "yyyy-MM-dd");
+    const lastWeekEnd = format(endOfWeek(subDays(now, 7), { weekStartsOn: 1 }), "yyyy-MM-dd");
+    const fourWeeksAgo = format(subDays(now, 28), "yyyy-MM-dd");
+
+    const { data: lastWeekSessions } = await supabase
+      .from("training_sessions")
+      .select("load_final")
+      .eq("user_id", userId)
+      .gte("date", lastWeekStart)
+      .lte("date", lastWeekEnd);
+
+    const previousWeekLoad = lastWeekSessions?.reduce((sum, s) => sum + (s.load_final || 0), 0) || 0;
+
+    const { data: fourWeekSessions } = await supabase
+      .from("training_sessions")
+      .select("load_final")
+      .eq("user_id", userId)
+      .gte("date", fourWeeksAgo);
+
+    const avgWeeklyLoad = fourWeekSessions && fourWeekSessions.length > 0
+      ? fourWeekSessions.reduce((sum, s) => sum + (s.load_final || 0), 0) / 4
+      : 1500;
+
+    // Generate weekly plan
+    const plan = generateWeeklyPlan(
+      readiness.readiness_score,
+      readiness.readiness_zone as 'low' | 'moderate' | 'prime',
+      previousWeekLoad,
+      avgWeeklyLoad,
+      compDate
+    );
+
+    setWeeklyPlan(plan);
   };
 
   const fetchSessions = async (uid: string) => {
@@ -164,7 +231,14 @@ export default function ProgramLatihan() {
     <div className="min-h-screen bg-background">
       <Navigation />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
+        <Tabs defaultValue="history" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="history">Riwayat Sesi</TabsTrigger>
+            <TabsTrigger value="weekly-plan">Rencana Mingguan</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="history">
+            <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Program Latihan</h1>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -323,6 +397,81 @@ export default function ProgramLatihan() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="weekly-plan">
+            {weeklyPlan ? (
+              <div className="space-y-6">
+                <Alert>
+                  <Lightbulb className="h-4 w-4" />
+                  <AlertTitle>Rencana Latihan Mingguan Otomatis</AlertTitle>
+                  <AlertDescription>
+                    <div className="mt-2 space-y-1">
+                      <p className="font-semibold">{weeklyPlan.notes}</p>
+                      <p className="text-sm">Fase: <span className="font-medium capitalize">{weeklyPlan.phaseType}</span></p>
+                      <p className="text-sm">Target Load Mingguan: <span className="font-bold">{weeklyPlan.totalPlannedLoad} AU</span></p>
+                      <p className="text-sm text-muted-foreground">
+                        Kompetisi: {competitionDate ? format(competitionDate, "dd MMM yyyy", { locale: localeId }) : "Tidak diset"}
+                      </p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Sesi Latihan yang Direkomendasikan</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Hari</TableHead>
+                          <TableHead>Tanggal</TableHead>
+                          <TableHead>Sesi</TableHead>
+                          <TableHead>Fokus</TableHead>
+                          <TableHead className="text-center">RPE</TableHead>
+                          <TableHead className="text-center">Durasi</TableHead>
+                          <TableHead className="text-right">Est. Load</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {weeklyPlan.sessions.map((session: any, idx: number) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{session.day}</TableCell>
+                            <TableCell>{format(new Date(session.date), "dd MMM", { locale: localeId })}</TableCell>
+                            <TableCell>{session.sessionName}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{session.focus}</TableCell>
+                            <TableCell className="text-center font-semibold">{session.recommendedRPE}</TableCell>
+                            <TableCell className="text-center">{session.recommendedDuration} min</TableCell>
+                            <TableCell className="text-right font-medium">{session.estimatedLoad} AU</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                <Alert>
+                  <CalendarIcon className="h-4 w-4" />
+                  <AlertTitle>Cara Menggunakan</AlertTitle>
+                  <AlertDescription className="text-sm">
+                    Gunakan rekomendasi di atas sebagai panduan perencanaan latihan minggu ini. 
+                    Anda dapat menambahkan sesi di tab "Riwayat Sesi" dengan RPE dan durasi yang direkomendasikan, 
+                    atau menyesuaikan sesuai kondisi lapangan.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-8">
+                  <p className="text-center text-muted-foreground">
+                    Memuat rencana mingguan... Pastikan Anda sudah mengisi data readiness dan memiliki annual plan.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
