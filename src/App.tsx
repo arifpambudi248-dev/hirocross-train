@@ -12,6 +12,7 @@ import TesFisik from "./pages/TesFisik";
 import Readiness from "./pages/Readiness";
 import AnalisLoad from "./pages/AnalisLoad";
 import AnnualPlan from "./pages/AnnualPlan";
+import Laporan from "./pages/Laporan";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => {
             <Route path="/tes-fisik" element={<TesFisik />} />
             <Route path="/readiness" element={<Readiness />} />
             <Route path="/analisis-load" element={<AnalisLoad />} />
+            <Route path="/laporan" element={<Laporan />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
