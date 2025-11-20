@@ -2,13 +2,20 @@ import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { FileDown, Users } from "lucide-react";
 import { 
   LineChart, 
   Line, 
   BarChart,
   Bar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -23,13 +30,17 @@ import {
   computeACWR 
 } from "@/lib/trainingLoad";
 import type { TrainingSession, ReadinessLog, PhysicalTest } from "@/types/database";
+import { exportToPDF, exportToExcel, exportComparisonToPDF, exportComparisonToExcel, type ExportData, type AthleteComparisonData } from "@/lib/exportUtils";
 
 export default function Laporan() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [athleteName, setAthleteName] = useState<string>("");
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
   const [readinessLogs, setReadinessLogs] = useState<ReadinessLog[]>([]);
   const [physicalTests, setPhysicalTests] = useState<PhysicalTest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showComparison, setShowComparison] = useState(false);
+  const [allAthletes, setAllAthletes] = useState<AthleteComparisonData[]>([]);
 
   useEffect(() => {
     loadData();
@@ -41,6 +52,17 @@ export default function Laporan() {
     
     setUserId(user.id);
     setLoading(true);
+
+    // Load profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("athlete_name")
+      .eq("id", user.id)
+      .single();
+    
+    if (profile) {
+      setAthleteName(profile.athlete_name);
+    }
 
     // Load all data in parallel
     const [sessionsRes, readinessRes, testsRes] = await Promise.all([
@@ -82,6 +104,103 @@ export default function Laporan() {
     }
 
     setLoading(false);
+  };
+
+  const loadComparisonData = async () => {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, athlete_name");
+    
+    if (!profiles || profiles.length === 0) {
+      toast.error("Tidak ada data atlet untuk dibandingkan");
+      return;
+    }
+
+    const athletesData: AthleteComparisonData[] = [];
+
+    for (const profile of profiles) {
+      const [sessionsRes, readinessRes] = await Promise.all([
+        supabase
+          .from("training_sessions")
+          .select("*")
+          .eq("user_id", profile.id)
+          .order("date", { ascending: true }),
+        supabase
+          .from("readiness_logs")
+          .select("*")
+          .eq("athlete_id", profile.id)
+          .order("date", { ascending: false })
+          .limit(1)
+      ]);
+
+      const sessions = (sessionsRes.data as any[]) || [];
+      const readinessLog = (readinessRes.data as any[])?.[0];
+
+      const dailyLoads = aggregateDailyLoad(sessions);
+      const last90Days = dailyLoads.slice(-90);
+      const last7Days = dailyLoads.slice(-7);
+      const fitnessData = computeFitnessFatigueForm({ dailyLoads: last90Days });
+      const acwrData = computeACWR(last90Days);
+
+      const latestFitness = fitnessData[fitnessData.length - 1];
+      const latestACWR = acwrData[acwrData.length - 1];
+      const weeklyLoad = last7Days.reduce((sum, d) => sum + d.load, 0);
+
+      athletesData.push({
+        athleteId: profile.id,
+        athleteName: profile.athlete_name,
+        weeklyLoad,
+        fitness: latestFitness?.fitness || 0,
+        fatigue: latestFitness?.fatigue || 0,
+        form: latestFitness?.form || 0,
+        acwr: latestACWR?.ratio || 0,
+        readiness: readinessLog?.readiness_score || 0,
+        readinessZone: readinessLog?.readiness_zone || "N/A",
+      });
+    }
+
+    setAllAthletes(athletesData);
+    setShowComparison(true);
+  };
+
+  const handleExportPDF = () => {
+    const exportData: ExportData = {
+      athleteName,
+      weeklyLoad,
+      avgDailyLoad,
+      latestFitness: latestFitness?.fitness || 0,
+      latestFatigue: latestFitness?.fatigue || 0,
+      latestForm: latestFitness?.form || 0,
+      latestACWR: latestACWR?.ratio || 0,
+      latestReadiness: latestReadiness?.readiness_score || 0,
+      readinessZone: latestReadiness?.readiness_zone || "N/A",
+      sessions,
+      readinessLogs,
+      physicalTests,
+    };
+    
+    exportToPDF(exportData);
+    toast.success("Laporan PDF berhasil diekspor");
+  };
+
+  const handleExportExcel = () => {
+    const exportData: ExportData = {
+      athleteName,
+      weeklyLoad,
+      avgDailyLoad,
+      latestFitness: latestFitness?.fitness || 0,
+      latestFatigue: latestFitness?.fatigue || 0,
+      latestForm: latestFitness?.form || 0,
+      latestACWR: latestACWR?.ratio || 0,
+      latestReadiness: latestReadiness?.readiness_score || 0,
+      readinessZone: latestReadiness?.readiness_zone || "N/A",
+      sessions,
+      readinessLogs,
+      physicalTests,
+    };
+    
+    exportToExcel(exportData);
+    toast.success("Laporan Excel berhasil diekspor");
   };
 
   // Calculate training load metrics
@@ -142,8 +261,34 @@ export default function Laporan() {
     <div className="min-h-screen bg-background">
       <Navigation />
       <div className="container mx-auto px-4 py-8 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <h1 className="text-3xl font-bold text-foreground">Laporan Komprehensif</h1>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleExportPDF}
+              variant="outline"
+              className="gap-2"
+            >
+              <FileDown className="h-4 w-4" />
+              Ekspor PDF
+            </Button>
+            <Button
+              onClick={handleExportExcel}
+              variant="outline"
+              className="gap-2"
+            >
+              <FileDown className="h-4 w-4" />
+              Ekspor Excel
+            </Button>
+            <Button
+              onClick={loadComparisonData}
+              variant="default"
+              className="gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Bandingkan Atlet
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -407,6 +552,109 @@ export default function Laporan() {
             )}
           </CardContent>
         </Card>
+
+        {/* Athlete Comparison */}
+        {showComparison && allAthletes.length > 0 && (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Perbandingan Performa Antar Atlet</CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => exportComparisonToPDF(allAthletes)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    PDF
+                  </Button>
+                  <Button
+                    onClick={() => exportComparisonToExcel(allAthletes)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Excel
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-96">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={allAthletes}>
+                      <PolarGrid stroke="hsl(var(--border))" />
+                      <PolarAngleAxis 
+                        dataKey="athleteName" 
+                        stroke="hsl(var(--muted-foreground))"
+                        tick={{ fill: 'hsl(var(--foreground))' }}
+                      />
+                      <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" />
+                      <Radar
+                        name="Fitness (CTL)"
+                        dataKey="fitness"
+                        stroke="hsl(var(--chart-1))"
+                        fill="hsl(var(--chart-1))"
+                        fillOpacity={0.5}
+                      />
+                      <Radar
+                        name="Readiness"
+                        dataKey="readiness"
+                        stroke="hsl(var(--chart-2))"
+                        fill="hsl(var(--chart-2))"
+                        fillOpacity={0.5}
+                      />
+                      <Legend />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                        }}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Tabel Perbandingan Detail</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Atlet</th>
+                        <th className="text-right p-3 text-sm font-medium text-muted-foreground">Beban 7H</th>
+                        <th className="text-right p-3 text-sm font-medium text-muted-foreground">CTL</th>
+                        <th className="text-right p-3 text-sm font-medium text-muted-foreground">ATL</th>
+                        <th className="text-right p-3 text-sm font-medium text-muted-foreground">TSB</th>
+                        <th className="text-right p-3 text-sm font-medium text-muted-foreground">ACWR</th>
+                        <th className="text-right p-3 text-sm font-medium text-muted-foreground">Readiness</th>
+                        <th className="text-center p-3 text-sm font-medium text-muted-foreground">Zona</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allAthletes.map((athlete) => (
+                        <tr key={athlete.athleteId} className="border-b border-border hover:bg-muted/50">
+                          <td className="p-3 text-sm font-medium text-foreground">{athlete.athleteName}</td>
+                          <td className="p-3 text-sm text-right text-foreground">{athlete.weeklyLoad.toFixed(0)}</td>
+                          <td className="p-3 text-sm text-right text-foreground">{athlete.fitness.toFixed(0)}</td>
+                          <td className="p-3 text-sm text-right text-foreground">{athlete.fatigue.toFixed(0)}</td>
+                          <td className="p-3 text-sm text-right text-foreground">{athlete.form.toFixed(0)}</td>
+                          <td className="p-3 text-sm text-right text-foreground">{athlete.acwr.toFixed(2)}</td>
+                          <td className="p-3 text-sm text-right text-foreground">{athlete.readiness.toFixed(0)}</td>
+                          <td className="p-3 text-sm text-center">{getZoneBadge(athlete.readinessZone)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );
