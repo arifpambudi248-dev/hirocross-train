@@ -9,6 +9,8 @@ import { differenceInDays, addDays, format, parseISO, isWithinInterval } from "d
 import { id as localeId } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Pencil } from "lucide-react";
 
 type Phase = {
   name: string;
@@ -24,6 +26,13 @@ type PhaseWithLoad = Phase & {
   actualLoad: number;
 };
 
+type EditablePercentages = {
+  gpp: number;
+  spp: number;
+  pre: number;
+  comp: number;
+};
+
 export default function AnnualPlan() {
   const [startDate, setStartDate] = useState("");
   const [competitionDate, setCompetitionDate] = useState("");
@@ -31,6 +40,15 @@ export default function AnnualPlan() {
   const [phasesWithLoad, setPhasesWithLoad] = useState<PhaseWithLoad[]>([]);
   const [showActualLoad, setShowActualLoad] = useState(true);
   const [trainingSessions, setTrainingSessions] = useState<any[]>([]);
+  const [isEditingPercentages, setIsEditingPercentages] = useState(false);
+  const [editablePercentages, setEditablePercentages] = useState<EditablePercentages>({
+    gpp: 40,
+    spp: 30,
+    pre: 20,
+    comp: 10,
+  });
+  const [isEditingLoads, setIsEditingLoads] = useState(false);
+  const [editableLoads, setEditableLoads] = useState<{ [key: string]: number }>({});
 
   const generatePlan = () => {
     if (!startDate || !competitionDate) {
@@ -53,10 +71,10 @@ export default function AnnualPlan() {
       return;
     }
 
-    // Hitung durasi tiap fase berdasarkan persentase
-    const gppDays = Math.round(totalDays * 0.4);
-    const sppDays = Math.round(totalDays * 0.3);
-    const preDays = Math.round(totalDays * 0.2);
+    // Hitung durasi tiap fase berdasarkan persentase (gunakan editable percentages)
+    const gppDays = Math.round(totalDays * (editablePercentages.gpp / 100));
+    const sppDays = Math.round(totalDays * (editablePercentages.spp / 100));
+    const preDays = Math.round(totalDays * (editablePercentages.pre / 100));
     const compDays = totalDays - gppDays - sppDays - preDays; // Sisa hari untuk kompetisi
 
     // Hitung tanggal mulai dan akhir tiap fase
@@ -79,7 +97,7 @@ export default function AnnualPlan() {
         startDate: format(gppStart, "yyyy-MM-dd"),
         endDate: format(gppEnd, "yyyy-MM-dd"),
         durationDays: gppDays,
-        percentage: 40,
+        percentage: editablePercentages.gpp,
       },
       {
         name: "Persiapan Khusus (SPP)",
@@ -87,7 +105,7 @@ export default function AnnualPlan() {
         startDate: format(sppStart, "yyyy-MM-dd"),
         endDate: format(sppEnd, "yyyy-MM-dd"),
         durationDays: sppDays,
-        percentage: 30,
+        percentage: editablePercentages.spp,
       },
       {
         name: "Pra Kompetisi",
@@ -95,7 +113,7 @@ export default function AnnualPlan() {
         startDate: format(preStart, "yyyy-MM-dd"),
         endDate: format(preEnd, "yyyy-MM-dd"),
         durationDays: preDays,
-        percentage: 20,
+        percentage: editablePercentages.pre,
       },
       {
         name: "Kompetisi",
@@ -103,7 +121,7 @@ export default function AnnualPlan() {
         startDate: format(compStart, "yyyy-MM-dd"),
         endDate: format(compEnd, "yyyy-MM-dd"),
         durationDays: compDays,
-        percentage: 10,
+        percentage: editablePercentages.comp,
       },
     ];
 
@@ -148,13 +166,21 @@ export default function AnnualPlan() {
         .reduce((sum, session) => sum + (session.load_final || 0), 0);
 
       // Calculate planned load based on phase type and duration
-      let plannedLoadPerDay = 0;
-      if (phase.name.includes("GPP")) plannedLoadPerDay = 250;
-      else if (phase.name.includes("SPP")) plannedLoadPerDay = 350;
-      else if (phase.name.includes("Pra")) plannedLoadPerDay = 300;
-      else plannedLoadPerDay = 200;
+      // Check if there's a manual override in editableLoads
+      let plannedLoad = 0;
+      const phaseKey = phase.name;
+      
+      if (editableLoads[phaseKey] !== undefined) {
+        plannedLoad = editableLoads[phaseKey];
+      } else {
+        let plannedLoadPerDay = 0;
+        if (phase.name.includes("GPP")) plannedLoadPerDay = 250;
+        else if (phase.name.includes("SPP")) plannedLoadPerDay = 350;
+        else if (phase.name.includes("Pra")) plannedLoadPerDay = 300;
+        else plannedLoadPerDay = 200;
 
-      const plannedLoad = plannedLoadPerDay * phase.durationDays;
+        plannedLoad = plannedLoadPerDay * phase.durationDays;
+      }
 
       return {
         ...phase,
@@ -164,6 +190,44 @@ export default function AnnualPlan() {
     });
 
     setPhasesWithLoad(phasesWithLoadData);
+  };
+
+  const handlePercentageChange = (phase: keyof EditablePercentages, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setEditablePercentages((prev) => ({
+      ...prev,
+      [phase]: numValue,
+    }));
+  };
+
+  const handleSavePercentages = () => {
+    const total = editablePercentages.gpp + editablePercentages.spp + editablePercentages.pre + editablePercentages.comp;
+    
+    if (Math.abs(total - 100) > 0.1) {
+      toast.error(`Total persentase harus 100% (saat ini: ${total.toFixed(1)}%)`);
+      return;
+    }
+    
+    setIsEditingPercentages(false);
+    toast.success("Persentase fase berhasil diperbarui");
+    // Regenerate plan with new percentages
+    if (startDate && competitionDate) {
+      generatePlan();
+    }
+  };
+
+  const handleLoadChange = (phaseName: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setEditableLoads((prev) => ({
+      ...prev,
+      [phaseName]: numValue,
+    }));
+  };
+
+  const handleSaveLoads = () => {
+    setIsEditingLoads(false);
+    toast.success("Planned load berhasil diperbarui");
+    calculateLoadPerPhase();
   };
 
   const formatDate = (dateStr: string) => {
@@ -209,6 +273,88 @@ export default function AnnualPlan() {
 
         {phases.length > 0 && (
           <>
+            {/* Editable Percentages Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Konfigurasi Persentase Fase</CardTitle>
+                <Button
+                  variant={isEditingPercentages ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    if (isEditingPercentages) {
+                      handleSavePercentages();
+                    } else {
+                      setIsEditingPercentages(true);
+                    }
+                  }}
+                >
+                  {isEditingPercentages ? "Simpan" : <><Pencil className="w-4 h-4 mr-2" />Edit Persentase</>}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="gpp-percent">GPP (%)</Label>
+                    <Input
+                      id="gpp-percent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={editablePercentages.gpp}
+                      onChange={(e) => handlePercentageChange("gpp", e.target.value)}
+                      disabled={!isEditingPercentages}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="spp-percent">SPP (%)</Label>
+                    <Input
+                      id="spp-percent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={editablePercentages.spp}
+                      onChange={(e) => handlePercentageChange("spp", e.target.value)}
+                      disabled={!isEditingPercentages}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pre-percent">Pra Kompetisi (%)</Label>
+                    <Input
+                      id="pre-percent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={editablePercentages.pre}
+                      onChange={(e) => handlePercentageChange("pre", e.target.value)}
+                      disabled={!isEditingPercentages}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="comp-percent">Kompetisi (%)</Label>
+                    <Input
+                      id="comp-percent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={editablePercentages.comp}
+                      onChange={(e) => handlePercentageChange("comp", e.target.value)}
+                      disabled={!isEditingPercentages}
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Total: {(editablePercentages.gpp + editablePercentages.spp + editablePercentages.pre + editablePercentages.comp).toFixed(1)}%
+                  {Math.abs((editablePercentages.gpp + editablePercentages.spp + editablePercentages.pre + editablePercentages.comp) - 100) > 0.1 && (
+                    <span className="text-destructive ml-2">⚠ Harus berjumlah 100%</span>
+                  )}
+                </p>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Gantt Chart Periodisasi</CardTitle>
@@ -277,72 +423,146 @@ export default function AnnualPlan() {
             </Card>
 
             {phasesWithLoad.length > 0 && (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Perbandingan Planned vs Actual Load</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="show-actual" className="text-sm">
-                      Tampilkan Actual Load
-                    </Label>
-                    <Switch
-                      id="show-actual"
-                      checked={showActualLoad}
-                      onCheckedChange={setShowActualLoad}
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {phasesWithLoad.map((phase, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded ${phase.color}`}></div>
-                            <span className="font-medium text-sm">{phase.name}</span>
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Grafik Load per Fase</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={phasesWithLoad}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="hsl(var(--muted-foreground))"
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        <YAxis 
+                          stroke="hsl(var(--muted-foreground))"
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          label={{ value: 'Load (AU)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Legend />
+                        <Bar dataKey="plannedLoad" fill="hsl(var(--chart-1))" name="Planned Load" />
+                        {showActualLoad && <Bar dataKey="actualLoad" fill="hsl(var(--chart-2))" name="Actual Load" />}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Perbandingan Planned vs Actual Load</CardTitle>
+                    <div className="flex items-center gap-4">
+                      <Button
+                        variant={isEditingLoads ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          if (isEditingLoads) {
+                            handleSaveLoads();
+                          } else {
+                            setIsEditingLoads(true);
+                            // Initialize editable loads with current planned loads
+                            const initialLoads: { [key: string]: number } = {};
+                            phasesWithLoad.forEach((phase) => {
+                              initialLoads[phase.name] = phase.plannedLoad;
+                            });
+                            setEditableLoads(initialLoads);
+                          }
+                        }}
+                      >
+                        {isEditingLoads ? "Simpan Load" : <><Pencil className="w-4 h-4 mr-2" />Edit Planned Load</>}
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="show-actual" className="text-sm">
+                          Tampilkan Actual Load
+                        </Label>
+                        <Switch
+                          id="show-actual"
+                          checked={showActualLoad}
+                          onCheckedChange={setShowActualLoad}
+                        />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {phasesWithLoad.map((phase, index) => (
+                        <div key={index} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-3 h-3 rounded ${phase.color}`}></div>
+                              <span className="font-medium text-sm">{phase.name}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {isEditingLoads && (
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-xs text-muted-foreground">Planned Load:</Label>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="100"
+                                    value={editableLoads[phase.name] || phase.plannedLoad}
+                                    onChange={(e) => handleLoadChange(phase.name, e.target.value)}
+                                    className="w-32 h-8"
+                                  />
+                                  <span className="text-xs text-muted-foreground">AU</span>
+                                </div>
+                              )}
+                              {!isEditingLoads && (
+                                <div className="text-sm text-muted-foreground">
+                                  Planned: {phase.plannedLoad.toLocaleString()} AU
+                                  {showActualLoad && (
+                                    <span className="ml-2">
+                                      | Actual: {phase.actualLoad.toLocaleString()} AU (
+                                      {phase.plannedLoad > 0
+                                        ? Math.round((phase.actualLoad / phase.plannedLoad) * 100)
+                                        : 0}
+                                      %)
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            Planned: {phase.plannedLoad.toLocaleString()} AU
-                            {showActualLoad && (
-                              <span className="ml-2">
-                                | Actual: {phase.actualLoad.toLocaleString()} AU (
-                                {phase.plannedLoad > 0
-                                  ? Math.round((phase.actualLoad / phase.plannedLoad) * 100)
-                                  : 0}
-                                %)
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="relative h-8 bg-muted rounded-lg overflow-hidden">
-                          {/* Planned load bar */}
-                          <div
-                            className="absolute h-full bg-muted-foreground/30 rounded-lg"
-                            style={{
-                              width: "100%",
-                            }}
-                          />
-                          {/* Actual load bar */}
-                          {showActualLoad && (
+                          <div className="relative h-8 bg-muted rounded-lg overflow-hidden">
+                            {/* Planned load bar */}
                             <div
-                              className={`absolute h-full ${phase.color} rounded-lg transition-all`}
+                              className="absolute h-full bg-muted-foreground/30 rounded-lg"
                               style={{
-                                width: `${phase.plannedLoad > 0 ? Math.min((phase.actualLoad / phase.plannedLoad) * 100, 100) : 0}%`,
+                                width: "100%",
                               }}
                             />
-                          )}
-                          <div className="absolute inset-0 flex items-center px-3 text-xs font-medium">
-                            <span className="text-foreground">
-                              {showActualLoad
-                                ? `${phase.actualLoad.toLocaleString()} / ${phase.plannedLoad.toLocaleString()} AU`
-                                : `${phase.plannedLoad.toLocaleString()} AU`}
-                            </span>
+                            {/* Actual load bar */}
+                            {showActualLoad && (
+                              <div
+                                className={`absolute h-full ${phase.color} rounded-lg transition-all`}
+                                style={{
+                                  width: `${phase.plannedLoad > 0 ? Math.min((phase.actualLoad / phase.plannedLoad) * 100, 100) : 0}%`,
+                                }}
+                              />
+                            )}
+                            <div className="absolute inset-0 flex items-center px-3 text-xs font-medium">
+                              <span className="text-foreground">
+                                {showActualLoad
+                                  ? `${phase.actualLoad.toLocaleString()} / ${phase.plannedLoad.toLocaleString()} AU`
+                                  : `${phase.plannedLoad.toLocaleString()} AU`}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
             )}
 
             <Card>
