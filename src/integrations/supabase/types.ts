@@ -14,10 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      physical_tests: {
+        Row: {
+          athlete_id: string
+          category: string
+          created_at: string
+          id: string
+          notes: string | null
+          test_date: string
+          test_name: string
+          unit: string
+          value: number
+        }
+        Insert: {
+          athlete_id: string
+          category: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          test_date: string
+          test_name: string
+          unit: string
+          value: number
+        }
+        Update: {
+          athlete_id?: string
+          category?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          test_date?: string
+          test_name?: string
+          unit?: string
+          value?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           athlete_name: string
           avatar_url: string | null
+          baseline_rhr: number | null
+          baseline_vj: number | null
           created_at: string
           id: string
           updated_at: string
@@ -25,6 +63,8 @@ export type Database = {
         Insert: {
           athlete_name: string
           avatar_url?: string | null
+          baseline_rhr?: number | null
+          baseline_vj?: number | null
           created_at?: string
           id: string
           updated_at?: string
@@ -32,9 +72,53 @@ export type Database = {
         Update: {
           athlete_name?: string
           avatar_url?: string | null
+          baseline_rhr?: number | null
+          baseline_vj?: number | null
           created_at?: string
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      readiness_logs: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          readiness_score: number
+          readiness_zone: string
+          rhr: number
+          rhr_score: number
+          vj: number
+          vj_score: number
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          date: string
+          id?: string
+          notes?: string | null
+          readiness_score: number
+          readiness_zone: string
+          rhr: number
+          rhr_score: number
+          vj: number
+          vj_score: number
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          readiness_score?: number
+          readiness_zone?: string
+          rhr?: number
+          rhr_score?: number
+          vj?: number
+          vj_score?: number
         }
         Relationships: []
       }

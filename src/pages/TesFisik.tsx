@@ -61,7 +61,7 @@ export default function TesFisik() {
   };
 
   const loadTests = async (uid: string) => {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("physical_tests")
       .select("*")
       .eq("athlete_id", uid)
@@ -80,12 +80,12 @@ export default function TesFisik() {
       return;
     }
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("physical_tests")
       .insert([{
         athlete_id: userId,
         ...formData,
-      } as any]);
+      }]);
 
     if (error) {
       toast.error("Gagal simpan: " + error.message);
@@ -105,7 +105,7 @@ export default function TesFisik() {
   };
 
   const deleteTest = async (id: string) => {
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("physical_tests")
       .delete()
       .eq("id", id);
