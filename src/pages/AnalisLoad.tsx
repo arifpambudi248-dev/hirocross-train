@@ -41,10 +41,10 @@ export default function AnalisLoad() {
       return;
     }
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("training_sessions")
       .select("date, load_final")
-      .eq("athlete_id", userId)
+      .eq("user_id", userId)
       .gte("date", startDate)
       .lte("date", endDate)
       .order("date", { ascending: true });
