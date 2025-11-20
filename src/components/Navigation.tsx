@@ -110,6 +110,15 @@ export const Navigation = () => {
                 <TrendingUp className="h-4 w-4" />
                 Analisis Load
               </NavLink>
+              
+              <NavLink
+                to="/laporan"
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                activeClassName="bg-secondary text-foreground"
+              >
+                <ClipboardList className="h-4 w-4" />
+                Laporan
+              </NavLink>
             </div>
           </div>
 
