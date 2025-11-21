@@ -3,11 +3,13 @@ import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { User } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from "recharts";
+import { User, Plus } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip } from "recharts";
 import type { PhysicalTest } from "@/types/database";
 
 // Benchmark values for each category (5-scale: Elite, Excellent, Good, Average, Poor)
@@ -63,7 +65,15 @@ export default function TesFisik() {
   const [weight, setWeight] = useState<number>(55);
   const [height, setHeight] = useState<number>(1.5);
   const [gender, setGender] = useState<string>("Pria");
-  const [selectedTab, setSelectedTab] = useState<string>("kondisi-fisik");
+  const [showDialog, setShowDialog] = useState(false);
+  const [formData, setFormData] = useState<Partial<PhysicalTest>>({
+    test_date: new Date().toISOString().split("T")[0],
+    category: "endurance",
+    test_name: "",
+    value: 0,
+    unit: "",
+    notes: "",
+  });
 
   useEffect(() => {
     loadUser();
@@ -99,6 +109,41 @@ export default function TesFisik() {
       toast.error("Gagal memuat data: " + error.message);
     } else {
       setTests((data as any[]) || []);
+    }
+  };
+
+  const saveTest = async () => {
+    if (!userId || !formData.test_name || !formData.value) {
+      toast.error("Harap lengkapi semua field");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("physical_tests")
+      .insert([{
+        athlete_id: userId,
+        test_date: formData.test_date!,
+        category: formData.category!,
+        test_name: formData.test_name,
+        value: formData.value,
+        unit: formData.unit!,
+        notes: formData.notes || null,
+      }]);
+
+    if (error) {
+      toast.error("Gagal simpan: " + error.message);
+    } else {
+      toast.success("Tes berhasil disimpan");
+      loadTests(userId);
+      setShowDialog(false);
+      setFormData({
+        test_date: new Date().toISOString().split("T")[0],
+        category: "endurance",
+        test_name: "",
+        value: 0,
+        unit: "",
+        notes: "",
+      });
     }
   };
 
@@ -138,13 +183,142 @@ export default function TesFisik() {
     ? Math.round(chartData.reduce((sum, item) => sum + item.percentage, 0) / chartData.length)
     : 0;
 
+  // Prepare radar chart data - get latest test for each benchmark
+  const radarData = (() => {
+    const allBenchmarks = Object.values(BENCHMARKS).flat();
+    
+    return allBenchmarks.slice(0, 11).map(benchmark => {
+      const latestTest = tests
+        .filter(t => t.test_name === benchmark.testName)
+        .sort((a, b) => new Date(b.test_date).getTime() - new Date(a.test_date).getTime())[0];
+      
+      if (!latestTest) {
+        return {
+          subject: benchmark.testName,
+          athlete: 0,
+          elite: 100,
+          excellent: 85,
+          good: 65,
+          average: 50,
+        };
+      }
+      
+      // Normalize the value to percentage (0-100)
+      let athleteScore = 0;
+      if (benchmark.inverse) {
+        athleteScore = Math.max(0, Math.min(100, 
+          ((benchmark.poor - latestTest.value) / (benchmark.poor - benchmark.elite)) * 100
+        ));
+      } else {
+        athleteScore = Math.max(0, Math.min(100, 
+          (latestTest.value / benchmark.elite) * 100
+        ));
+      }
+      
+      return {
+        subject: benchmark.testName,
+        athlete: Math.round(athleteScore),
+        elite: 100,
+        excellent: 85,
+        good: 65,
+        average: 50,
+      };
+    });
+  })();
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <div className="container mx-auto px-4 py-6">
-        {/* Header with gradient */}
+        {/* Header with gradient and Add Test button */}
         <div className="mb-6 rounded-lg border-2 border-white bg-gradient-to-r from-cyan-700 to-blue-600 p-6">
-          <h1 className="text-center text-3xl font-bold text-white">Kondisi Fisik</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-center flex-1 text-3xl font-bold text-white">Kondisi Fisik</h1>
+            <Dialog open={showDialog} onOpenChange={setShowDialog}>
+              <DialogTrigger asChild>
+                <Button className="bg-white text-cyan-700 hover:bg-gray-100">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tambah Tes
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-card">
+                <DialogHeader>
+                  <DialogTitle>Tambah Tes Fisik Baru</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Tanggal Tes</Label>
+                      <Input
+                        type="date"
+                        value={formData.test_date}
+                        onChange={(e) => setFormData({ ...formData, test_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Kategori</Label>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(v) => setFormData({ ...formData, category: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nama Tes</Label>
+                    <Input
+                      value={formData.test_name}
+                      onChange={(e) => setFormData({ ...formData, test_name: e.target.value })}
+                      placeholder="Contoh: Sprint 30m, CMJ, VO2max"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Nilai</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.value}
+                        onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Satuan</Label>
+                      <Input
+                        value={formData.unit}
+                        onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                        placeholder="s, cm, kg, dll"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Catatan (Opsional)</Label>
+                    <Input
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Catatan tambahan"
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setShowDialog(false)}>
+                      Batal
+                    </Button>
+                    <Button onClick={saveTest}>Simpan Tes</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Profile Information Section */}
@@ -326,29 +500,70 @@ export default function TesFisik() {
           </div>
         </Card>
 
-        {/* Bottom Tabs */}
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-          <TabsList className="grid grid-cols-12 w-full h-auto bg-muted">
-            <TabsTrigger value="annual-plan" className="data-[state=active]:bg-primary">
-              Annual Plan
-            </TabsTrigger>
-            <TabsTrigger value="kondisi-fisik" className="data-[state=active]:bg-success">
-              Kondisi Fisik
-            </TabsTrigger>
-            <TabsTrigger value="data-tes" className="data-[state=active]:bg-chart-2">
-              Data Tes & Pengukuran
-            </TabsTrigger>
-            <TabsTrigger value="minggu-1">Minggu 1</TabsTrigger>
-            <TabsTrigger value="minggu-2">Minggu 2</TabsTrigger>
-            <TabsTrigger value="minggu-3">Minggu 3</TabsTrigger>
-            <TabsTrigger value="minggu-4">Minggu 4</TabsTrigger>
-            <TabsTrigger value="minggu-5">Minggu 5</TabsTrigger>
-            <TabsTrigger value="minggu-6">Minggu 6</TabsTrigger>
-            <TabsTrigger value="minggu-7">Minggu 7</TabsTrigger>
-            <TabsTrigger value="minggu-8">Minggu 8</TabsTrigger>
-            <TabsTrigger value="minggu-9">Minggu 9</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Radar Chart Section */}
+        {radarData.length > 0 && radarData.some(d => d.athlete > 0) && (
+          <Card className="mb-6 bg-card">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold mb-4 text-center">Profil Performa vs Benchmark</h2>
+              <ResponsiveContainer width="100%" height={500}>
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis 
+                    dataKey="subject" 
+                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                  />
+                  <PolarRadiusAxis 
+                    angle={90} 
+                    domain={[0, 100]}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Radar 
+                    name="Atlet" 
+                    dataKey="athlete" 
+                    stroke="hsl(var(--primary))" 
+                    fill="hsl(var(--primary))" 
+                    fillOpacity={0.6}
+                  />
+                  <Radar 
+                    name="Elite" 
+                    dataKey="elite" 
+                    stroke="hsl(var(--chart-4))" 
+                    fill="hsl(var(--chart-4))" 
+                    fillOpacity={0.1}
+                  />
+                  <Radar 
+                    name="Excellent" 
+                    dataKey="excellent" 
+                    stroke="hsl(var(--chart-2))" 
+                    fill="hsl(var(--chart-2))" 
+                    fillOpacity={0.1}
+                  />
+                  <Radar 
+                    name="Good" 
+                    dataKey="good" 
+                    stroke="hsl(var(--chart-1))" 
+                    fill="hsl(var(--chart-1))" 
+                    fillOpacity={0.1}
+                  />
+                  <Radar 
+                    name="Average" 
+                    dataKey="average" 
+                    stroke="hsl(var(--chart-3))" 
+                    fill="hsl(var(--chart-3))" 
+                    fillOpacity={0.1}
+                  />
+                  <Legend />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                    }}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
