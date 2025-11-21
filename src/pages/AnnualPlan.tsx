@@ -9,6 +9,7 @@ import { differenceInDays, addDays, format, parseISO, isWithinInterval, startOfW
 import { id as localeId } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from "recharts";
 import { Pencil, Save, FolderOpen, Plus } from "lucide-react";
 import {
@@ -65,6 +66,8 @@ export default function AnnualPlan() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [autoAdjust, setAutoAdjust] = useState(false);
+  const [periodizationType, setPeriodizationType] = useState<"traditional" | "block">("traditional");
+  const [blockWeeks, setBlockWeeks] = useState({ accumulation: 3, transmutation: 2, realization: 1 });
 
   useEffect(() => {
     loadUser();
@@ -172,7 +175,102 @@ export default function AnnualPlan() {
     setEditableLoads({});
   };
 
+  const generateBlockPeriodization = () => {
+    if (!startDate || !competitionDate) {
+      toast.error("Harap isi tanggal mulai dan tanggal pertandingan");
+      return;
+    }
+
+    const start = new Date(startDate);
+    const competition = new Date(competitionDate);
+
+    if (start >= competition) {
+      toast.error("Tanggal pertandingan harus setelah tanggal mulai latihan");
+      return;
+    }
+
+    const totalDays = differenceInDays(competition, start);
+    const totalWeeks = Math.floor(totalDays / 7);
+    
+    const blockCycleDays = (blockWeeks.accumulation + blockWeeks.transmutation + blockWeeks.realization) * 7;
+    const numCompleteCycles = Math.floor(totalDays / blockCycleDays);
+    
+    if (numCompleteCycles < 1) {
+      toast.error(`Durasi minimal ${blockCycleDays} hari untuk block periodization`);
+      return;
+    }
+
+    const newPhases: Phase[] = [];
+    let currentDate = start;
+    let blockNumber = 1;
+
+    // Create complete block cycles
+    for (let cycle = 0; cycle < numCompleteCycles; cycle++) {
+      // Accumulation Block
+      const accumDays = blockWeeks.accumulation * 7;
+      const accumEnd = addDays(currentDate, accumDays - 1);
+      newPhases.push({
+        name: `Block ${blockNumber} - Accumulation`,
+        color: "bg-red-500",
+        startDate: format(currentDate, "yyyy-MM-dd"),
+        endDate: format(accumEnd, "yyyy-MM-dd"),
+        durationDays: accumDays,
+        percentage: (accumDays / totalDays) * 100,
+      });
+      currentDate = addDays(accumEnd, 1);
+
+      // Transmutation Block
+      const transDays = blockWeeks.transmutation * 7;
+      const transEnd = addDays(currentDate, transDays - 1);
+      newPhases.push({
+        name: `Block ${blockNumber} - Transmutation`,
+        color: "bg-green-500",
+        startDate: format(currentDate, "yyyy-MM-dd"),
+        endDate: format(transEnd, "yyyy-MM-dd"),
+        durationDays: transDays,
+        percentage: (transDays / totalDays) * 100,
+      });
+      currentDate = addDays(transEnd, 1);
+
+      // Realization Block
+      const realDays = blockWeeks.realization * 7;
+      const realEnd = addDays(currentDate, realDays - 1);
+      newPhases.push({
+        name: `Block ${blockNumber} - Realization`,
+        color: "bg-cyan-400",
+        startDate: format(currentDate, "yyyy-MM-dd"),
+        endDate: format(realEnd, "yyyy-MM-dd"),
+        durationDays: realDays,
+        percentage: (realDays / totalDays) * 100,
+      });
+      currentDate = addDays(realEnd, 1);
+      blockNumber++;
+    }
+
+    // Handle remaining days as final realization
+    const remainingDays = differenceInDays(competition, currentDate) + 1;
+    if (remainingDays > 0) {
+      newPhases.push({
+        name: `Block ${blockNumber} - Final Realization`,
+        color: "bg-cyan-400",
+        startDate: format(currentDate, "yyyy-MM-dd"),
+        endDate: format(competition, "yyyy-MM-dd"),
+        durationDays: remainingDays,
+        percentage: (remainingDays / totalDays) * 100,
+      });
+    }
+
+    setPhases(newPhases);
+    toast.success("Block periodization berhasil dibuat");
+    fetchTrainingSessions(format(start, "yyyy-MM-dd"), format(competition, "yyyy-MM-dd"));
+  };
+
   const generatePlan = () => {
+    if (periodizationType === "block") {
+      generateBlockPeriodization();
+      return;
+    }
+
     if (!startDate || !competitionDate) {
       toast.error("Harap isi tanggal mulai dan tanggal pertandingan");
       return;
@@ -468,7 +566,19 @@ export default function AnnualPlan() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="periodType">Tipe Periodisasi</Label>
+                <Select value={periodizationType} onValueChange={(val: "traditional" | "block") => setPeriodizationType(val)}>
+                  <SelectTrigger className="bg-background border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border z-50">
+                    <SelectItem value="traditional">Traditional</SelectItem>
+                    <SelectItem value="block">Block Periodization</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="startDate">Tanggal Mulai Latihan</Label>
                 <Input
@@ -506,12 +616,73 @@ export default function AnnualPlan() {
                 </Button>
               </div>
             </div>
+
+            {/* Block Periodization Configuration */}
+            {periodizationType === "block" && (
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-sm font-medium mb-3 block">Konfigurasi Block (dalam minggu)</Label>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="accum-weeks" className="text-xs">Accumulation Block</Label>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-red-500 rounded"></div>
+                      <Input
+                        id="accum-weeks"
+                        type="number"
+                        min="1"
+                        max="6"
+                        value={blockWeeks.accumulation}
+                        onChange={(e) => setBlockWeeks(prev => ({ ...prev, accumulation: Number(e.target.value) }))}
+                        className="h-8"
+                      />
+                      <span className="text-xs text-muted-foreground">minggu</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="trans-weeks" className="text-xs">Transmutation Block</Label>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-green-500 rounded"></div>
+                      <Input
+                        id="trans-weeks"
+                        type="number"
+                        min="1"
+                        max="6"
+                        value={blockWeeks.transmutation}
+                        onChange={(e) => setBlockWeeks(prev => ({ ...prev, transmutation: Number(e.target.value) }))}
+                        className="h-8"
+                      />
+                      <span className="text-xs text-muted-foreground">minggu</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="real-weeks" className="text-xs">Realization Block</Label>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-cyan-400 rounded"></div>
+                      <Input
+                        id="real-weeks"
+                        type="number"
+                        min="1"
+                        max="6"
+                        value={blockWeeks.realization}
+                        onChange={(e) => setBlockWeeks(prev => ({ ...prev, realization: Number(e.target.value) }))}
+                        className="h-8"
+                      />
+                      <span className="text-xs text-muted-foreground">minggu</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  1 siklus = {blockWeeks.accumulation + blockWeeks.transmutation + blockWeeks.realization} minggu
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {phases.length > 0 && (
           <>
-            {/* Editable Percentages Card */}
+            {/* Editable Percentages Card - Only show for traditional periodization */}
+            {periodizationType === "traditional" && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Konfigurasi Persentase Fase</CardTitle>
@@ -592,10 +763,13 @@ export default function AnnualPlan() {
                 </p>
               </CardContent>
             </Card>
+            )}
 
             <Card>
               <CardHeader>
-                <CardTitle>Gantt Chart Periodisasi</CardTitle>
+                <CardTitle>
+                  {periodizationType === "block" ? "Block Periodization Timeline" : "Gantt Chart Periodisasi"}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
