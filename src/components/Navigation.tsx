@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
-import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, AlertTriangle, User } from "lucide-react";
+import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, AlertTriangle, User, History, Goal } from "lucide-react";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -127,6 +127,24 @@ export const Navigation = () => {
               >
                 <AlertTriangle className="h-4 w-4" />
                 Injury Risk
+              </NavLink>
+              
+              <NavLink
+                to="/historical"
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                activeClassName="bg-secondary text-foreground"
+              >
+                <History className="h-4 w-4" />
+                Historis
+              </NavLink>
+              
+              <NavLink
+                to="/goals"
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                activeClassName="bg-secondary text-foreground"
+              >
+                <Goal className="h-4 w-4" />
+                Target
               </NavLink>
               
               <NavLink

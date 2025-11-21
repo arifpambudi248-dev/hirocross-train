@@ -53,6 +53,54 @@ export type Database = {
         }
         Relationships: []
       }
+      athlete_goals: {
+        Row: {
+          athlete_id: string
+          baseline_value: number | null
+          created_at: string
+          current_value: number | null
+          goal_name: string
+          goal_type: string
+          id: string
+          notes: string | null
+          status: string | null
+          target_date: string | null
+          target_unit: string | null
+          target_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          baseline_value?: number | null
+          created_at?: string
+          current_value?: number | null
+          goal_name: string
+          goal_type: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          target_date?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          baseline_value?: number | null
+          created_at?: string
+          current_value?: number | null
+          goal_name?: string
+          goal_type?: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          target_date?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       physical_tests: {
         Row: {
           athlete_id: string
