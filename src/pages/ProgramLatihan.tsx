@@ -1,20 +1,10 @@
 import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -23,13 +13,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
-import { generateWeeklyPlan } from "@/lib/weeklyPlanning";
-import { format, subDays, startOfWeek, endOfWeek, addWeeks } from "date-fns";
+import { format, subDays, startOfWeek, endOfWeek, addWeeks, addDays, eachDayOfInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2, Lightbulb, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Activity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 type TrainingSession = {
@@ -51,8 +41,7 @@ export default function ProgramLatihan() {
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [athleteName, setAthleteName] = useState<string>("");
-  const [weeklyPlan, setWeeklyPlan] = useState<any>(null);
-  const [competitionDate, setCompetitionDate] = useState<Date | null>(null);
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   // Form state
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -86,68 +75,6 @@ export default function ProgramLatihan() {
     }
     
     fetchSessions(session.user.id);
-    loadWeeklyPlanData(session.user.id);
-  };
-
-  const loadWeeklyPlanData = async (userId: string) => {
-    // Load competition date from annual plan
-    const { data: plans } = await supabase
-      .from("annual_plans")
-      .select("competition_date")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const compDate = plans?.competition_date ? new Date(plans.competition_date) : addWeeks(new Date(), 12);
-    setCompetitionDate(compDate);
-
-    // Load readiness data
-    const { data: readiness } = await supabase
-      .from("readiness_logs")
-      .select("readiness_score, readiness_zone")
-      .eq("athlete_id", userId)
-      .order("date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!readiness) return;
-
-    // Load previous week and average load
-    const now = new Date();
-    const lastWeekStart = format(startOfWeek(subDays(now, 7), { weekStartsOn: 1 }), "yyyy-MM-dd");
-    const lastWeekEnd = format(endOfWeek(subDays(now, 7), { weekStartsOn: 1 }), "yyyy-MM-dd");
-    const fourWeeksAgo = format(subDays(now, 28), "yyyy-MM-dd");
-
-    const { data: lastWeekSessions } = await supabase
-      .from("training_sessions")
-      .select("load_final")
-      .eq("user_id", userId)
-      .gte("date", lastWeekStart)
-      .lte("date", lastWeekEnd);
-
-    const previousWeekLoad = lastWeekSessions?.reduce((sum, s) => sum + (s.load_final || 0), 0) || 0;
-
-    const { data: fourWeekSessions } = await supabase
-      .from("training_sessions")
-      .select("load_final")
-      .eq("user_id", userId)
-      .gte("date", fourWeeksAgo);
-
-    const avgWeeklyLoad = fourWeekSessions && fourWeekSessions.length > 0
-      ? fourWeekSessions.reduce((sum, s) => sum + (s.load_final || 0), 0) / 4
-      : 1500;
-
-    // Generate weekly plan
-    const plan = generateWeeklyPlan(
-      readiness.readiness_score,
-      readiness.readiness_zone as 'low' | 'moderate' | 'prime',
-      previousWeekLoad,
-      avgWeeklyLoad,
-      compDate
-    );
-
-    setWeeklyPlan(plan);
   };
 
   const fetchSessions = async (uid: string) => {
@@ -225,21 +152,94 @@ export default function ProgramLatihan() {
     setNotes("");
   };
 
+  const getWeekDays = () => {
+    const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: currentWeekStart, end: weekEnd });
+  };
+
+  const getSessionsForDay = (day: Date) => {
+    const dayStr = format(day, "yyyy-MM-dd");
+    return sessions.filter(s => s.date === dayStr);
+  };
+
+  const getWeeklyMetrics = () => {
+    const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+    const weekSessions = sessions.filter(s => {
+      const sessionDate = new Date(s.date);
+      return sessionDate >= currentWeekStart && sessionDate <= weekEnd;
+    });
+
+    const totalLoad = weekSessions.reduce((sum, s) => sum + s.load_final, 0);
+    const totalDuration = weekSessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+    const avgRPE = weekSessions.length > 0 
+      ? Math.round(weekSessions.reduce((sum, s) => sum + (s.rpe || 0), 0) / weekSessions.length * 10) / 10
+      : 0;
+
+    return { totalLoad, totalDuration, avgRPE, sessionCount: weekSessions.length };
+  };
+
+  const goToPreviousWeek = () => {
+    setCurrentWeekStart(prev => subDays(prev, 7));
+  };
+
+  const goToNextWeek = () => {
+    setCurrentWeekStart(prev => addDays(prev, 7));
+  };
+
+  const goToCurrentWeek = () => {
+    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  };
+
+  const getRPEColor = (rpe: number) => {
+    if (rpe <= 3) return "bg-green-500";
+    if (rpe <= 5) return "bg-yellow-500";
+    if (rpe <= 7) return "bg-orange-500";
+    return "bg-red-500";
+  };
+
   const currentLoadAuto = computeSessionLoad(rpe, duration);
+  const weeklyMetrics = getWeeklyMetrics();
+  const weekDays = getWeekDays();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-950">
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="history" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="history">Riwayat Sesi</TabsTrigger>
-            <TabsTrigger value="weekly-plan">Rencana Mingguan</TabsTrigger>
-          </TabsList>
+      <div className="container mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Select value={format(currentWeekStart, "yyyy-MM")} onValueChange={(val) => {
+              const [year, month] = val.split('-');
+              setCurrentWeekStart(startOfWeek(new Date(parseInt(year), parseInt(month) - 1, 1), { weekStartsOn: 1 }));
+            }}>
+              <SelectTrigger className="w-40 bg-slate-900 border-slate-800">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }, (_, i) => {
+                  const date = addWeeks(new Date(), -6 + i);
+                  return (
+                    <SelectItem key={i} value={format(date, "yyyy-MM")}>
+                      {format(date, "MMM yyyy", { locale: localeId })}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={goToPreviousWeek} className="h-8 w-8">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={goToCurrentWeek} className="h-8">
+                Hari Ini
+              </Button>
+              <Button variant="ghost" size="icon" onClick={goToNextWeek} className="h-8 w-8">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
-          <TabsContent value="history">
-            <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Program Latihan</h1>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -247,7 +247,7 @@ export default function ProgramLatihan() {
                 Tambah Sesi
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md bg-slate-900 border-slate-800">
               <DialogHeader>
                 <DialogTitle>Tambah Sesi Latihan</DialogTitle>
                 <DialogDescription>
@@ -263,15 +263,17 @@ export default function ProgramLatihan() {
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     required
+                    className="bg-slate-950 border-slate-800"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="session-name">Nama Sesi (opsional)</Label>
+                  <Label htmlFor="session-name">Nama Sesi</Label>
                   <Input
                     id="session-name"
                     placeholder="Contoh: Latihan Endurance"
                     value={sessionName}
                     onChange={(e) => setSessionName(e.target.value)}
+                    className="bg-slate-950 border-slate-800"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -285,6 +287,7 @@ export default function ProgramLatihan() {
                       value={rpe}
                       onChange={(e) => setRpe(Number(e.target.value))}
                       required
+                      className="bg-slate-950 border-slate-800"
                     />
                   </div>
                   <div className="space-y-2">
@@ -296,12 +299,13 @@ export default function ProgramLatihan() {
                       value={duration}
                       onChange={(e) => setDuration(Number(e.target.value))}
                       required
+                      className="bg-slate-950 border-slate-800"
                     />
                   </div>
                 </div>
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Load otomatis: <span className="font-bold text-foreground">{currentLoadAuto} AU</span>
+                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <p className="text-sm text-slate-400">
+                    Load otomatis: <span className="font-bold text-white">{currentLoadAuto} AU</span>
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -314,16 +318,18 @@ export default function ProgramLatihan() {
                     onChange={(e) =>
                       setLoadManual(e.target.value ? Number(e.target.value) : null)
                     }
+                    className="bg-slate-950 border-slate-800"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Catatan (opsional)</Label>
+                  <Label htmlFor="notes">Catatan</Label>
                   <Textarea
                     id="notes"
                     placeholder="Catatan tambahan..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
+                    className="bg-slate-950 border-slate-800"
                   />
                 </div>
                 <Button type="submit" className="w-full">
@@ -334,144 +340,117 @@ export default function ProgramLatihan() {
           </Dialog>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Riwayat Sesi Latihan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="text-center text-muted-foreground py-8">Memuat data...</p>
-            ) : sessions.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Belum ada sesi latihan. Klik "Tambah Sesi" untuk memulai.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Nama Sesi</TableHead>
-                      <TableHead className="text-center">RPE</TableHead>
-                      <TableHead className="text-center">Durasi</TableHead>
-                      <TableHead className="text-right">Load Auto</TableHead>
-                      <TableHead className="text-right">Load Manual</TableHead>
-                      <TableHead className="text-right">Load Final</TableHead>
-                      <TableHead className="text-center">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sessions.map((session) => (
-                      <TableRow key={session.id}>
-                        <TableCell>
-                          {format(new Date(session.date), "d MMM yyyy", {
-                            locale: localeId,
-                          })}
-                        </TableCell>
-                        <TableCell>{session.session_name || "-"}</TableCell>
-                        <TableCell className="text-center">{session.rpe}</TableCell>
-                        <TableCell className="text-center">
-                          {session.duration_minutes} min
-                        </TableCell>
-                        <TableCell className="text-right">{session.load_auto} AU</TableCell>
-                        <TableCell className="text-right">
-                          {session.load_manual ? `${session.load_manual} AU` : "-"}
-                        </TableCell>
-                        <TableCell className="text-right font-bold">
-                          {session.load_final} AU
-                        </TableCell>
-                        <TableCell className="text-center">
+        {/* Weekly Summary */}
+        <Card className="mb-6 bg-slate-900 border-slate-800">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-400">Total</span>
+                  <span className="text-lg font-bold text-white">{format(currentWeekStart, "dd MMM", { locale: localeId })}</span>
+                </div>
+                <div className="text-sm text-slate-400">Load <span className="text-xl font-bold text-cyan-400">{weeklyMetrics.totalLoad}</span></div>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="text-sm text-slate-400">Durasi</div>
+                <div className="text-xl font-bold text-white">{Math.floor(weeklyMetrics.totalDuration / 60)}j {weeklyMetrics.totalDuration % 60}m</div>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="text-sm text-slate-400">Avg RPE</div>
+                <div className="text-xl font-bold text-white">{weeklyMetrics.avgRPE}</div>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="text-sm text-slate-400">Sesi</div>
+                <div className="text-xl font-bold text-white">{weeklyMetrics.sessionCount}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+          {weekDays.map((day, idx) => {
+            const daySessions = getSessionsForDay(day);
+            const isToday = format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+            
+            return (
+              <div key={idx} className="space-y-2">
+                <div className={`text-center p-2 rounded-t-lg ${isToday ? 'bg-cyan-500/20' : 'bg-slate-900'} border-b border-slate-800`}>
+                  <div className="text-xs text-slate-400">
+                    {format(day, "EEE", { locale: localeId })}
+                  </div>
+                  <div className={`text-sm font-semibold ${isToday ? 'text-cyan-400' : 'text-white'}`}>
+                    {format(day, "dd MMM", { locale: localeId })}
+                  </div>
+                </div>
+                
+                <div className="space-y-2 min-h-[200px]">
+                  {daySessions.length === 0 ? (
+                    <div className="text-center text-slate-600 text-xs py-4">
+                      Tidak ada sesi
+                    </div>
+                  ) : (
+                    daySessions.map((session) => (
+                      <Card key={session.id} className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors group relative">
+                        <CardContent className="p-3 space-y-2">
+                          {/* Duration Badge */}
+                          <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold text-white ${getRPEColor(session.rpe || 5)}`}>
+                            <Activity className="w-3 h-3" />
+                            {session.duration_minutes}m
+                          </div>
+                          
+                          {/* Session Name */}
+                          <div className="text-sm font-medium text-white">
+                            {session.session_name || "Latihan"}
+                          </div>
+                          
+                          {/* Metrics */}
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">RPE</span>
+                              <span className="font-semibold text-white">{session.rpe}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Load</span>
+                              <span className="font-semibold text-cyan-400">{session.load_final}</span>
+                            </div>
+                          </div>
+                          
+                          {/* Intensity Bar */}
+                          <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full ${getRPEColor(session.rpe || 5)}`}
+                              style={{ width: `${((session.rpe || 0) / 10) * 100}%` }}
+                            />
+                          </div>
+
+                          {/* Delete Button (shown on hover) */}
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(session.id)}
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            <Trash2 className="w-4 h-4 text-destructive" />
+                            <Trash2 className="w-3 h-3 text-red-400" />
                           </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          
+                          {session.notes && (
+                            <div className="text-xs text-slate-500 truncate" title={session.notes}>
+                              {session.notes}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-          </TabsContent>
-
-          <TabsContent value="weekly-plan">
-            {weeklyPlan ? (
-              <div className="space-y-6">
-                <Alert>
-                  <Lightbulb className="h-4 w-4" />
-                  <AlertTitle>Rencana Latihan Mingguan Otomatis</AlertTitle>
-                  <AlertDescription>
-                    <div className="mt-2 space-y-1">
-                      <p className="font-semibold">{weeklyPlan.notes}</p>
-                      <p className="text-sm">Fase: <span className="font-medium capitalize">{weeklyPlan.phaseType}</span></p>
-                      <p className="text-sm">Target Load Mingguan: <span className="font-bold">{weeklyPlan.totalPlannedLoad} AU</span></p>
-                      <p className="text-sm text-muted-foreground">
-                        Kompetisi: {competitionDate ? format(competitionDate, "dd MMM yyyy", { locale: localeId }) : "Tidak diset"}
-                      </p>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Sesi Latihan yang Direkomendasikan</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Hari</TableHead>
-                          <TableHead>Tanggal</TableHead>
-                          <TableHead>Sesi</TableHead>
-                          <TableHead>Fokus</TableHead>
-                          <TableHead className="text-center">RPE</TableHead>
-                          <TableHead className="text-center">Durasi</TableHead>
-                          <TableHead className="text-right">Est. Load</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {weeklyPlan.sessions.map((session: any, idx: number) => (
-                          <TableRow key={idx}>
-                            <TableCell className="font-medium">{session.day}</TableCell>
-                            <TableCell>{format(new Date(session.date), "dd MMM", { locale: localeId })}</TableCell>
-                            <TableCell>{session.sessionName}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{session.focus}</TableCell>
-                            <TableCell className="text-center font-semibold">{session.recommendedRPE}</TableCell>
-                            <TableCell className="text-center">{session.recommendedDuration} min</TableCell>
-                            <TableCell className="text-right font-medium">{session.estimatedLoad} AU</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-
-                <Alert>
-                  <CalendarIcon className="h-4 w-4" />
-                  <AlertTitle>Cara Menggunakan</AlertTitle>
-                  <AlertDescription className="text-sm">
-                    Gunakan rekomendasi di atas sebagai panduan perencanaan latihan minggu ini. 
-                    Anda dapat menambahkan sesi di tab "Riwayat Sesi" dengan RPE dan durasi yang direkomendasikan, 
-                    atau menyesuaikan sesuai kondisi lapangan.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-8">
-                  <p className="text-center text-muted-foreground">
-                    Memuat rencana mingguan... Pastikan Anda sudah mengisi data readiness dan memiliki annual plan.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
