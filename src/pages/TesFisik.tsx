@@ -1,28 +1,13 @@
 import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { User } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from "recharts";
 import type { PhysicalTest } from "@/types/database";
 
 // Benchmark values for each category (5-scale: Elite, Excellent, Good, Average, Poor)
@@ -70,16 +55,15 @@ const CATEGORIES = [
 export default function TesFisik() {
   const [tests, setTests] = useState<PhysicalTest[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>("endurance");
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<PhysicalTest>({
-    test_date: new Date().toISOString().split("T")[0],
-    category: "endurance",
-    test_name: "",
-    value: 0,
-    unit: "",
-    notes: "",
-  });
+  const [athleteName, setAthleteName] = useState<string>("");
+  const [coachName, setCoachName] = useState<string>("Pelatih");
+  const [sport, setSport] = useState<string>("Cabang Olahraga");
+  const [year, setYear] = useState<string>(new Date().getFullYear().toString());
+  const [age, setAge] = useState<number>(20);
+  const [weight, setWeight] = useState<number>(55);
+  const [height, setHeight] = useState<number>(1.5);
+  const [gender, setGender] = useState<string>("Pria");
+  const [selectedTab, setSelectedTab] = useState<string>("kondisi-fisik");
 
   useEffect(() => {
     loadUser();
@@ -90,6 +74,17 @@ export default function TesFisik() {
     if (user) {
       setUserId(user.id);
       loadTests(user.id);
+      
+      // Load profile data
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("athlete_name")
+        .eq("id", user.id)
+        .single();
+      
+      if (profile) {
+        setAthleteName(profile.athlete_name);
+      }
     }
   };
 
@@ -107,427 +102,253 @@ export default function TesFisik() {
     }
   };
 
-  const saveTest = async () => {
-    if (!userId || !formData.test_name || !formData.value) {
-      toast.error("Harap lengkapi semua field");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("physical_tests")
-      .insert([{
-        athlete_id: userId,
-        ...formData,
-      }]);
-
-    if (error) {
-      toast.error("Gagal simpan: " + error.message);
-    } else {
-      toast.success("Tes berhasil disimpan");
-      loadTests(userId);
-      setShowForm(false);
-      setFormData({
-        test_date: new Date().toISOString().split("T")[0],
-        category: "endurance",
-        test_name: "",
-        value: 0,
-        unit: "",
-        notes: "",
-      });
-    }
-  };
-
-  const deleteTest = async (id: string) => {
-    const { error } = await supabase
-      .from("physical_tests")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Gagal hapus: " + error.message);
-    } else {
-      toast.success("Tes berhasil dihapus");
-      if (userId) loadTests(userId);
-    }
-  };
-
-  const filteredTests = tests.filter((t) => t.category === selectedCategory);
+  // Calculate BMI
+  const bmi = weight / (height * height);
+  const bmiCategory = bmi < 18.5 ? "Kurus" : bmi < 25 ? "Normal" : "Overweight";
   
-  // Prepare chart data
-  const chartData = filteredTests.map((t) => ({
-    date: t.test_date,
-    value: t.value,
-    name: t.test_name,
-  })).reverse();
-
-  // Prepare radar chart data
-  const radarData = (() => {
-    const categoryBenchmarks = BENCHMARKS[selectedCategory as keyof typeof BENCHMARKS] || [];
+  // Prepare chart data - get all tests and normalize scores to percentages
+  const chartData = tests.map((test) => {
+    // Find benchmark for this test
+    let percentage = 0;
+    const allBenchmarks = Object.values(BENCHMARKS).flat();
+    const benchmark = allBenchmarks.find(b => b.testName === test.test_name);
     
-    return categoryBenchmarks.map(benchmark => {
-      // Find the latest test for this test name
-      const latestTest = filteredTests
-        .filter(t => t.test_name === benchmark.testName)
-        .sort((a, b) => new Date(b.test_date).getTime() - new Date(a.test_date).getTime())[0];
-      
-      if (!latestTest) {
-        return {
-          subject: benchmark.testName,
-          athlete: 0,
-          excellent: 100,
-          good: 75,
-          average: 50,
-        };
-      }
-      
-      // Normalize the value to percentage (0-100)
-      let athleteScore = 0;
+    if (benchmark) {
       if (benchmark.inverse) {
-        // For inverse metrics (lower is better), invert the calculation
-        athleteScore = Math.max(0, Math.min(100, 
-          ((benchmark.poor - latestTest.value) / (benchmark.poor - benchmark.elite)) * 100
+        percentage = Math.max(0, Math.min(100, 
+          ((benchmark.poor - test.value) / (benchmark.poor - benchmark.elite)) * 100
         ));
       } else {
-        // For normal metrics (higher is better)
-        athleteScore = Math.max(0, Math.min(100, 
-          (latestTest.value / benchmark.elite) * 100
+        percentage = Math.max(0, Math.min(100, 
+          (test.value / benchmark.elite) * 100
         ));
       }
-      
-      return {
-        subject: benchmark.testName,
-        athlete: Math.round(athleteScore),
-        elite: 100,
-        excellent: 85,
-        good: 65,
-        average: 50,
-        poor: 30,
-      };
-    });
-  })();
+    }
+    
+    return {
+      name: test.test_name,
+      percentage: Math.round(percentage),
+      actual: percentage,
+      benchmark: 100,
+    };
+  }).slice(0, 11); // Show up to 11 tests like in the reference
+
+  // Calculate overall performance percentage
+  const overallPerformance = chartData.length > 0 
+    ? Math.round(chartData.reduce((sum, item) => sum + item.percentage, 0) / chartData.length)
+    : 0;
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <div className="container mx-auto px-4 py-8 space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Tes Kondisi Fisik</CardTitle>
-              <Button onClick={() => setShowForm(!showForm)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Tambah Tes
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {showForm && (
-              <div className="grid grid-cols-2 gap-4 p-4 bg-secondary rounded-lg">
-                <div className="space-y-2">
-                  <Label>Tanggal Tes</Label>
-                  <Input
-                    type="date"
-                    value={formData.test_date}
-                    onChange={(e) => setFormData({ ...formData, test_date: e.target.value })}
+      <div className="container mx-auto px-4 py-6">
+        {/* Header with gradient */}
+        <div className="mb-6 rounded-lg border-2 border-white bg-gradient-to-r from-cyan-700 to-blue-600 p-6">
+          <h1 className="text-center text-3xl font-bold text-white">Kondisi Fisik</h1>
+        </div>
+
+        {/* Profile Information Section */}
+        <Card className="mb-6 bg-card">
+          <div className="grid grid-cols-12 gap-4 p-6">
+            {/* Left Column - Profile Fields */}
+            <div className="col-span-9 space-y-4">
+              {/* Row 1 */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Pelatih</Label>
+                  <span className="text-foreground">:</span>
+                  <Input 
+                    value={coachName} 
+                    onChange={(e) => setCoachName(e.target.value)}
+                    className="flex-1 bg-background border-border"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Kategori</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(v) => setFormData({ ...formData, category: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Nama Tes</Label>
-                  <Input
-                    value={formData.test_name}
-                    onChange={(e) => setFormData({ ...formData, test_name: e.target.value })}
-                    placeholder="Contoh: VO2max, 10m sprint, CMJ"
+                <div className="flex items-center gap-2">
+                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Usia</Label>
+                  <span className="text-foreground">:</span>
+                  <Input 
+                    type="number" 
+                    value={age} 
+                    onChange={(e) => setAge(Number(e.target.value))}
+                    className="flex-1 bg-background border-border"
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>Nilai</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.value}
-                    onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Satuan</Label>
-                  <Input
-                    value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    placeholder="ml/kg/min, s, cm, dll"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Catatan</Label>
-                  <Input
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Catatan tambahan"
-                  />
-                </div>
-                <div className="col-span-2 flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowForm(false)}>
-                    Batal
-                  </Button>
-                  <Button onClick={saveTest}>Simpan Tes</Button>
                 </div>
               </div>
-            )}
 
-            <div className="space-y-2">
-              <Label>Filter Kategori</Label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-64">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Radar Chart First - Most Important View */}
-            {radarData.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">Profil Performa vs Benchmark (Jaring Laba-laba)</h3>
-                <ResponsiveContainer width="100%" height={400}>
-                  <RadarChart data={radarData}>
-                    <PolarGrid stroke="hsl(var(--border))" />
-                    <PolarAngleAxis dataKey="test" stroke="hsl(var(--foreground))" />
-                    <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="hsl(var(--muted-foreground))" />
-                    <Radar
-                      name="Skor Atlet"
-                      dataKey="score"
-                      stroke="hsl(var(--primary))"
-                      fill="hsl(var(--primary))"
-                      fillOpacity={0.6}
+              {/* Row 2 */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Nama Atlet</Label>
+                  <span className="text-foreground">:</span>
+                  <Input 
+                    value={athleteName} 
+                    onChange={(e) => setAthleteName(e.target.value)}
+                    className="flex-1 bg-background border-border"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Berat Badan</Label>
+                  <span className="text-foreground">:</span>
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input 
+                      type="number" 
+                      value={weight} 
+                      onChange={(e) => setWeight(Number(e.target.value))}
+                      className="flex-1 bg-background border-border"
                     />
-                    <Radar
-                      name="Elite"
-                      dataKey="elite"
-                      stroke="hsl(var(--chart-1))"
-                      fill="hsl(var(--chart-1))"
-                      fillOpacity={0.1}
-                    />
-                    <Radar
-                      name="Excellent"
-                      dataKey="excellent"
-                      stroke="hsl(var(--chart-2))"
-                      fill="hsl(var(--chart-2))"
-                      fillOpacity={0.1}
-                    />
-                    <Radar
-                      name="Good"
-                      dataKey="good"
-                      stroke="hsl(var(--chart-3))"
-                      fill="hsl(var(--chart-3))"
-                      fillOpacity={0.1}
-                    />
-                    <Legend />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                      }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
+                    <span className="text-foreground font-semibold">Kg</span>
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Performance Trend Chart */}
-            <div className="grid grid-cols-1 gap-6">
-              {chartData.length > 0 && (
-                <div className="h-80">
-                  <h3 className="text-sm font-medium mb-4">Tren Performa Detail (Per Kategori)</h3>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                      <YAxis stroke="hsl(var(--muted-foreground))" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                        }}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        dot={{ fill: "hsl(var(--primary))" }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+              {/* Row 3 */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Cabor</Label>
+                  <span className="text-foreground">:</span>
+                  <Input 
+                    value={sport} 
+                    onChange={(e) => setSport(e.target.value)}
+                    className="flex-1 bg-background border-border"
+                  />
                 </div>
-              )}
-
-              {radarData.length > 0 && radarData.some(d => d.athlete > 0) && (
-                <div className="h-80">
-                  <h3 className="text-sm font-medium mb-4">Profil Performa vs Benchmark</h3>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart data={radarData}>
-                      <PolarGrid stroke="hsl(var(--border))" />
-                      <PolarAngleAxis 
-                        dataKey="subject" 
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                      />
-                      <PolarRadiusAxis 
-                        angle={90} 
-                        domain={[0, 100]}
-                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                      />
-                      <Radar 
-                        name="Atlet" 
-                        dataKey="athlete" 
-                        stroke="hsl(var(--primary))" 
-                        fill="hsl(var(--primary))" 
-                        fillOpacity={0.6}
-                      />
-                      <Radar 
-                        name="Elite" 
-                        dataKey="elite" 
-                        stroke="#8b5cf6" 
-                        fill="#8b5cf6" 
-                        fillOpacity={0.1}
-                      />
-                      <Radar 
-                        name="Excellent" 
-                        dataKey="excellent" 
-                        stroke="#22c55e" 
-                        fill="#22c55e" 
-                        fillOpacity={0.1}
-                      />
-                      <Radar 
-                        name="Good" 
-                        dataKey="good" 
-                        stroke="#3b82f6" 
-                        fill="#3b82f6" 
-                        fillOpacity={0.1}
-                      />
-                      <Radar 
-                        name="Average" 
-                        dataKey="average" 
-                        stroke="#eab308" 
-                        fill="#eab308" 
-                        fillOpacity={0.1}
-                      />
-                      <Radar 
-                        name="Poor" 
-                        dataKey="poor" 
-                        stroke="#ef4444" 
-                        fill="#ef4444" 
-                        fillOpacity={0.1}
-                      />
-                      <Legend />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                        }}
-                      />
-                    </RadarChart>
-                  </ResponsiveContainer>
+                <div className="flex items-center gap-2">
+                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Tinggi Badan</Label>
+                  <span className="text-foreground">:</span>
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      value={height} 
+                      onChange={(e) => setHeight(Number(e.target.value))}
+                      className="flex-1 bg-background border-border"
+                    />
+                    <span className="text-foreground font-semibold">m</span>
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Benchmark Reference Table */}
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-4">Referensi Benchmark (5 Skala)</h3>
-              <div className="rounded-lg border border-border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nama Tes</TableHead>
-                      <TableHead className="text-purple-500">Elite</TableHead>
-                      <TableHead className="text-green-500">Excellent</TableHead>
-                      <TableHead className="text-blue-500">Good</TableHead>
-                      <TableHead className="text-yellow-500">Average</TableHead>
-                      <TableHead className="text-red-500">Poor</TableHead>
-                      <TableHead>Satuan</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(BENCHMARKS[selectedCategory as keyof typeof BENCHMARKS] || []).map((benchmark, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-medium">{benchmark.testName}</TableCell>
-                        <TableCell className="text-purple-500">{benchmark.elite}</TableCell>
-                        <TableCell className="text-green-500">{benchmark.excellent}</TableCell>
-                        <TableCell className="text-blue-500">{benchmark.good}</TableCell>
-                        <TableCell className="text-yellow-500">{benchmark.average}</TableCell>
-                        <TableCell className="text-red-500">{benchmark.poor}</TableCell>
-                        <TableCell className="text-muted-foreground">{benchmark.unit}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              {/* Row 4 */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Tahun</Label>
+                  <span className="text-foreground">:</span>
+                  <Input 
+                    value={year} 
+                    onChange={(e) => setYear(e.target.value)}
+                    className="flex-1 bg-background border-border"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Gender</Label>
+                  <span className="text-foreground">:</span>
+                  <Input 
+                    value={gender} 
+                    onChange={(e) => setGender(e.target.value)}
+                    className="flex-1 bg-background border-border"
+                  />
+                </div>
               </div>
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Nama Tes</TableHead>
-                  <TableHead>Nilai</TableHead>
-                  <TableHead>Satuan</TableHead>
-                  <TableHead>Catatan</TableHead>
-                  <TableHead>Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTests.map((test) => (
-                  <TableRow key={test.id}>
-                    <TableCell>{test.test_date}</TableCell>
-                    <TableCell>{test.test_name}</TableCell>
-                    <TableCell className="font-semibold">{test.value}</TableCell>
-                    <TableCell>{test.unit}</TableCell>
-                    <TableCell>{test.notes}</TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => test.id && deleteTest(test.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            {filteredTests.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">
-                Belum ada data tes untuk kategori ini.
-              </p>
-            )}
-          </CardContent>
+            {/* Right Column - BMI Display */}
+            <div className="col-span-3 flex flex-col items-center justify-center space-y-4">
+              <User className="h-20 w-20 text-foreground" />
+              <div className="text-center">
+                <div className="text-sm font-semibold mb-2">BMI</div>
+                <div className="text-2xl font-bold mb-2">{bmi.toFixed(2)}</div>
+                <div className="space-y-1 text-xs">
+                  <div className={`px-4 py-1 rounded ${bmi < 18.5 ? 'bg-warning' : 'bg-muted'}`}>
+                    <span className="text-black font-semibold">&lt;18.5</span>
+                    <span className="ml-2 text-black">Kurus</span>
+                  </div>
+                  <div className={`px-4 py-1 rounded ${bmi >= 18.5 && bmi < 25 ? 'bg-muted' : 'bg-muted'}`}>
+                    <span className="font-semibold">18.5-24.9</span>
+                    <span className="ml-2">Normal</span>
+                  </div>
+                  <div className={`px-4 py-1 rounded ${bmi >= 25 ? 'bg-destructive' : 'bg-muted'}`}>
+                    <span className={`font-semibold ${bmi >= 25 ? 'text-white' : ''}`}>&gt;25.0</span>
+                    <span className={`ml-2 ${bmi >= 25 ? 'text-white' : ''}`}>Overweight</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </Card>
+
+        {/* Main Chart Section */}
+        <Card className="mb-6 bg-card">
+          <div className="grid grid-cols-12 gap-4 p-6">
+            {/* Chart Area */}
+            <div className="col-span-9">
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="hsl(var(--muted-foreground))"
+                    angle={-45}
+                    textAnchor="end"
+                    height={120}
+                    interval={0}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--muted-foreground))"
+                    domain={[0, 100]}
+                    ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Bar dataKey="benchmark" stackId="a" fill="hsl(var(--muted))" />
+                  <Bar dataKey="actual" stackId="a">
+                    {chartData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={index === 5 ? "hsl(199 89% 48%)" : "hsl(189 94% 43%)"} 
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Performance Indicator */}
+            <div className="col-span-3 flex flex-col items-center justify-center">
+              <div className="bg-info rounded-lg p-8 w-full text-center">
+                <div className="text-6xl font-bold text-white mb-2">
+                  {overallPerformance}%
+                </div>
+              </div>
+              <div className="mt-4 bg-warning text-black font-semibold px-6 py-2 rounded w-full text-center">
+                Performa {gender}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Bottom Tabs */}
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+          <TabsList className="grid grid-cols-12 w-full h-auto bg-muted">
+            <TabsTrigger value="annual-plan" className="data-[state=active]:bg-primary">
+              Annual Plan
+            </TabsTrigger>
+            <TabsTrigger value="kondisi-fisik" className="data-[state=active]:bg-success">
+              Kondisi Fisik
+            </TabsTrigger>
+            <TabsTrigger value="data-tes" className="data-[state=active]:bg-chart-2">
+              Data Tes & Pengukuran
+            </TabsTrigger>
+            <TabsTrigger value="minggu-1">Minggu 1</TabsTrigger>
+            <TabsTrigger value="minggu-2">Minggu 2</TabsTrigger>
+            <TabsTrigger value="minggu-3">Minggu 3</TabsTrigger>
+            <TabsTrigger value="minggu-4">Minggu 4</TabsTrigger>
+            <TabsTrigger value="minggu-5">Minggu 5</TabsTrigger>
+            <TabsTrigger value="minggu-6">Minggu 6</TabsTrigger>
+            <TabsTrigger value="minggu-7">Minggu 7</TabsTrigger>
+            <TabsTrigger value="minggu-8">Minggu 8</TabsTrigger>
+            <TabsTrigger value="minggu-9">Minggu 9</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
     </div>
   );
