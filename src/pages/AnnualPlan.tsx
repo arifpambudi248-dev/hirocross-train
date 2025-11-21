@@ -68,6 +68,12 @@ export default function AnnualPlan() {
   const [autoAdjust, setAutoAdjust] = useState(false);
   const [periodizationType, setPeriodizationType] = useState<"traditional" | "block">("traditional");
   const [blockWeeks, setBlockWeeks] = useState({ accumulation: 3, transmutation: 2, realization: 1 });
+  const [isEditingBlockParams, setIsEditingBlockParams] = useState(false);
+  const [blockParameters, setBlockParameters] = useState({
+    accumulation: { volume: 85, intensity: 50, peaking: 40 },
+    transmutation: { volume: 70, intensity: 75, peaking: 60 },
+    realization: { volume: 40, intensity: 90, peaking: 95 },
+  });
 
   useEffect(() => {
     loadUser();
@@ -837,8 +843,22 @@ export default function AnnualPlan() {
             {/* Block Load Distribution Visualization */}
             {periodizationType === "block" && (
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Distribusi Training Load per Blok</CardTitle>
+                  <Button
+                    variant={isEditingBlockParams ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (isEditingBlockParams) {
+                        setIsEditingBlockParams(false);
+                        toast.success("Parameter blok berhasil diperbarui");
+                      } else {
+                        setIsEditingBlockParams(true);
+                      }
+                    }}
+                  >
+                    {isEditingBlockParams ? "Simpan" : <><Pencil className="w-4 h-4 mr-2" />Edit Parameter</>}
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
@@ -854,30 +874,81 @@ export default function AnnualPlan() {
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Volume</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-yellow-500" style={{ width: '85%' }}></div>
+                              {isEditingBlockParams ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={blockParameters.accumulation.volume}
+                                    onChange={(e) => setBlockParameters(prev => ({
+                                      ...prev,
+                                      accumulation: { ...prev.accumulation, volume: Number(e.target.value) }
+                                    }))}
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                  <span className="text-xs">%</span>
                                 </div>
-                                <span className="font-semibold">85%</span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-yellow-500" style={{ width: `${blockParameters.accumulation.volume}%` }}></div>
+                                  </div>
+                                  <span className="font-semibold">{blockParameters.accumulation.volume}%</span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Intensity</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-red-500" style={{ width: '50%' }}></div>
+                              {isEditingBlockParams ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={blockParameters.accumulation.intensity}
+                                    onChange={(e) => setBlockParameters(prev => ({
+                                      ...prev,
+                                      accumulation: { ...prev.accumulation, intensity: Number(e.target.value) }
+                                    }))}
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                  <span className="text-xs">%</span>
                                 </div>
-                                <span className="font-semibold">50%</span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-red-500" style={{ width: `${blockParameters.accumulation.intensity}%` }}></div>
+                                  </div>
+                                  <span className="font-semibold">{blockParameters.accumulation.intensity}%</span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Peaking</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-cyan-400" style={{ width: '40%' }}></div>
+                              {isEditingBlockParams ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={blockParameters.accumulation.peaking}
+                                    onChange={(e) => setBlockParameters(prev => ({
+                                      ...prev,
+                                      accumulation: { ...prev.accumulation, peaking: Number(e.target.value) }
+                                    }))}
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                  <span className="text-xs">%</span>
                                 </div>
-                                <span className="font-semibold">40%</span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-cyan-400" style={{ width: `${blockParameters.accumulation.peaking}%` }}></div>
+                                  </div>
+                                  <span className="font-semibold">{blockParameters.accumulation.peaking}%</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <p className="text-xs text-muted-foreground mt-2">
@@ -896,30 +967,81 @@ export default function AnnualPlan() {
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Volume</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-yellow-500" style={{ width: '70%' }}></div>
+                              {isEditingBlockParams ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={blockParameters.transmutation.volume}
+                                    onChange={(e) => setBlockParameters(prev => ({
+                                      ...prev,
+                                      transmutation: { ...prev.transmutation, volume: Number(e.target.value) }
+                                    }))}
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                  <span className="text-xs">%</span>
                                 </div>
-                                <span className="font-semibold">70%</span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-yellow-500" style={{ width: `${blockParameters.transmutation.volume}%` }}></div>
+                                  </div>
+                                  <span className="font-semibold">{blockParameters.transmutation.volume}%</span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Intensity</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-red-500" style={{ width: '75%' }}></div>
+                              {isEditingBlockParams ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={blockParameters.transmutation.intensity}
+                                    onChange={(e) => setBlockParameters(prev => ({
+                                      ...prev,
+                                      transmutation: { ...prev.transmutation, intensity: Number(e.target.value) }
+                                    }))}
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                  <span className="text-xs">%</span>
                                 </div>
-                                <span className="font-semibold">75%</span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-red-500" style={{ width: `${blockParameters.transmutation.intensity}%` }}></div>
+                                  </div>
+                                  <span className="font-semibold">{blockParameters.transmutation.intensity}%</span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Peaking</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-cyan-400" style={{ width: '60%' }}></div>
+                              {isEditingBlockParams ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={blockParameters.transmutation.peaking}
+                                    onChange={(e) => setBlockParameters(prev => ({
+                                      ...prev,
+                                      transmutation: { ...prev.transmutation, peaking: Number(e.target.value) }
+                                    }))}
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                  <span className="text-xs">%</span>
                                 </div>
-                                <span className="font-semibold">60%</span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-cyan-400" style={{ width: `${blockParameters.transmutation.peaking}%` }}></div>
+                                  </div>
+                                  <span className="font-semibold">{blockParameters.transmutation.peaking}%</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <p className="text-xs text-muted-foreground mt-2">
@@ -938,30 +1060,81 @@ export default function AnnualPlan() {
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Volume</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-yellow-500" style={{ width: '40%' }}></div>
+                              {isEditingBlockParams ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={blockParameters.realization.volume}
+                                    onChange={(e) => setBlockParameters(prev => ({
+                                      ...prev,
+                                      realization: { ...prev.realization, volume: Number(e.target.value) }
+                                    }))}
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                  <span className="text-xs">%</span>
                                 </div>
-                                <span className="font-semibold">40%</span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-yellow-500" style={{ width: `${blockParameters.realization.volume}%` }}></div>
+                                  </div>
+                                  <span className="font-semibold">{blockParameters.realization.volume}%</span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Intensity</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-red-500" style={{ width: '90%' }}></div>
+                              {isEditingBlockParams ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={blockParameters.realization.intensity}
+                                    onChange={(e) => setBlockParameters(prev => ({
+                                      ...prev,
+                                      realization: { ...prev.realization, intensity: Number(e.target.value) }
+                                    }))}
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                  <span className="text-xs">%</span>
                                 </div>
-                                <span className="font-semibold">90%</span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-red-500" style={{ width: `${blockParameters.realization.intensity}%` }}></div>
+                                  </div>
+                                  <span className="font-semibold">{blockParameters.realization.intensity}%</span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Peaking</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-cyan-400" style={{ width: '95%' }}></div>
+                              {isEditingBlockParams ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={blockParameters.realization.peaking}
+                                    onChange={(e) => setBlockParameters(prev => ({
+                                      ...prev,
+                                      realization: { ...prev.realization, peaking: Number(e.target.value) }
+                                    }))}
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                  <span className="text-xs">%</span>
                                 </div>
-                                <span className="font-semibold">95%</span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-cyan-400" style={{ width: `${blockParameters.realization.peaking}%` }}></div>
+                                  </div>
+                                  <span className="font-semibold">{blockParameters.realization.peaking}%</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <p className="text-xs text-muted-foreground mt-2">
@@ -978,21 +1151,21 @@ export default function AnnualPlan() {
                           data={[
                             {
                               block: 'Accumulation',
-                              Volume: 85,
-                              Intensity: 50,
-                              Peaking: 40,
+                              Volume: blockParameters.accumulation.volume,
+                              Intensity: blockParameters.accumulation.intensity,
+                              Peaking: blockParameters.accumulation.peaking,
                             },
                             {
                               block: 'Transmutation',
-                              Volume: 70,
-                              Intensity: 75,
-                              Peaking: 60,
+                              Volume: blockParameters.transmutation.volume,
+                              Intensity: blockParameters.transmutation.intensity,
+                              Peaking: blockParameters.transmutation.peaking,
                             },
                             {
                               block: 'Realization',
-                              Volume: 40,
-                              Intensity: 90,
-                              Peaking: 95,
+                              Volume: blockParameters.realization.volume,
+                              Intensity: blockParameters.realization.intensity,
+                              Peaking: blockParameters.realization.peaking,
                             },
                           ]}
                         >
@@ -1079,20 +1252,20 @@ export default function AnnualPlan() {
                           );
                           
                           if (currentPhase) {
-                            // Block periodization patterns
+                            // Block periodization patterns - use custom parameters
                             if (currentPhase.name.includes("Accumulation")) {
-                              volume = 80 + Math.random() * 10;
-                              intensity = 45 + Math.random() * 10;
-                              peaking = 35 + Math.random() * 10;
+                              volume = blockParameters.accumulation.volume + (Math.random() * 10 - 5);
+                              intensity = blockParameters.accumulation.intensity + (Math.random() * 10 - 5);
+                              peaking = blockParameters.accumulation.peaking + (Math.random() * 10 - 5);
                             } else if (currentPhase.name.includes("Transmutation")) {
-                              volume = 65 + Math.random() * 10;
-                              intensity = 70 + Math.random() * 10;
-                              peaking = 55 + Math.random() * 10;
+                              volume = blockParameters.transmutation.volume + (Math.random() * 10 - 5);
+                              intensity = blockParameters.transmutation.intensity + (Math.random() * 10 - 5);
+                              peaking = blockParameters.transmutation.peaking + (Math.random() * 10 - 5);
                             } else if (currentPhase.name.includes("Realization")) {
-                              volume = 35 + Math.random() * 10;
-                              intensity = 85 + Math.random() * 10;
-                              peaking = 90 + Math.random() * 10;
-                            } 
+                              volume = blockParameters.realization.volume + (Math.random() * 10 - 5);
+                              intensity = blockParameters.realization.intensity + (Math.random() * 10 - 5);
+                              peaking = blockParameters.realization.peaking + (Math.random() * 10 - 5);
+                            }
                             // Traditional periodization patterns
                             else if (currentPhase.name.includes("GPP")) {
                               volume = 85 + Math.random() * 15;
