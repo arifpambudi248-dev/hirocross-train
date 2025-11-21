@@ -834,6 +834,211 @@ export default function AnnualPlan() {
               </CardContent>
             </Card>
 
+            {/* Block Load Distribution Visualization */}
+            {periodizationType === "block" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Distribusi Training Load per Blok</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {/* Block Characteristics */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Accumulation Block */}
+                      <Card className="bg-red-500/10 border-red-500/20">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-red-500 rounded"></div>
+                            <h4 className="font-semibold">Accumulation Block</h4>
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Volume</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-yellow-500" style={{ width: '85%' }}></div>
+                                </div>
+                                <span className="font-semibold">85%</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Intensity</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-red-500" style={{ width: '50%' }}></div>
+                                </div>
+                                <span className="font-semibold">50%</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Peaking</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-cyan-400" style={{ width: '40%' }}></div>
+                                </div>
+                                <span className="font-semibold">40%</span>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Fokus: Volume tinggi, membangun fondasi dan kapasitas kerja
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      {/* Transmutation Block */}
+                      <Card className="bg-green-500/10 border-green-500/20">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-green-500 rounded"></div>
+                            <h4 className="font-semibold">Transmutation Block</h4>
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Volume</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-yellow-500" style={{ width: '70%' }}></div>
+                                </div>
+                                <span className="font-semibold">70%</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Intensity</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-red-500" style={{ width: '75%' }}></div>
+                                </div>
+                                <span className="font-semibold">75%</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Peaking</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-cyan-400" style={{ width: '60%' }}></div>
+                                </div>
+                                <span className="font-semibold">60%</span>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Fokus: Transformasi volume ke intensitas spesifik olahraga
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      {/* Realization Block */}
+                      <Card className="bg-cyan-400/10 border-cyan-400/20">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-cyan-400 rounded"></div>
+                            <h4 className="font-semibold">Realization Block</h4>
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Volume</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-yellow-500" style={{ width: '40%' }}></div>
+                                </div>
+                                <span className="font-semibold">40%</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Intensity</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-red-500" style={{ width: '90%' }}></div>
+                                </div>
+                                <span className="font-semibold">90%</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Peaking</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-cyan-400" style={{ width: '95%' }}></div>
+                                </div>
+                                <span className="font-semibold">95%</span>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Fokus: Performa puncak, tapering, dan kompetisi
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Comparative Bar Chart */}
+                    <div className="mt-6">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart
+                          data={[
+                            {
+                              block: 'Accumulation',
+                              Volume: 85,
+                              Intensity: 50,
+                              Peaking: 40,
+                            },
+                            {
+                              block: 'Transmutation',
+                              Volume: 70,
+                              Intensity: 75,
+                              Peaking: 60,
+                            },
+                            {
+                              block: 'Realization',
+                              Volume: 40,
+                              Intensity: 90,
+                              Peaking: 95,
+                            },
+                          ]}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis 
+                            dataKey="block" 
+                            stroke="hsl(var(--muted-foreground))"
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          />
+                          <YAxis 
+                            stroke="hsl(var(--muted-foreground))"
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            label={{ value: 'Persentase (%)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                          <Legend />
+                          <Bar dataKey="Volume" fill="#FFC107" />
+                          <Bar dataKey="Intensity" fill="#F44336" />
+                          <Bar dataKey="Peaking" fill="#06B6D4" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Legend and Explanation */}
+                    <div className="bg-muted/50 p-4 rounded-lg text-sm space-y-2">
+                      <h5 className="font-semibold mb-2">Prinsip Block Periodization:</h5>
+                      <ul className="space-y-1 text-muted-foreground">
+                        <li>• <span className="text-yellow-600 font-medium">Volume</span>: Total kuantitas latihan (repetisi, set, durasi)</li>
+                        <li>• <span className="text-red-600 font-medium">Intensity</span>: Beban relatif terhadap maksimal (%1RM, kecepatan, RPE)</li>
+                        <li>• <span className="text-cyan-600 font-medium">Peaking</span>: Tingkat kesiapan untuk performa kompetisi</li>
+                      </ul>
+                      <p className="text-xs text-muted-foreground mt-3">
+                        Setiap blok memiliki fokus berbeda yang saling melengkapi untuk mencapai performa optimal pada waktu kompetisi.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {phasesWithLoad.length > 0 && (
               <>
                 <Card>
@@ -874,7 +1079,22 @@ export default function AnnualPlan() {
                           );
                           
                           if (currentPhase) {
-                            if (currentPhase.name.includes("GPP")) {
+                            // Block periodization patterns
+                            if (currentPhase.name.includes("Accumulation")) {
+                              volume = 80 + Math.random() * 10;
+                              intensity = 45 + Math.random() * 10;
+                              peaking = 35 + Math.random() * 10;
+                            } else if (currentPhase.name.includes("Transmutation")) {
+                              volume = 65 + Math.random() * 10;
+                              intensity = 70 + Math.random() * 10;
+                              peaking = 55 + Math.random() * 10;
+                            } else if (currentPhase.name.includes("Realization")) {
+                              volume = 35 + Math.random() * 10;
+                              intensity = 85 + Math.random() * 10;
+                              peaking = 90 + Math.random() * 10;
+                            } 
+                            // Traditional periodization patterns
+                            else if (currentPhase.name.includes("GPP")) {
                               volume = 85 + Math.random() * 15;
                               intensity = 40 + Math.random() * 20;
                               peaking = 35 + Math.random() * 15;
