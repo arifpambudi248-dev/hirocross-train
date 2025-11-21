@@ -48,3 +48,19 @@ export type Profile = {
   baseline_vj: number;
   baseline_rhr: number;
 };
+
+export type AthleteGoal = {
+  id: string;
+  athlete_id: string;
+  goal_type: string;
+  goal_name: string;
+  target_value: number;
+  target_unit: string;
+  target_date: string;
+  current_value: number;
+  baseline_value: number;
+  notes: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
