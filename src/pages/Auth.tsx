@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { z } from "zod";
+import logo from "@/assets/hirocross-logo.png";
 
 const signupSchema = z.object({
   email: z.string().trim().email({ message: "Email tidak valid" }),
@@ -132,8 +133,11 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Training Load Management</CardTitle>
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <img src={logo} alt="Hirocross Logo" className="h-20 w-auto" />
+          </div>
+          <CardTitle className="text-2xl">HIROCROSS_TRAIN</CardTitle>
           <CardDescription>
             Sistem manajemen beban latihan dan periodisasi
           </CardDescription>
