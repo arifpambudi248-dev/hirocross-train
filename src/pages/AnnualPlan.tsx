@@ -45,6 +45,9 @@ type EditablePercentages = {
 
 export default function AnnualPlan() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [isCoach, setIsCoach] = useState(false);
+  const [athletes, setAthletes] = useState<any[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
   const [startDate, setStartDate] = useState("");
   const [competitionDate, setCompetitionDate] = useState("");
   const [phases, setPhases] = useState<Phase[]>([]);
@@ -83,22 +86,61 @@ export default function AnnualPlan() {
     if (userId) {
       loadSavedPlans();
     }
-  }, [userId]);
+  }, [userId, selectedAthleteId]);
 
   const loadUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setUserId(user.id);
+      
+      // Check if user is coach
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+      
+      const userIsCoach = roleData?.role === 'coach';
+      setIsCoach(userIsCoach);
+
+      // If coach, load all athletes
+      if (userIsCoach) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, athlete_name")
+          .order("athlete_name");
+        
+        if (profilesData) {
+          setAthletes(profilesData);
+          if (profilesData.length > 0) {
+            setSelectedAthleteId(profilesData[0].id);
+          }
+        }
+      } else {
+        // If athlete, set their own ID
+        setSelectedAthleteId(user.id);
+      }
     }
   };
 
   const loadSavedPlans = async () => {
     if (!userId) return;
-    const { data, error } = await supabase
-      .from("annual_plans")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+    
+    let query = supabase.from("annual_plans").select("*");
+    
+    if (isCoach) {
+      // Coach sees all plans they created
+      query = query.eq("user_id", userId);
+      // If a specific athlete is selected, filter by athlete_id
+      if (selectedAthleteId) {
+        query = query.eq("athlete_id", selectedAthleteId);
+      }
+    } else {
+      // Athletes see only plans created for them
+      query = query.eq("athlete_id", userId);
+    }
+    
+    const { data, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
       toast.error("Gagal memuat rencana tersimpan: " + error.message);
@@ -113,8 +155,14 @@ export default function AnnualPlan() {
       return;
     }
 
+    if (!selectedAthleteId) {
+      toast.error("Pilih atlet terlebih dahulu");
+      return;
+    }
+
     const planData = {
       user_id: userId,
+      athlete_id: selectedAthleteId,
       plan_name: planName,
       start_date: startDate,
       competition_date: competitionDate,
@@ -159,6 +207,7 @@ export default function AnnualPlan() {
       setCompetitionDate(selectedPlan.competition_date);
       setEditablePercentages(selectedPlan.percentages);
       setEditableLoads(selectedPlan.planned_loads || {});
+      setSelectedAthleteId(selectedPlan.athlete_id);
       setShowLoadDialog(false);
       setTimeout(() => {
         generatePlan();
@@ -357,10 +406,13 @@ export default function AnnualPlan() {
   };
 
   const fetchTrainingSessions = async (start: string, end: string) => {
+    if (!selectedAthleteId) return;
+    
     try {
       const { data, error } = await supabase
         .from("training_sessions")
         .select("*")
+        .eq("user_id", selectedAthleteId)
         .gte("date", start)
         .lte("date", end)
         .order("date", { ascending: true });
@@ -526,56 +578,92 @@ export default function AnnualPlan() {
                       ))}
                       {savedPlans.length === 0 && (
                         <p className="text-sm text-muted-foreground text-center py-4">
-                          Belum ada rencana tersimpan
+                          {isCoach ? "Belum ada rencana tersimpan" : "Pelatih belum membuat rencana untuk Anda"}
                         </p>
                       )}
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button onClick={createNewPlan} variant="outline" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Rencana Baru
-                </Button>
-                <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                  <DialogTrigger asChild>
-                    <Button className="gap-2">
-                      <Save className="h-4 w-4" />
-                      Simpan Rencana
+                {isCoach && (
+                  <>
+                    <Button onClick={createNewPlan} variant="outline" className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Rencana Baru
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Simpan Rencana Tahunan</DialogTitle>
-                      <DialogDescription>
-                        Beri nama rencana untuk menyimpannya
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Nama Rencana</Label>
-                        <Input
-                          value={planName}
-                          onChange={(e) => setPlanName(e.target.value)}
-                          placeholder="Contoh: Rencana Kompetisi 2025"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
-                        Batal
-                      </Button>
-                      <Button onClick={savePlan}>Simpan</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                      <DialogTrigger asChild>
+                        <Button className="gap-2">
+                          <Save className="h-4 w-4" />
+                          Simpan Rencana
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Simpan Rencana Tahunan</DialogTitle>
+                          <DialogDescription>
+                            Beri nama rencana untuk menyimpannya
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label>Nama Rencana</Label>
+                            <Input
+                              value={planName}
+                              onChange={(e) => setPlanName(e.target.value)}
+                              placeholder="Contoh: Rencana Kompetisi 2025"
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                            Batal
+                          </Button>
+                          <Button onClick={savePlan}>Simpan</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                )}
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Athlete selector for coaches */}
+            {isCoach && athletes.length > 0 && (
+              <div className="space-y-2 pb-4 border-b">
+                <Label htmlFor="athleteSelect">Pilih Atlet</Label>
+                <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
+                  <SelectTrigger className="bg-background border-border">
+                    <SelectValue placeholder="Pilih atlet..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border z-50">
+                    {athletes.map((athlete) => (
+                      <SelectItem key={athlete.id} value={athlete.id}>
+                        {athlete.athlete_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Info message for athletes */}
+            {!isCoach && (
+              <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Catatan:</strong> Annual plan dibuat oleh pelatih Anda. Anda dapat melihat dan mengikuti plan yang telah dibuat.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="periodType">Tipe Periodisasi</Label>
-                <Select value={periodizationType} onValueChange={(val: "traditional" | "block") => setPeriodizationType(val)}>
+                <Select 
+                  value={periodizationType} 
+                  onValueChange={(val: "traditional" | "block") => setPeriodizationType(val)}
+                  disabled={!isCoach}
+                >
                   <SelectTrigger className="bg-background border-border">
                     <SelectValue />
                   </SelectTrigger>
@@ -592,6 +680,7 @@ export default function AnnualPlan() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  disabled={!isCoach}
                 />
               </div>
               <div className="space-y-2">
@@ -601,6 +690,7 @@ export default function AnnualPlan() {
                   type="date"
                   value={competitionDate}
                   onChange={(e) => setCompetitionDate(e.target.value)}
+                  disabled={!isCoach}
                 />
               </div>
               <div className="space-y-2">
@@ -610,17 +700,20 @@ export default function AnnualPlan() {
                     id="autoAdjust"
                     checked={autoAdjust}
                     onCheckedChange={setAutoAdjust}
+                    disabled={!isCoach}
                   />
                   <span className="text-sm text-muted-foreground">
                     Otomatis sesuaikan
                   </span>
                 </div>
               </div>
-              <div className="flex items-end">
-                <Button onClick={generatePlan} className="w-full">
-                  Generate Plan
-                </Button>
-              </div>
+              {isCoach && (
+                <div className="flex items-end">
+                  <Button onClick={generatePlan} className="w-full">
+                    Generate Plan
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Block Periodization Configuration */}
