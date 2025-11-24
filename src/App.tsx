@@ -14,6 +14,7 @@ import AnnualPlan from "./pages/AnnualPlan";
 import Laporan from "./pages/Laporan";
 import Profile from "./pages/Profile";
 import Historical from "./pages/Historical";
+import AthleteManagement from "./pages/AthleteManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,9 +69,11 @@ const App = () => {
             <Route path="/annual-plan" element={<AnnualPlan />} />
             <Route path="/program-latihan" element={<ProgramLatihan />} />
             <Route path="/tes-fisik" element={<TesFisik />} />
+            <Route path="/readiness" element={<Readiness />} />
             <Route path="/laporan" element={<Laporan />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/historical" element={<Historical />} />
+            <Route path="/athlete-management" element={<AthleteManagement />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
