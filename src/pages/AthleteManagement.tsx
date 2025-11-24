@@ -34,6 +34,7 @@ export default function AthleteManagement() {
 
   // Dialog states
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null);
 
@@ -41,6 +42,7 @@ export default function AthleteManagement() {
   const [newAthleteEmail, setNewAthleteEmail] = useState("");
   const [newAthleteName, setNewAthleteName] = useState("");
   const [newAthletePassword, setNewAthletePassword] = useState("");
+  const [selectedExistingAthleteId, setSelectedExistingAthleteId] = useState("");
   const [editName, setEditName] = useState("");
   const [editAge, setEditAge] = useState("");
   const [editRHR, setEditRHR] = useState("");
@@ -117,6 +119,28 @@ export default function AthleteManagement() {
           };
         });
         setAthletes(athletesWithAssignmentDate);
+      }
+
+      // Load all users (athletes only) for assign dialog
+      const { data: allRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "athlete");
+
+      if (allRoles) {
+        const athleteUserIds = allRoles.map(r => r.user_id);
+        const { data: allProfiles } = await supabase
+          .from("profiles")
+          .select("id, athlete_name")
+          .in("id", athleteUserIds);
+
+        if (allProfiles) {
+          // Filter out already assigned athletes
+          const unassignedAthletes = allProfiles.filter(
+            p => !athleteIds.includes(p.id)
+          );
+          setAllUsers(unassignedAthletes);
+        }
       }
 
       setIsLoading(false);
@@ -208,6 +232,52 @@ export default function AthleteManagement() {
     } catch (error) {
       console.error("Error updating athlete:", error);
       sonnerToast.error("Gagal update data atlet");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAssignExistingAthlete = async () => {
+    if (!selectedExistingAthleteId) {
+      sonnerToast.error("Pilih atlet yang akan di-assign");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check if already assigned
+      const { data: existing } = await supabase
+        .from("coach_athletes")
+        .select("id")
+        .eq("coach_id", user.id)
+        .eq("athlete_id", selectedExistingAthleteId)
+        .single();
+
+      if (existing) {
+        sonnerToast.error("Atlet ini sudah di-assign ke Anda");
+        return;
+      }
+
+      // Assign athlete to coach
+      const { error } = await supabase
+        .from("coach_athletes")
+        .insert({
+          coach_id: user.id,
+          athlete_id: selectedExistingAthleteId
+        });
+
+      if (error) throw error;
+
+      sonnerToast.success("Atlet berhasil di-assign");
+      setAssignDialogOpen(false);
+      setSelectedExistingAthleteId("");
+      loadAthletes();
+    } catch (error: any) {
+      console.error("Error assigning athlete:", error);
+      sonnerToast.error(error.message || "Gagal assign atlet");
     } finally {
       setIsSaving(false);
     }
@@ -413,67 +483,123 @@ export default function AthleteManagement() {
             <p className="text-muted-foreground">Kelola data dan profile atlet Anda</p>
           </div>
 
-          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <UserPlus className="h-4 w-4" />
-                Tambah Atlet
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Tambah Atlet Baru</DialogTitle>
-                <DialogDescription>
-                  Buat akun baru untuk atlet dan assign ke Anda sebagai pelatih
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="new-name">Nama Atlet</Label>
-                  <Input
-                    id="new-name"
-                    value={newAthleteName}
-                    onChange={(e) => setNewAthleteName(e.target.value)}
-                    placeholder="Contoh: John Doe"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="new-email">Email</Label>
-                  <Input
-                    id="new-email"
-                    type="email"
-                    value={newAthleteEmail}
-                    onChange={(e) => setNewAthleteEmail(e.target.value)}
-                    placeholder="athlete@example.com"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="new-password">Password</Label>
-                  <Input
-                    id="new-password"
-                    type="password"
-                    value={newAthletePassword}
-                    onChange={(e) => setNewAthletePassword(e.target.value)}
-                    placeholder="Min. 6 karakter"
-                  />
-                </div>
-                <Button
-                  onClick={handleCreateAthlete}
-                  disabled={isSaving}
-                  className="w-full"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Membuat...
-                    </>
-                  ) : (
-                    "Buat Akun & Assign"
-                  )}
+          <div className="flex gap-2">
+            <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Assign Atlet
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Assign Atlet yang Sudah Terdaftar</DialogTitle>
+                  <DialogDescription>
+                    Pilih atlet yang sudah memiliki akun untuk di-assign ke Anda
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="existing-athlete">Pilih Atlet</Label>
+                    <select
+                      id="existing-athlete"
+                      value={selectedExistingAthleteId}
+                      onChange={(e) => setSelectedExistingAthleteId(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">-- Pilih Atlet --</option>
+                      {allUsers.map(user => (
+                        <option key={user.id} value={user.id}>
+                          {user.athlete_name}
+                        </option>
+                      ))}
+                    </select>
+                    {allUsers.length === 0 && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Tidak ada atlet yang belum di-assign
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    onClick={handleAssignExistingAthlete}
+                    disabled={isSaving || !selectedExistingAthleteId}
+                    className="w-full"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Memproses...
+                      </>
+                    ) : (
+                      "Assign Atlet"
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Tambah Atlet Baru
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Tambah Atlet Baru</DialogTitle>
+                  <DialogDescription>
+                    Buat akun baru untuk atlet dan assign ke Anda sebagai pelatih
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="new-name">Nama Atlet</Label>
+                    <Input
+                      id="new-name"
+                      value={newAthleteName}
+                      onChange={(e) => setNewAthleteName(e.target.value)}
+                      placeholder="Contoh: John Doe"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-email">Email</Label>
+                    <Input
+                      id="new-email"
+                      type="email"
+                      value={newAthleteEmail}
+                      onChange={(e) => setNewAthleteEmail(e.target.value)}
+                      placeholder="athlete@example.com"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-password">Password</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newAthletePassword}
+                      onChange={(e) => setNewAthletePassword(e.target.value)}
+                      placeholder="Min. 6 karakter"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleCreateAthlete}
+                    disabled={isSaving}
+                    className="w-full"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Membuat...
+                      </>
+                    ) : (
+                      "Buat Akun & Assign"
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {athletes.length === 0 ? (

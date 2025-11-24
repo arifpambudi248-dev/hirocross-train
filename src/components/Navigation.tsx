@@ -91,6 +91,7 @@ export const Navigation = () => {
 
   const coachNavItems = [
     { to: "/athlete-management", icon: Users, label: "Kelola Atlet" },
+    { to: "/athlete-comparison", icon: TrendingUp, label: "Perbandingan Atlet" },
   ];
 
   const navItems = isCoach 
