@@ -24,6 +24,9 @@ import { useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { Droppable } from "@/components/Droppable";
 import { Draggable } from "@/components/Draggable";
+import { trainingSessionSchema, templateSchema } from "@/lib/validationSchemas";
+import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
+import { z } from "zod";
 
 type TrainingSession = {
   id: string;
@@ -116,7 +119,7 @@ export default function ProgramLatihan() {
       if (error) throw error;
       setSessions(data || []);
     } catch (error: any) {
-      toast.error("Gagal memuat data: " + error.message);
+      handleError(error, getFriendlyErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -133,7 +136,7 @@ export default function ProgramLatihan() {
       if (error) throw error;
       setTemplates(data || []);
     } catch (error: any) {
-      toast.error("Gagal memuat template: " + error.message);
+      handleError(error, getFriendlyErrorMessage(error));
     }
   };
 
@@ -169,7 +172,7 @@ export default function ProgramLatihan() {
 
       toast.success("Sesi berhasil dipindahkan");
     } catch (error: any) {
-      toast.error("Gagal memindahkan sesi: " + error.message);
+      handleError(error, getFriendlyErrorMessage(error));
     }
   };
 
@@ -177,21 +180,31 @@ export default function ProgramLatihan() {
     e.preventDefault();
     if (!userId) return;
 
-    const loadAuto = computeSessionLoad(rpe, duration);
-    const loadFinal = loadManual !== null ? loadManual : loadAuto;
-
     try {
+      // Validate input data
+      const validatedData = trainingSessionSchema.parse({
+        date,
+        session_name: sessionName || undefined,
+        rpe,
+        duration_minutes: duration,
+        load_manual: loadManual,
+        notes: notes || undefined,
+      });
+
+      const loadAuto = computeSessionLoad(validatedData.rpe, validatedData.duration_minutes);
+      const loadFinal = validatedData.load_manual !== null ? validatedData.load_manual : loadAuto;
+
       const { error } = await supabase.from("training_sessions").insert({
         user_id: userId,
         athlete_name: athleteName,
-        date,
-        session_name: sessionName || null,
-        rpe,
-        duration_minutes: duration,
+        date: validatedData.date,
+        session_name: validatedData.session_name || null,
+        rpe: validatedData.rpe,
+        duration_minutes: validatedData.duration_minutes,
         load_auto: loadAuto,
-        load_manual: loadManual,
+        load_manual: validatedData.load_manual,
         load_final: loadFinal,
-        notes: notes || null,
+        notes: validatedData.notes || null,
       });
 
       if (error) throw error;
@@ -200,8 +213,12 @@ export default function ProgramLatihan() {
       setOpen(false);
       resetForm();
       fetchSessions(userId);
-    } catch (error: any) {
-      toast.error("Gagal menambahkan sesi: " + error.message);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        handleError(error, getFriendlyErrorMessage(error));
+      }
     }
   };
 
@@ -217,7 +234,7 @@ export default function ProgramLatihan() {
       toast.success("Sesi latihan berhasil dihapus");
       if (userId) fetchSessions(userId);
     } catch (error: any) {
-      toast.error("Gagal menghapus sesi: " + error.message);
+      handleError(error, getFriendlyErrorMessage(error));
     }
   };
 
@@ -228,13 +245,22 @@ export default function ProgramLatihan() {
     }
 
     try {
-      const { error } = await supabase.from("training_templates").insert({
-        user_id: userId,
+      // Validate template data
+      const validatedData = templateSchema.parse({
         template_name: templateName,
-        session_name: sessionName || null,
+        session_name: sessionName || undefined,
         rpe,
         duration_minutes: duration,
-        notes: notes || null,
+        notes: notes || undefined,
+      });
+
+      const { error } = await supabase.from("training_templates").insert({
+        user_id: userId,
+        template_name: validatedData.template_name,
+        session_name: validatedData.session_name || null,
+        rpe: validatedData.rpe,
+        duration_minutes: validatedData.duration_minutes,
+        notes: validatedData.notes || null,
       });
 
       if (error) throw error;
@@ -242,8 +268,12 @@ export default function ProgramLatihan() {
       toast.success("Template berhasil disimpan");
       setTemplateName("");
       fetchTemplates(userId);
-    } catch (error: any) {
-      toast.error("Gagal menyimpan template: " + error.message);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        handleError(error, getFriendlyErrorMessage(error));
+      }
     }
   };
 
@@ -270,7 +300,7 @@ export default function ProgramLatihan() {
       toast.success("Template berhasil dihapus");
       fetchTemplates(userId!);
     } catch (error: any) {
-      toast.error("Gagal menghapus template: " + error.message);
+      handleError(error, getFriendlyErrorMessage(error));
     }
   };
 

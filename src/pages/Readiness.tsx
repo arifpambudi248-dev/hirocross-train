@@ -19,6 +19,9 @@ import { Plus } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceLine } from "recharts";
 import { computeReadinessScore } from "@/lib/readiness";
 import type { ReadinessLog, Profile } from "@/types/database";
+import { readinessSchema } from "@/lib/validationSchemas";
+import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
+import { z } from "zod";
 
 export default function Readiness() {
   const [logs, setLogs] = useState<ReadinessLog[]>([]);
@@ -68,7 +71,7 @@ export default function Readiness() {
       .limit(30);
 
     if (error) {
-      toast.error("Gagal memuat data: " + error.message);
+      handleError(error, getFriendlyErrorMessage(error));
     } else {
       setLogs((data as any[]) || []);
     }
@@ -77,30 +80,38 @@ export default function Readiness() {
   const saveLog = async () => {
     if (!userId) return;
 
-    const result = computeReadinessScore(
-      formData.vj,
-      formData.rhr,
-      baselineVj,
-      baselineRhr
-    );
-
-    const { error } = await supabase
-      .from("readiness_logs")
-      .insert([{
-        athlete_id: userId,
+    try {
+      // Validate input data
+      const validatedData = readinessSchema.parse({
         date: formData.date,
         vj: formData.vj,
         rhr: formData.rhr,
-        vj_score: result.vjScore,
-        rhr_score: result.rhrScore,
-        readiness_score: result.readinessScore,
-        readiness_zone: result.zone,
-        notes: formData.notes,
-      }]);
+        notes: formData.notes || undefined,
+      });
 
-    if (error) {
-      toast.error("Gagal simpan: " + error.message);
-    } else {
+      const result = computeReadinessScore(
+        validatedData.vj,
+        validatedData.rhr,
+        baselineVj,
+        baselineRhr
+      );
+
+      const { error } = await supabase
+        .from("readiness_logs")
+        .insert([{
+          athlete_id: userId,
+          date: validatedData.date,
+          vj: validatedData.vj,
+          rhr: validatedData.rhr,
+          vj_score: result.vjScore,
+          rhr_score: result.rhrScore,
+          readiness_score: result.readinessScore,
+          readiness_zone: result.zone,
+          notes: validatedData.notes || null,
+        }]);
+
+      if (error) throw error;
+
       toast.success("Readiness log berhasil disimpan");
       loadLogs(userId);
       setShowForm(false);
@@ -110,6 +121,12 @@ export default function Readiness() {
         rhr: 60,
         notes: "",
       });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        handleError(error, getFriendlyErrorMessage(error));
+      }
     }
   };
 

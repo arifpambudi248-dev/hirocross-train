@@ -11,7 +11,26 @@ serve(async (req) => {
   }
 
   try {
-    const { athleteData } = await req.json();
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get and validate request data
+    const requestBody = await req.json();
+    const { athleteData } = requestBody;
+    
+    if (!athleteData || typeof athleteData !== "object") {
+      return new Response(
+        JSON.stringify({ error: "Invalid request data" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -92,9 +111,11 @@ Gunakan bahasa yang friendly tapi profesional. Fokus pada practical advice yang 
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    // Log error server-side only
     console.error("AI Coach error:", error);
+    // Return generic message to client
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Terjadi kesalahan internal" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
