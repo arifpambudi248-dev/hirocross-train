@@ -206,7 +206,7 @@ export default function Profile() {
       <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
         <Navigation />
         <div className="flex items-center justify-center h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </div>
     );
@@ -278,11 +278,11 @@ export default function Profile() {
       <div className="container mx-auto px-4 py-8 space-y-6">
         {/* Header Section */}
         <div className="flex items-start gap-6">
-          <Avatar className="h-24 w-24 border-2 border-cyan-500">
-            <AvatarFallback className="bg-cyan-950 text-cyan-400 text-2xl">
-              {profile?.athlete_name?.charAt(0) || "A"}
-            </AvatarFallback>
-          </Avatar>
+        <Avatar className="h-24 w-24 border-2 border-primary">
+          <AvatarFallback className="bg-slate-900 text-primary text-2xl">
+            {profile?.athlete_name?.charAt(0) || "A"}
+          </AvatarFallback>
+        </Avatar>
           
           <div className="flex-1">
             <h1 className="text-4xl font-bold text-white mb-2">{profile?.athlete_name || "Atlet"}</h1>
@@ -332,7 +332,7 @@ export default function Profile() {
           <Card className="border-slate-800 bg-slate-900/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                <Activity className="h-4 w-4 text-cyan-500" />
+                <Activity className="h-4 w-4 text-primary" />
                 Avg Readiness
               </CardTitle>
             </CardHeader>
@@ -353,7 +353,7 @@ export default function Profile() {
           <Card className="border-slate-800 bg-slate-900/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-blue-500" />
+                <TrendingUp className="h-4 w-4 text-primary" />
                 Total Load (30d)
               </CardTitle>
             </CardHeader>
@@ -543,7 +543,7 @@ export default function Profile() {
                 <ul className="space-y-1 text-sm text-slate-300">
                   {injuryRisk.recommendations.map((rec: string, idx: number) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <span className="text-cyan-500">•</span>
+                      <span className="text-primary">•</span>
                       {rec}
                     </li>
                   ))}

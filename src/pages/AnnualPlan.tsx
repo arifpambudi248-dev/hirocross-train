@@ -243,7 +243,7 @@ export default function AnnualPlan() {
       const realEnd = addDays(currentDate, realDays - 1);
       newPhases.push({
         name: `Block ${blockNumber} - Realization`,
-        color: "bg-cyan-400",
+        color: "bg-primary",
         startDate: format(currentDate, "yyyy-MM-dd"),
         endDate: format(realEnd, "yyyy-MM-dd"),
         durationDays: realDays,
@@ -258,7 +258,7 @@ export default function AnnualPlan() {
     if (remainingDays > 0) {
       newPhases.push({
         name: `Block ${blockNumber} - Final Realization`,
-        color: "bg-cyan-400",
+        color: "bg-primary",
         startDate: format(currentDate, "yyyy-MM-dd"),
         endDate: format(competition, "yyyy-MM-dd"),
         durationDays: remainingDays,
@@ -663,7 +663,7 @@ export default function AnnualPlan() {
                   <div className="space-y-2">
                     <Label htmlFor="real-weeks" className="text-xs">Realization Block</Label>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-cyan-400 rounded"></div>
+                      <div className="w-4 h-4 bg-primary rounded"></div>
                       <Input
                         id="real-weeks"
                         type="number"
@@ -944,7 +944,7 @@ export default function AnnualPlan() {
                               ) : (
                                 <div className="flex items-center gap-2">
                                   <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-cyan-400" style={{ width: `${blockParameters.accumulation.peaking}%` }}></div>
+                                    <div className="h-full bg-primary" style={{ width: `${blockParameters.accumulation.peaking}%` }}></div>
                                   </div>
                                   <span className="font-semibold">{blockParameters.accumulation.peaking}%</span>
                                 </div>
@@ -1037,7 +1037,7 @@ export default function AnnualPlan() {
                               ) : (
                                 <div className="flex items-center gap-2">
                                   <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-cyan-400" style={{ width: `${blockParameters.transmutation.peaking}%` }}></div>
+                                    <div className="h-full bg-primary" style={{ width: `${blockParameters.transmutation.peaking}%` }}></div>
                                   </div>
                                   <span className="font-semibold">{blockParameters.transmutation.peaking}%</span>
                                 </div>
@@ -1051,10 +1051,10 @@ export default function AnnualPlan() {
                       </Card>
 
                       {/* Realization Block */}
-                      <Card className="bg-cyan-400/10 border-cyan-400/20">
+                      <Card className="bg-primary/10 border-primary/20">
                         <CardContent className="p-4 space-y-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 bg-cyan-400 rounded"></div>
+                            <div className="w-4 h-4 bg-primary rounded"></div>
                             <h4 className="font-semibold">Realization Block</h4>
                           </div>
                           <div className="space-y-2 text-sm">
@@ -1130,7 +1130,7 @@ export default function AnnualPlan() {
                               ) : (
                                 <div className="flex items-center gap-2">
                                   <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-cyan-400" style={{ width: `${blockParameters.realization.peaking}%` }}></div>
+                                    <div className="h-full bg-primary" style={{ width: `${blockParameters.realization.peaking}%` }}></div>
                                   </div>
                                   <span className="font-semibold">{blockParameters.realization.peaking}%</span>
                                 </div>
@@ -1201,7 +1201,7 @@ export default function AnnualPlan() {
                       <ul className="space-y-1 text-muted-foreground">
                         <li>• <span className="text-yellow-600 font-medium">Volume</span>: Total kuantitas latihan (repetisi, set, durasi)</li>
                         <li>• <span className="text-red-600 font-medium">Intensity</span>: Beban relatif terhadap maksimal (%1RM, kecepatan, RPE)</li>
-                        <li>• <span className="text-cyan-600 font-medium">Peaking</span>: Tingkat kesiapan untuk performa kompetisi</li>
+                        <li>• <span className="text-primary font-medium">Peaking</span>: Tingkat kesiapan untuk performa kompetisi</li>
                       </ul>
                       <p className="text-xs text-muted-foreground mt-3">
                         Setiap blok memiliki fokus berbeda yang saling melengkapi untuk mencapai performa optimal pada waktu kompetisi.
