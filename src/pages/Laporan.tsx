@@ -23,6 +23,7 @@ import {
   ResponsiveContainer,
   Legend,
   ReferenceLine,
+  ReferenceArea,
   ComposedChart
 } from "recharts";
 import { 
@@ -449,28 +450,6 @@ export default function Laporan() {
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={fitnessData} margin={{ top: 0, right: 5, left: 5, bottom: 5 }}>
-                      <defs>
-                        <linearGradient id="highRisk" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#dc2626" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#dc2626" stopOpacity={0.2} />
-                        </linearGradient>
-                        <linearGradient id="optimal" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#22c55e" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#22c55e" stopOpacity={0.2} />
-                        </linearGradient>
-                        <linearGradient id="greyZone" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#6b7280" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#6b7280" stopOpacity={0.2} />
-                        </linearGradient>
-                        <linearGradient id="fresh" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2} />
-                        </linearGradient>
-                        <linearGradient id="transition" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#eab308" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#eab308" stopOpacity={0.2} />
-                        </linearGradient>
-                      </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                       <XAxis 
                         dataKey="date" 
@@ -495,7 +474,15 @@ export default function Laporan() {
                         }}
                         formatter={(value: number) => [`${value.toFixed(1)}%`, 'Form']}
                       />
-                      {/* Zone colored areas */}
+                      
+                      {/* Zone colored background areas */}
+                      <ReferenceArea y1={20} y2={40} fill="#eab308" fillOpacity={0.15} />
+                      <ReferenceArea y1={5} y2={20} fill="#3b82f6" fillOpacity={0.15} />
+                      <ReferenceArea y1={-10} y2={5} fill="#6b7280" fillOpacity={0.15} />
+                      <ReferenceArea y1={-30} y2={-10} fill="#22c55e" fillOpacity={0.15} />
+                      <ReferenceArea y1={-40} y2={-30} fill="#dc2626" fillOpacity={0.15} />
+                      
+                      {/* Zone boundary lines */}
                       <ReferenceLine y={20} stroke="#eab308" strokeDasharray="3 3" />
                       <ReferenceLine y={5} stroke="#3b82f6" strokeDasharray="3 3" />
                       <ReferenceLine y={-10} stroke="#6b7280" strokeDasharray="3 3" />
