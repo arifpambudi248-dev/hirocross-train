@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import logo from "@/assets/hirocross-logo.png";
 import {
   Sheet,
   SheetContent,
@@ -143,7 +144,10 @@ export const Navigation = () => {
               </SheetContent>
             </Sheet>
 
-            <h1 className="text-xl font-bold text-primary">Periodisasi Latihan</h1>
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="Hirocross Logo" className="h-8 w-auto" />
+              <h1 className="text-xl font-bold text-primary">HIROCROSS_TRAIN</h1>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
