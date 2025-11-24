@@ -135,9 +135,9 @@ export default function AthleteManagement() {
           .in("id", athleteUserIds);
 
         if (allProfiles) {
-          // Filter out already assigned athletes
+          // Filter out already assigned athletes AND exclude current coach
           const unassignedAthletes = allProfiles.filter(
-            p => !athleteIds.includes(p.id)
+            p => !athleteIds.includes(p.id) && p.id !== user.id
           );
           setAllUsers(unassignedAthletes);
         }
@@ -176,8 +176,10 @@ export default function AthleteManagement() {
         email: newAthleteEmail,
         password: newAthletePassword,
         options: {
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
-            athlete_name: newAthleteName
+            athlete_name: newAthleteName,
+            role: 'athlete'
           }
         }
       });
