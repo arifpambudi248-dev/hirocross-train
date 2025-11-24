@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       annual_plans: {
         Row: {
+          athlete_id: string
           competition_date: string
           created_at: string
           id: string
@@ -28,6 +29,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          athlete_id: string
           competition_date: string
           created_at?: string
           id?: string
@@ -40,6 +42,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          athlete_id?: string
           competition_date?: string
           created_at?: string
           id?: string
