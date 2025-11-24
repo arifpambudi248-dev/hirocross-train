@@ -11,6 +11,9 @@ import { toast } from "sonner";
 import { User, Plus } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip } from "recharts";
 import type { PhysicalTest } from "@/types/database";
+import { physicalTestSchema } from "@/lib/validationSchemas";
+import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
+import { z } from "zod";
 
 // Benchmark values for each category (5-scale: Elite, Excellent, Good, Average, Poor)
 const BENCHMARKS = {
@@ -106,7 +109,7 @@ export default function TesFisik() {
       .order("test_date", { ascending: false });
 
     if (error) {
-      toast.error("Gagal memuat data: " + error.message);
+      handleError(error, getFriendlyErrorMessage(error));
     } else {
       setTests((data as any[]) || []);
     }
@@ -118,21 +121,31 @@ export default function TesFisik() {
       return;
     }
 
-    const { error } = await supabase
-      .from("physical_tests")
-      .insert([{
-        athlete_id: userId,
-        test_date: formData.test_date!,
-        category: formData.category!,
+    try {
+      // Validate input data
+      const validatedData = physicalTestSchema.parse({
+        test_date: formData.test_date,
+        category: formData.category,
         test_name: formData.test_name,
         value: formData.value,
-        unit: formData.unit!,
-        notes: formData.notes || null,
-      }]);
+        unit: formData.unit,
+        notes: formData.notes || undefined,
+      });
 
-    if (error) {
-      toast.error("Gagal simpan: " + error.message);
-    } else {
+      const { error } = await supabase
+        .from("physical_tests")
+        .insert([{
+          athlete_id: userId,
+          test_date: validatedData.test_date,
+          category: validatedData.category,
+          test_name: validatedData.test_name,
+          value: validatedData.value,
+          unit: validatedData.unit,
+          notes: validatedData.notes || null,
+        }]);
+
+      if (error) throw error;
+
       toast.success("Tes berhasil disimpan");
       loadTests(userId);
       setShowDialog(false);
@@ -144,6 +157,12 @@ export default function TesFisik() {
         unit: "",
         notes: "",
       });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        handleError(error, getFriendlyErrorMessage(error));
+      }
     }
   };
 

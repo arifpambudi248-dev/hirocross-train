@@ -14,6 +14,9 @@ import { Target, Plus, TrendingUp, Calendar, CheckCircle, XCircle, Clock } from 
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { toast } from "sonner";
+import { goalSchema } from "@/lib/validationSchemas";
+import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
+import { z } from "zod";
 
 type Goal = {
   id: string;
@@ -69,8 +72,7 @@ export default function Goals() {
       await updateGoalProgress(user.id, data || []);
       
     } catch (error) {
-      console.error("Error loading goals:", error);
-      toast.error("Gagal memuat target");
+      handleError(error, "Gagal memuat target");
     } finally {
       setLoading(false);
     }
@@ -140,16 +142,28 @@ export default function Goals() {
     if (!userId) return;
     
     try {
-      const { error } = await supabase.from("athlete_goals").insert({
-        athlete_id: userId,
-        goal_type: goalType,
+      // Validate input data
+      const validatedData = goalSchema.parse({
         goal_name: goalName,
+        goal_type: goalType,
         target_value: parseFloat(targetValue),
         target_unit: targetUnit,
         target_date: targetDate,
         current_value: parseFloat(currentValue) || 0,
         baseline_value: parseFloat(baselineValue) || 0,
-        notes: notes,
+        notes: notes || undefined,
+      });
+
+      const { error } = await supabase.from("athlete_goals").insert({
+        athlete_id: userId,
+        goal_type: validatedData.goal_type,
+        goal_name: validatedData.goal_name,
+        target_value: validatedData.target_value,
+        target_unit: validatedData.target_unit,
+        target_date: validatedData.target_date,
+        current_value: validatedData.current_value,
+        baseline_value: validatedData.baseline_value,
+        notes: validatedData.notes || null,
         status: "active"
       });
 
@@ -160,8 +174,11 @@ export default function Goals() {
       resetForm();
       loadGoals();
     } catch (error) {
-      console.error("Error creating goal:", error);
-      toast.error("Gagal membuat target");
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        handleError(error, getFriendlyErrorMessage(error));
+      }
     }
   };
 
