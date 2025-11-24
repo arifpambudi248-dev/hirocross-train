@@ -34,6 +34,9 @@ type Goal = {
 
 export default function Goals() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [isCoach, setIsCoach] = useState(false);
+  const [athletes, setAthletes] = useState<any[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -49,27 +52,67 @@ export default function Goals() {
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    loadGoals();
+    loadUser();
   }, []);
 
-  const loadGoals = async () => {
+  useEffect(() => {
+    if (selectedAthleteId) {
+      loadGoals();
+    }
+  }, [selectedAthleteId]);
+
+  const loadUser = async () => {
     try {
-      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
 
+      // Check if user is coach
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+      
+      const userIsCoach = roleData?.role === 'coach';
+      setIsCoach(userIsCoach);
+
+      if (userIsCoach) {
+        // Load all athletes
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, athlete_name")
+          .order("athlete_name");
+        
+        if (profilesData && profilesData.length > 0) {
+          setAthletes(profilesData);
+          setSelectedAthleteId(profilesData[0].id);
+        }
+      } else {
+        setSelectedAthleteId(user.id);
+      }
+    } catch (error) {
+      handleError(error, "Gagal memuat data user");
+    }
+  };
+
+  const loadGoals = async () => {
+    if (!selectedAthleteId) return;
+    
+    try {
+      setLoading(true);
+
       const { data, error } = await supabase
         .from("athlete_goals")
         .select("*")
-        .eq("athlete_id", user.id)
+        .eq("athlete_id", selectedAthleteId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       setGoals(data || []);
       
       // Update current values based on latest data
-      await updateGoalProgress(user.id, data || []);
+      await updateGoalProgress(selectedAthleteId, data || []);
       
     } catch (error) {
       handleError(error, "Gagal memuat target");
@@ -139,7 +182,7 @@ export default function Goals() {
   };
 
   const handleCreateGoal = async () => {
-    if (!userId) return;
+    if (!selectedAthleteId) return;
     
     try {
       // Validate input data
@@ -155,7 +198,7 @@ export default function Goals() {
       });
 
       const { error } = await supabase.from("athlete_goals").insert({
-        athlete_id: userId,
+        athlete_id: selectedAthleteId,
         goal_type: validatedData.goal_type,
         goal_name: validatedData.goal_name,
         target_value: validatedData.target_value,
@@ -227,6 +270,27 @@ export default function Goals() {
     <div className="min-h-screen bg-background">
       <Navigation />
       <div className="container mx-auto px-4 py-8 space-y-6">
+        {/* Athlete selector for coaches */}
+        {isCoach && athletes.length > 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <Label>Pilih Atlet</Label>
+              <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
+                <SelectTrigger className="bg-background border-border mt-2">
+                  <SelectValue placeholder="Pilih atlet..." />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border z-50">
+                  {athletes.map((athlete) => (
+                    <SelectItem key={athlete.id} value={athlete.id}>
+                      {athlete.athlete_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Target & Progress</h1>

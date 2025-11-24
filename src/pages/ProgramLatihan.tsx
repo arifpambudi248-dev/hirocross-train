@@ -57,6 +57,9 @@ export default function ProgramLatihan() {
   const [open, setOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isCoach, setIsCoach] = useState(false);
+  const [athletes, setAthletes] = useState<any[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
   const [athleteName, setAthleteName] = useState<string>("");
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [activeSession, setActiveSession] = useState<TrainingSession | null>(null);
@@ -85,6 +88,13 @@ export default function ProgramLatihan() {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    if (selectedAthleteId) {
+      fetchSessions(selectedAthleteId);
+      fetchTemplates(selectedAthleteId);
+    }
+  }, [selectedAthleteId]);
+
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -93,18 +103,42 @@ export default function ProgramLatihan() {
     }
     setUserId(session.user.id);
     
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("athlete_name")
-      .eq("id", session.user.id)
+    // Check if user is coach
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", session.user.id)
       .single();
     
-    if (profile) {
-      setAthleteName(profile.athlete_name);
+    const userIsCoach = roleData?.role === 'coach';
+    setIsCoach(userIsCoach);
+
+    if (userIsCoach) {
+      // Load all athletes
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, athlete_name")
+        .order("athlete_name");
+      
+      if (profilesData && profilesData.length > 0) {
+        setAthletes(profilesData);
+        setSelectedAthleteId(profilesData[0].id);
+        setAthleteName(profilesData[0].athlete_name);
+      }
+    } else {
+      // Load own profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("athlete_name")
+        .eq("id", session.user.id)
+        .single();
+      
+      if (profile) {
+        setAthleteName(profile.athlete_name);
+      }
+      
+      setSelectedAthleteId(session.user.id);
     }
-    
-    fetchSessions(session.user.id);
-    fetchTemplates(session.user.id);
   };
 
   const fetchSessions = async (uid: string) => {
@@ -195,7 +229,7 @@ export default function ProgramLatihan() {
       const loadFinal = validatedData.load_manual !== null ? validatedData.load_manual : loadAuto;
 
       const { error } = await supabase.from("training_sessions").insert({
-        user_id: userId,
+        user_id: selectedAthleteId,
         athlete_name: athleteName,
         date: validatedData.date,
         session_name: validatedData.session_name || null,
@@ -255,7 +289,7 @@ export default function ProgramLatihan() {
       });
 
       const { error } = await supabase.from("training_templates").insert({
-        user_id: userId,
+        user_id: selectedAthleteId,
         template_name: validatedData.template_name,
         session_name: validatedData.session_name || null,
         rpe: validatedData.rpe,
@@ -267,7 +301,7 @@ export default function ProgramLatihan() {
 
       toast.success("Template berhasil disimpan");
       setTemplateName("");
-      fetchTemplates(userId);
+      fetchTemplates(selectedAthleteId!);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
@@ -298,7 +332,7 @@ export default function ProgramLatihan() {
       if (error) throw error;
 
       toast.success("Template berhasil dihapus");
-      fetchTemplates(userId!);
+      fetchTemplates(selectedAthleteId!);
     } catch (error: any) {
       handleError(error, getFriendlyErrorMessage(error));
     }
@@ -371,6 +405,26 @@ export default function ProgramLatihan() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
+              {/* Athlete selector for coaches */}
+              {isCoach && athletes.length > 0 && (
+                <Select value={selectedAthleteId} onValueChange={(val) => {
+                  setSelectedAthleteId(val);
+                  const athlete = athletes.find(a => a.id === val);
+                  if (athlete) setAthleteName(athlete.athlete_name);
+                }}>
+                  <SelectTrigger className="w-48 bg-slate-900 border-slate-800">
+                    <SelectValue placeholder="Pilih atlet..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {athletes.map((athlete) => (
+                      <SelectItem key={athlete.id} value={athlete.id}>
+                        {athlete.athlete_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
               <Select value={format(currentWeekStart, "yyyy-MM")} onValueChange={(val) => {
                 const [year, month] = val.split('-');
                 setCurrentWeekStart(startOfWeek(new Date(parseInt(year), parseInt(month) - 1, 1), { weekStartsOn: 1 }));

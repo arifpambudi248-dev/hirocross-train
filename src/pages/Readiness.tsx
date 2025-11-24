@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -26,6 +27,9 @@ import { z } from "zod";
 export default function Readiness() {
   const [logs, setLogs] = useState<ReadinessLog[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isCoach, setIsCoach] = useState(false);
+  const [athletes, setAthletes] = useState<any[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
   const [baselineVj, setBaselineVj] = useState<number>(40);
   const [baselineRhr, setBaselineRhr] = useState<number>(60);
   const [showForm, setShowForm] = useState(false);
@@ -40,25 +44,57 @@ export default function Readiness() {
     loadUser();
   }, []);
 
+  useEffect(() => {
+    if (selectedAthleteId) {
+      loadLogs(selectedAthleteId);
+      loadBaseline(selectedAthleteId);
+    }
+  }, [selectedAthleteId]);
+
   const loadUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setUserId(user.id);
       
-      // Load baseline
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("baseline_vj, baseline_rhr")
-        .eq("id", user.id)
-        .maybeSingle();
+      // Check if user is coach
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+      
+      const userIsCoach = roleData?.role === 'coach';
+      setIsCoach(userIsCoach);
 
-      if (profile) {
-        const p = profile as any;
-        setBaselineVj(p.baseline_vj || 40);
-        setBaselineRhr(p.baseline_rhr || 60);
+      if (userIsCoach) {
+        // Load all athletes
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, athlete_name")
+          .order("athlete_name");
+        
+        if (profilesData && profilesData.length > 0) {
+          setAthletes(profilesData);
+          setSelectedAthleteId(profilesData[0].id);
+        }
+      } else {
+        // Set own ID
+        setSelectedAthleteId(user.id);
       }
+    }
+  };
 
-      loadLogs(user.id);
+  const loadBaseline = async (uid: string) => {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("baseline_vj, baseline_rhr")
+      .eq("id", uid)
+      .maybeSingle();
+
+    if (profile) {
+      const p = profile as any;
+      setBaselineVj(p.baseline_vj || 40);
+      setBaselineRhr(p.baseline_rhr || 60);
     }
   };
 
@@ -78,7 +114,7 @@ export default function Readiness() {
   };
 
   const saveLog = async () => {
-    if (!userId) return;
+    if (!selectedAthleteId) return;
 
     try {
       // Validate input data
@@ -99,7 +135,7 @@ export default function Readiness() {
       const { error } = await supabase
         .from("readiness_logs")
         .insert([{
-          athlete_id: userId,
+          athlete_id: selectedAthleteId,
           date: validatedData.date,
           vj: validatedData.vj,
           rhr: validatedData.rhr,
@@ -113,7 +149,7 @@ export default function Readiness() {
       if (error) throw error;
 
       toast.success("Readiness log berhasil disimpan");
-      loadLogs(userId);
+      loadLogs(selectedAthleteId);
       setShowForm(false);
       setFormData({
         date: new Date().toISOString().split("T")[0],
@@ -160,6 +196,25 @@ export default function Readiness() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Athlete selector for coaches */}
+            {isCoach && athletes.length > 0 && (
+              <div className="space-y-2 pb-4 border-b">
+                <Label>Pilih Atlet</Label>
+                <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
+                  <SelectTrigger className="bg-background border-border">
+                    <SelectValue placeholder="Pilih atlet..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border z-50">
+                    {athletes.map((athlete) => (
+                      <SelectItem key={athlete.id} value={athlete.id}>
+                        {athlete.athlete_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {showForm && (
               <div className="grid grid-cols-2 gap-4 p-4 bg-secondary rounded-lg">
                 <div className="space-y-2">
