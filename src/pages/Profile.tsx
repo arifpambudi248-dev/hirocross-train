@@ -3,15 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, User, Activity, Shield, TrendingUp, Brain, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Loader2, User, Activity, Shield, TrendingUp, Brain, AlertCircle, Camera, Heart, Edit } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from "recharts";
 import { computeReadinessScore } from "@/lib/readiness";
 import { assessInjuryRisk, getRiskColor, getRiskBgColor } from "@/lib/injuryRisk";
+import { calculateMaxHR, calculateTrainingZones, type TrainingZone } from "@/lib/trainingZones";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 
 export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
@@ -22,11 +27,36 @@ export default function Profile() {
   const [aiFeedback, setAiFeedback] = useState<string>("");
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [trainingZones, setTrainingZones] = useState<TrainingZone[]>([]);
   const { toast } = useToast();
+
+  // Edit profile states
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editAge, setEditAge] = useState("");
+  const [editBaselineRHR, setEditBaselineRHR] = useState("");
+  const [editBaselineVJ, setEditBaselineVJ] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Avatar upload states
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   useEffect(() => {
     loadProfileData();
   }, []);
+
+  useEffect(() => {
+    if (profile?.age) {
+      try {
+        const maxHR = calculateMaxHR(profile.age);
+        const zones = calculateTrainingZones(maxHR);
+        setTrainingZones(zones);
+      } catch (error) {
+        console.error("Error calculating training zones:", error);
+      }
+    }
+  }, [profile?.age]);
 
   const loadProfileData = async () => {
     try {
@@ -40,6 +70,18 @@ export default function Profile() {
         .eq("id", user.id)
         .single();
       setProfile(profileData);
+      
+      // Set edit form values
+      if (profileData) {
+        setEditAge(profileData.age?.toString() || "");
+        setEditBaselineRHR(profileData.baseline_rhr?.toString() || "60");
+        setEditBaselineVJ(profileData.baseline_vj?.toString() || "40");
+      }
+
+      // Load avatar if exists
+      if (profileData?.avatar_url) {
+        setAvatarPreview(profileData.avatar_url);
+      }
 
       // Load readiness logs (last 30 days)
       const thirtyDaysAgo = new Date();
@@ -126,6 +168,97 @@ export default function Profile() {
     }
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        sonnerToast.error("Ukuran file maksimal 2MB");
+        return;
+      }
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleUploadAvatar = async () => {
+    if (!avatarFile) return;
+    
+    try {
+      setIsUploadingAvatar(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Upload to storage
+      const fileExt = avatarFile.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, avatarFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      sonnerToast.success("Avatar berhasil diupload");
+      loadProfileData();
+      setAvatarFile(null);
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      sonnerToast.error("Gagal upload avatar");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setIsSaving(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const age = parseInt(editAge);
+      const rhr = parseFloat(editBaselineRHR);
+      const vj = parseFloat(editBaselineVJ);
+
+      if (age < 10 || age > 100) {
+        sonnerToast.error("Usia harus antara 10-100 tahun");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          age,
+          baseline_rhr: rhr,
+          baseline_vj: vj
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      sonnerToast.success("Profil berhasil diupdate");
+      setEditDialogOpen(false);
+      loadProfileData();
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      sonnerToast.error("Gagal menyimpan profil");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const getAICoachFeedback = async () => {
     setIsLoadingAI(true);
     try {
@@ -163,6 +296,7 @@ export default function Profile() {
 
       const athleteData = {
         name: profile?.athlete_name || "Atlet",
+        age: profile?.age,
         readinessScores: last7DaysReadiness,
         avgReadiness: avgReadiness.toFixed(1),
         injuryRisk: injuryRisk?.overallRisk,
@@ -203,7 +337,7 @@ export default function Profile() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex items-center justify-center h-screen">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -252,47 +386,182 @@ export default function Profile() {
       const dataPoint = radarData.find(d => d.category === categoryName);
       if (dataPoint) {
         const benchmarkArray = benchmarks[test.category];
-        // Normalize to 0-100 scale
         const minBench = benchmarkArray[0];
         const maxBench = benchmarkArray[4];
         
         let normalizedValue: number;
         if (test.category === "kecepatan" || test.category === "kelincahan") {
-          // Lower is better
           normalizedValue = ((maxBench - test.value) / (maxBench - minBench)) * 100;
         } else {
-          // Higher is better
           normalizedValue = ((test.value - minBench) / (maxBench - minBench)) * 100;
         }
         
         dataPoint.value = Math.max(0, Math.min(100, normalizedValue));
-        dataPoint.benchmark = 60; // Mid-point benchmark
+        dataPoint.benchmark = 60;
       }
     }
   });
 
+  const maxHR = profile?.age ? calculateMaxHR(profile.age) : null;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="container mx-auto px-4 py-8 space-y-6">
-        {/* Header Section */}
+        {/* Header Section with Avatar */}
         <div className="flex items-start gap-6">
-        <Avatar className="h-24 w-24 border-2 border-primary">
-          <AvatarFallback className="bg-slate-900 text-primary text-2xl">
-            {profile?.athlete_name?.charAt(0) || "A"}
-          </AvatarFallback>
-        </Avatar>
+          <div className="relative group">
+            <Avatar className="h-24 w-24 border-2 border-primary">
+              {avatarPreview ? (
+                <AvatarImage src={avatarPreview} alt={profile?.athlete_name} />
+              ) : (
+                <AvatarFallback className="bg-secondary text-primary text-2xl">
+                  {profile?.athlete_name?.charAt(0) || "A"}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full shadow-lg"
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Upload Avatar</DialogTitle>
+                  <DialogDescription>
+                    Pilih foto profil baru (maksimal 2MB)
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex justify-center">
+                    <Avatar className="h-32 w-32 border-2 border-border">
+                      {avatarPreview ? (
+                        <AvatarImage src={avatarPreview} alt="Preview" />
+                      ) : (
+                        <AvatarFallback className="text-4xl">
+                          {profile?.athlete_name?.charAt(0) || "A"}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                  </div>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                  />
+                  <Button
+                    onClick={handleUploadAvatar}
+                    disabled={!avatarFile || isUploadingAvatar}
+                    className="w-full"
+                  >
+                    {isUploadingAvatar ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      "Upload"
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           
           <div className="flex-1">
-            <h1 className="text-4xl font-bold text-white mb-2">{profile?.athlete_name || "Atlet"}</h1>
-            <p className="text-slate-400 mb-4">Profil Komprehensif & Analisis Performa</p>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold">{profile?.athlete_name || "Atlet"}</h1>
+              <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profil
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Profil Atlet</DialogTitle>
+                    <DialogDescription>
+                      Update data baseline dan informasi personal
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="age">Usia (tahun)</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        value={editAge}
+                        onChange={(e) => setEditAge(e.target.value)}
+                        placeholder="Contoh: 25"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Digunakan untuk menghitung zona latihan (HR Max = 220 - usia)
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="rhr">Baseline RHR (bpm)</Label>
+                      <Input
+                        id="rhr"
+                        type="number"
+                        value={editBaselineRHR}
+                        onChange={(e) => setEditBaselineRHR(e.target.value)}
+                        placeholder="Contoh: 60"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="vj">Baseline Vertical Jump (cm)</Label>
+                      <Input
+                        id="vj"
+                        type="number"
+                        value={editBaselineVJ}
+                        onChange={(e) => setEditBaselineVJ(e.target.value)}
+                        placeholder="Contoh: 40"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={isSaving}
+                      className="w-full"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Menyimpan...
+                        </>
+                      ) : (
+                        "Simpan"
+                      )}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <p className="text-muted-foreground mb-2">Profil Komprehensif & Analisis Performa</p>
+            {profile?.age && (
+              <Badge variant="outline" className="mr-2">
+                <User className="h-3 w-3 mr-1" />
+                {profile.age} tahun
+              </Badge>
+            )}
+            {maxHR && (
+              <Badge variant="outline">
+                <Heart className="h-3 w-3 mr-1" />
+                HR Max: {maxHR} bpm
+              </Badge>
+            )}
             
-            <div className="flex gap-4">
+            <div className="flex gap-4 mt-4">
               <Button 
                 onClick={getAICoachFeedback} 
                 disabled={isLoadingAI}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                className="bg-gradient-to-r from-purple-600 to-pink-600"
               >
                 {isLoadingAI ? (
                   <>
@@ -310,9 +579,57 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Training Zones Card */}
+        {trainingZones.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-red-500" />
+                Zona Latihan Berdasarkan Heart Rate
+              </CardTitle>
+              <CardDescription>
+                Konversi HR ke RPE (Rate of Perceived Exertion) untuk usia {profile?.age} tahun | HR Max: {maxHR} bpm
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {trainingZones.map((zone) => (
+                  <div
+                    key={zone.rpe}
+                    className="flex items-center gap-4 p-3 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
+                  >
+                    <div className={`w-12 h-12 rounded-full ${zone.color} flex items-center justify-center text-white font-bold text-lg`}>
+                      {zone.rpe}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-semibold">{zone.name}</p>
+                        <Badge variant="outline" className="text-xs">
+                          {zone.percentage} HR Max
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{zone.description}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold">{zone.hrMin}-{zone.hrMax}</p>
+                      <p className="text-xs text-muted-foreground">bpm</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Alert className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Gunakan zona latihan ini sebagai panduan untuk mengatur intensitas latihan. RPE 1-10 sesuai dengan persentase HR Max Anda.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        )}
+
         {/* AI Feedback Section */}
         {aiFeedback && (
-          <Card className="border-purple-500/20 bg-slate-900/50">
+          <Card className="border-purple-500/20 bg-secondary/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-purple-400">
                 <Brain className="h-5 w-5" />
@@ -320,7 +637,7 @@ export default function Profile() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="prose prose-invert max-w-none whitespace-pre-line text-slate-300">
+              <div className="prose prose-invert max-w-none whitespace-pre-line">
                 {aiFeedback}
               </div>
             </CardContent>
@@ -329,47 +646,47 @@ export default function Profile() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Activity className="h-4 w-4 text-primary" />
                 Avg Readiness
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold">
                 {avgReadiness.toFixed(1)}%
               </div>
               <Badge className={`mt-2 ${
-                avgReadiness > 5 ? "bg-green-500/10 text-green-500" :
-                avgReadiness > 0 ? "bg-yellow-500/10 text-yellow-500" :
+                avgReadiness > 70 ? "bg-green-500/10 text-green-500" :
+                avgReadiness > 40 ? "bg-yellow-500/10 text-yellow-500" :
                 "bg-orange-500/10 text-orange-500"
               }`}>
-                {avgReadiness > 5 ? "Prime" : avgReadiness > 0 ? "Moderate" : "Low"}
+                {avgReadiness > 70 ? "Prime" : avgReadiness > 40 ? "Moderate" : "Low"}
               </Badge>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 Total Load (30d)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold">
                 {totalLoad} AU
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 {loadData.length} sesi latihan
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Shield className="h-4 w-4 text-red-500" />
                 Injury Risk
               </CardTitle>
@@ -377,7 +694,7 @@ export default function Profile() {
             <CardContent>
               {injuryRisk ? (
                 <>
-                  <div className="text-2xl font-bold text-white capitalize">
+                  <div className="text-2xl font-bold capitalize">
                     {injuryRisk.overallRisk.replace("-", " ")}
                   </div>
                   <Badge className={`mt-2 ${getRiskBgColor(injuryRisk.overallRisk)}`}>
@@ -385,23 +702,23 @@ export default function Profile() {
                   </Badge>
                 </>
               ) : (
-                <div className="text-slate-500">Tidak ada data</div>
+                <div className="text-muted-foreground">Tidak ada data</div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <User className="h-4 w-4 text-green-500" />
                 Physical Tests
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold">
                 {physicalTests.length}
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Kategori tersedia
               </p>
             </CardContent>
@@ -411,9 +728,9 @@ export default function Profile() {
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Readiness Trend */}
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-white">Tren Readiness (30 Hari)</CardTitle>
+              <CardTitle>Tren Readiness (30 Hari)</CardTitle>
               <CardDescription>Skor kesiapan harian atlet</CardDescription>
             </CardHeader>
             <CardContent>
@@ -422,36 +739,34 @@ export default function Profile() {
                   <AreaChart data={readinessData}>
                     <defs>
                       <linearGradient id="readinessGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis 
                       dataKey="date" 
-                      stroke="#94a3b8"
-                      tick={{ fill: '#94a3b8', fontSize: 12 }}
+                      stroke="hsl(var(--muted-foreground))"
                       tickFormatter={(date) => new Date(date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}
                     />
-                    <YAxis 
-                      stroke="#94a3b8"
-                      tick={{ fill: '#94a3b8', fontSize: 12 }}
-                    />
+                    <YAxis stroke="hsl(var(--muted-foreground))" />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                      labelStyle={{ color: '#e2e8f0' }}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))'
+                      }}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="readiness_score" 
-                      stroke="#06b6d4" 
+                      stroke="hsl(var(--primary))" 
                       fill="url(#readinessGradient)"
                       strokeWidth={2}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-slate-500">
+                <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                   Belum ada data readiness
                 </div>
               )}
@@ -459,117 +774,52 @@ export default function Profile() {
           </Card>
 
           {/* Physical Performance Radar */}
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-white">Performa Fisik vs Benchmark</CardTitle>
-              <CardDescription>Hasil tes terbaru per kategori</CardDescription>
+              <CardTitle>Profil Performa Fisik</CardTitle>
+              <CardDescription>Perbandingan dengan benchmark standar</CardDescription>
             </CardHeader>
             <CardContent>
               {physicalTests.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <RadarChart data={radarData}>
-                    <PolarGrid stroke="#334155" />
+                    <PolarGrid stroke="hsl(var(--border))" />
                     <PolarAngleAxis 
                       dataKey="category" 
-                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      stroke="hsl(var(--foreground))"
                     />
-                    <PolarRadiusAxis 
-                      angle={90} 
-                      domain={[0, 100]}
-                      tick={{ fill: '#94a3b8', fontSize: 10 }}
+                    <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))'
+                      }}
                     />
-                    <Radar 
-                      name="Atlet" 
-                      dataKey="value" 
-                      stroke="#06b6d4" 
-                      fill="#06b6d4" 
-                      fillOpacity={0.5}
+                    <Legend />
+                    <Radar
+                      name="Nilai Anda"
+                      dataKey="value"
+                      stroke="hsl(var(--primary))"
+                      fill="hsl(var(--primary))"
+                      fillOpacity={0.3}
                     />
-                    <Radar 
-                      name="Benchmark" 
-                      dataKey="benchmark" 
-                      stroke="#f59e0b" 
-                      fill="#f59e0b" 
-                      fillOpacity={0.2}
-                    />
-                    <Legend 
-                      wrapperStyle={{ color: '#e2e8f0' }}
+                    <Radar
+                      name="Benchmark"
+                      dataKey="benchmark"
+                      stroke="hsl(var(--muted-foreground))"
+                      fill="hsl(var(--muted-foreground))"
+                      fillOpacity={0.1}
                     />
                   </RadarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-slate-500">
+                <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                   Belum ada data tes fisik
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
-
-        {/* Injury Risk Details */}
-        {injuryRisk && (
-          <Card className={`border-2 ${getRiskBgColor(injuryRisk.overallRisk)}`}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Analisis Risiko Cedera
-              </CardTitle>
-              <CardDescription>
-                Assessment komprehensif berdasarkan beban latihan, readiness, dan pola training
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-white mb-2">Risk Factors:</h3>
-                <div className="space-y-2">
-                  {injuryRisk.factors.map((factor: any, idx: number) => (
-                    <div key={idx} className="flex items-start gap-2 text-sm">
-                      <Badge className={getRiskBgColor(factor.severity)}>
-                        {factor.severity}
-                      </Badge>
-                      <div>
-                        <div className="font-medium text-white">{factor.factor}: {factor.value}</div>
-                        <div className="text-slate-400">{factor.description}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Separator className="bg-slate-700" />
-
-              <div>
-                <h3 className="font-semibold text-white mb-2">Rekomendasi:</h3>
-                <ul className="space-y-1 text-sm text-slate-300">
-                  {injuryRisk.recommendations.map((rec: string, idx: number) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      {rec}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Baseline Info */}
-        <Card className="border-slate-800 bg-slate-900/50">
-          <CardHeader>
-            <CardTitle className="text-white">Baseline Metrics</CardTitle>
-            <CardDescription>Nilai baseline untuk perhitungan readiness</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div>
-              <div className="text-sm text-slate-400">Baseline VJ</div>
-              <div className="text-xl font-bold text-white">{profile?.baseline_vj || 40} cm</div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-400">Baseline RHR</div>
-              <div className="text-xl font-bold text-white">{profile?.baseline_rhr || 60} bpm</div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
