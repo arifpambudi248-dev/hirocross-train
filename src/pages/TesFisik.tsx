@@ -60,6 +60,9 @@ const CATEGORIES = [
 export default function TesFisik() {
   const [tests, setTests] = useState<PhysicalTest[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isCoach, setIsCoach] = useState(false);
+  const [athletes, setAthletes] = useState<any[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
   const [athleteName, setAthleteName] = useState<string>("");
   const [coachName, setCoachName] = useState<string>("Pelatih");
   const [sport, setSport] = useState<string>("Cabang Olahraga");
@@ -82,21 +85,52 @@ export default function TesFisik() {
     loadUser();
   }, []);
 
+  useEffect(() => {
+    if (selectedAthleteId) {
+      loadTests(selectedAthleteId);
+    }
+  }, [selectedAthleteId]);
+
   const loadUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setUserId(user.id);
-      loadTests(user.id);
       
-      // Load profile data
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("athlete_name")
-        .eq("id", user.id)
+      // Check if user is coach
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
         .single();
       
-      if (profile) {
-        setAthleteName(profile.athlete_name);
+      const userIsCoach = roleData?.role === 'coach';
+      setIsCoach(userIsCoach);
+
+      if (userIsCoach) {
+        // Load all athletes
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, athlete_name")
+          .order("athlete_name");
+        
+        if (profilesData && profilesData.length > 0) {
+          setAthletes(profilesData);
+          setSelectedAthleteId(profilesData[0].id);
+          setAthleteName(profilesData[0].athlete_name);
+        }
+      } else {
+        // Load own profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("athlete_name")
+          .eq("id", user.id)
+          .single();
+        
+        if (profile) {
+          setAthleteName(profile.athlete_name);
+        }
+        
+        setSelectedAthleteId(user.id);
       }
     }
   };
@@ -116,7 +150,7 @@ export default function TesFisik() {
   };
 
   const saveTest = async () => {
-    if (!userId || !formData.test_name || !formData.value) {
+    if (!selectedAthleteId || !formData.test_name || !formData.value) {
       toast.error("Harap lengkapi semua field");
       return;
     }
@@ -135,7 +169,7 @@ export default function TesFisik() {
       const { error } = await supabase
         .from("physical_tests")
         .insert([{
-          athlete_id: userId,
+          athlete_id: selectedAthleteId,
           test_date: validatedData.test_date,
           category: validatedData.category,
           test_name: validatedData.test_name,
@@ -147,7 +181,7 @@ export default function TesFisik() {
       if (error) throw error;
 
       toast.success("Tes berhasil disimpan");
-      loadTests(userId);
+      loadTests(selectedAthleteId);
       setShowDialog(false);
       setFormData({
         test_date: new Date().toISOString().split("T")[0],
@@ -251,6 +285,29 @@ export default function TesFisik() {
       <div className="container mx-auto px-4 py-6">
         {/* Header with gradient and Add Test button */}
         <div className="mb-6 rounded-lg border-2 border-white bg-gradient-to-r from-primary/70 to-primary p-6">
+          {/* Athlete selector for coaches */}
+          {isCoach && athletes.length > 0 && (
+            <div className="mb-4">
+              <Label className="text-white">Pilih Atlet</Label>
+              <Select value={selectedAthleteId} onValueChange={(val) => {
+                setSelectedAthleteId(val);
+                const athlete = athletes.find(a => a.id === val);
+                if (athlete) setAthleteName(athlete.athlete_name);
+              }}>
+                <SelectTrigger className="bg-white border-border mt-2">
+                  <SelectValue placeholder="Pilih atlet..." />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border z-50">
+                  {athletes.map((athlete) => (
+                    <SelectItem key={athlete.id} value={athlete.id}>
+                      {athlete.athlete_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           <div className="flex items-center justify-between">
             <h1 className="text-center flex-1 text-3xl font-bold text-white">Kondisi Fisik</h1>
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
