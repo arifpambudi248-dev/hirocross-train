@@ -250,12 +250,12 @@ export default function TesFisik() {
       <Navigation />
       <div className="container mx-auto px-4 py-6">
         {/* Header with gradient and Add Test button */}
-        <div className="mb-6 rounded-lg border-2 border-white bg-gradient-to-r from-cyan-700 to-blue-600 p-6">
+        <div className="mb-6 rounded-lg border-2 border-white bg-gradient-to-r from-primary/70 to-primary p-6">
           <div className="flex items-center justify-between">
             <h1 className="text-center flex-1 text-3xl font-bold text-white">Kondisi Fisik</h1>
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
               <DialogTrigger asChild>
-                <Button className="bg-white text-cyan-700 hover:bg-gray-100">
+                <Button className="bg-white text-primary hover:bg-gray-100">
                   <Plus className="h-4 w-4 mr-2" />
                   Tambah Tes
                 </Button>
@@ -497,7 +497,7 @@ export default function TesFisik() {
                     {chartData.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
-                        fill={index === 5 ? "hsl(199 89% 48%)" : "hsl(189 94% 43%)"} 
+                        fill={index === 5 ? "hsl(var(--primary))" : "hsl(var(--accent))"} 
                       />
                     ))}
                   </Bar>

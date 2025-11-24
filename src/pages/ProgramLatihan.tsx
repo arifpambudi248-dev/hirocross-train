@@ -610,7 +610,7 @@ export default function ProgramLatihan() {
                     <span className="text-sm text-slate-400">Total</span>
                     <span className="text-lg font-bold text-white">{format(currentWeekStart, "dd MMM", { locale: localeId })}</span>
                   </div>
-                  <div className="text-sm text-slate-400">Load <span className="text-xl font-bold text-cyan-400">{weeklyMetrics.totalLoad}</span></div>
+                  <div className="text-sm text-slate-400">Load <span className="text-xl font-bold text-primary">{weeklyMetrics.totalLoad}</span></div>
                 </div>
                 
                 <div className="space-y-1">
@@ -641,11 +641,11 @@ export default function ProgramLatihan() {
               return (
                 <Droppable key={idx} id={dayId}>
                   <div className="space-y-2">
-                    <div className={`text-center p-2 rounded-t-lg ${isToday ? 'bg-cyan-500/20' : 'bg-slate-900'} border-b border-slate-800`}>
+                    <div className={`text-center p-2 rounded-t-lg ${isToday ? 'bg-primary/20' : 'bg-slate-900'} border-b border-slate-800`}>
                       <div className="text-xs text-slate-400">
                         {format(day, "EEE", { locale: localeId })}
                       </div>
-                      <div className={`text-sm font-semibold ${isToday ? 'text-cyan-400' : 'text-white'}`}>
+                      <div className={`text-sm font-semibold ${isToday ? 'text-primary' : 'text-white'}`}>
                         {format(day, "dd MMM", { locale: localeId })}
                       </div>
                     </div>
@@ -677,15 +677,15 @@ export default function ProgramLatihan() {
                                 </div>
                                 
                                 {/* Metrics */}
-                                <div className="space-y-1 text-xs">
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">RPE</span>
-                                    <span className="font-semibold text-white">{session.rpe}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">Load</span>
-                                    <span className="font-semibold text-cyan-400">{session.load_final}</span>
-                                  </div>
+                                  <div className="space-y-1 text-xs">
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">RPE</span>
+                                      <span className="font-semibold text-white">{session.rpe}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">Load</span>
+                                      <span className="font-semibold text-primary">{session.load_final}</span>
+                                    </div>
                                 </div>
                                 
                                 {/* Intensity Bar */}

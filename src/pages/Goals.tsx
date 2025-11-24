@@ -204,7 +204,7 @@ export default function Goals() {
       case "achieved":
         return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Tercapai</Badge>;
       case "active":
-        return <Badge className="bg-blue-500"><Clock className="h-3 w-3 mr-1" />Aktif</Badge>;
+        return <Badge className="bg-primary text-primary-foreground"><Clock className="h-3 w-3 mr-1" />Aktif</Badge>;
       case "missed":
         return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" />Terlewat</Badge>;
       default:
