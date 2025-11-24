@@ -423,12 +423,12 @@ export default function Laporan() {
                           borderRadius: "6px",
                         }}
                       />
-                      <Bar dataKey="load" fill="hsl(var(--border))" opacity={0.3} />
+                      <Bar dataKey="load" fill="#eab308" opacity={0.6} name="Daily Load" />
                       <Line
                         type="monotone"
                         dataKey="fitness"
                         stroke="#06b6d4"
-                        name="Fitness"
+                        name="Fitness (CTL)"
                         strokeWidth={2.5}
                         dot={false}
                       />
@@ -436,7 +436,7 @@ export default function Laporan() {
                         type="monotone"
                         dataKey="fatigue"
                         stroke="#a855f7"
-                        name="Fatigue"
+                        name="Fatigue (ATL)"
                         strokeWidth={2.5}
                         dot={false}
                       />
@@ -472,11 +472,11 @@ export default function Laporan() {
                         }}
                         formatter={(value: number) => [`${value.toFixed(1)}%`, 'Form']}
                       />
-                      {/* Zone Reference Areas */}
-                      <ReferenceLine y={25} stroke="#dc2626" strokeDasharray="3 3" />
-                      <ReferenceLine y={5} stroke="#eab308" strokeDasharray="3 3" />
-                      <ReferenceLine y={-10} stroke="#6b7280" strokeDasharray="3 3" />
-                      <ReferenceLine y={-30} stroke="#22c55e" strokeDasharray="3 3" />
+                      {/* Zone boundaries - High Risk: ≤-30, Optimal: -30 to -10, Grey: -10 to 5, Fresh: 5 to 20, Transition: ≥20 */}
+                      <ReferenceLine y={20} stroke="#dc2626" strokeDasharray="3 3" label={{ value: 'Transition', position: 'right', fill: '#dc2626', fontSize: 10 }} />
+                      <ReferenceLine y={5} stroke="#3b82f6" strokeDasharray="3 3" label={{ value: 'Fresh', position: 'right', fill: '#3b82f6', fontSize: 10 }} />
+                      <ReferenceLine y={-10} stroke="#6b7280" strokeDasharray="3 3" label={{ value: 'Grey Zone', position: 'right', fill: '#6b7280', fontSize: 10 }} />
+                      <ReferenceLine y={-30} stroke="#22c55e" strokeDasharray="3 3" label={{ value: 'Optimal', position: 'right', fill: '#22c55e', fontSize: 10 }} />
                       
                       {/* Form Line with conditional coloring */}
                       <Line
