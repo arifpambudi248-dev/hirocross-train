@@ -135,9 +135,13 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={logo} alt="Hirocross Logo" className="h-20 w-auto" />
+            <img 
+              src={logo} 
+              alt="Hirocross Logo" 
+              className="h-16 sm:h-20 md:h-24 w-auto animate-fade-in" 
+            />
           </div>
-          <CardTitle className="text-2xl">HIROCROSS_TRAIN</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl animate-scale-in">HIROCROSS_TRAIN</CardTitle>
           <CardDescription>
             Sistem manajemen beban latihan dan periodisasi
           </CardDescription>

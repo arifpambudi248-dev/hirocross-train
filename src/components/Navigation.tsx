@@ -144,9 +144,13 @@ export const Navigation = () => {
               </SheetContent>
             </Sheet>
 
-            <div className="flex items-center gap-3">
-              <img src={logo} alt="Hirocross Logo" className="h-8 w-auto" />
-              <h1 className="text-xl font-bold text-primary">HIROCROSS_TRAIN</h1>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <img 
+                src={logo} 
+                alt="Hirocross Logo" 
+                className="h-6 sm:h-8 md:h-10 w-auto transition-transform duration-300 hover:scale-110" 
+              />
+              <h1 className="text-base sm:text-xl font-bold text-primary">HIROCROSS_TRAIN</h1>
             </div>
           </div>
 
