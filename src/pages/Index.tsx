@@ -1,12 +1,14 @@
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, TrendingUp, Activity, Target, Dumbbell, Heart, Users, AlertCircle, CheckCircle } from "lucide-react";
+import { Calendar, TrendingUp, Activity, Target, Dumbbell, Heart, Users, AlertCircle, CheckCircle, Shield, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { generateTrainingRecommendation } from "@/lib/trainingRecommendations";
+import { assessInjuryRisk, getRiskColor, getRiskBgColor } from "@/lib/injuryRisk";
+import { computeACWR } from "@/lib/trainingLoad";
 
 type AthleteStats = {
   athlete_id: string;
@@ -28,6 +30,10 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [teamStats, setTeamStats] = useState<AthleteStats[]>([]);
   const [teamTrends, setTeamTrends] = useState<any[]>([]);
+  const [riskAssessment, setRiskAssessment] = useState<any>(null);
+  const [acwrData, setAcwrData] = useState<any[]>([]);
+  const [riskReadinessData, setRiskReadinessData] = useState<any[]>([]);
+  const [riskLoadData, setRiskLoadData] = useState<any[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -120,9 +126,93 @@ const Index = () => {
     // If coach, load team data
     if (userIsCoach) {
       await loadTeamData();
+    } else {
+      // If athlete, load injury risk data
+      await loadInjuryRiskData(user.id);
     }
 
     setLoading(false);
+  }
+
+  async function loadInjuryRiskData(userId: string) {
+    const now = new Date();
+
+    // Get last 7 days readiness
+    const sevenDaysAgo = format(subDays(now, 7), "yyyy-MM-dd");
+    const { data: readinessLogs } = await supabase
+      .from("readiness_logs")
+      .select("date, readiness_score, readiness_zone")
+      .eq("athlete_id", userId)
+      .gte("date", sevenDaysAgo)
+      .order("date", { ascending: true });
+
+    const readinessScores = readinessLogs?.map(r => r.readiness_score) || [];
+    const readinessChartData = readinessLogs?.map(r => ({
+      date: format(new Date(r.date), "dd/MM"),
+      score: r.readiness_score,
+      zone: r.readiness_zone
+    })) || [];
+    setRiskReadinessData(readinessChartData);
+
+    // Get last 5 weeks of training load
+    const fiveWeeksAgo = format(subDays(now, 35), "yyyy-MM-dd");
+    const { data: sessions } = await supabase
+      .from("training_sessions")
+      .select("date, load_final")
+      .eq("user_id", userId)
+      .gte("date", fiveWeeksAgo)
+      .order("date", { ascending: true });
+
+    // Aggregate by week
+    const weeklyLoads: number[] = [];
+    const loadChartData: any[] = [];
+    
+    for (let i = 4; i >= 0; i--) {
+      const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
+      const weekStartStr = format(weekStart, "yyyy-MM-dd");
+      const weekEndStr = format(weekEnd, "yyyy-MM-dd");
+
+      const weekSessions = sessions?.filter(s => 
+        s.date >= weekStartStr && s.date <= weekEndStr
+      ) || [];
+
+      const weekLoad = weekSessions.reduce((sum, s) => sum + (s.load_final || 0), 0);
+      weeklyLoads.push(weekLoad);
+      
+      loadChartData.push({
+        week: i === 0 ? "Minggu Ini" : `${i} minggu lalu`,
+        load: weekLoad
+      });
+    }
+
+    setRiskLoadData(loadChartData.reverse());
+
+    // Calculate ACWR
+    const acwrPoints = computeACWR(
+      sessions?.map(s => ({ date: s.date, load: s.load_final || 0 })) || []
+    );
+    
+    const acwrChartData = acwrPoints.slice(-14).map(p => ({
+      date: format(new Date(p.date), "dd/MM"),
+      acwr: p.ratio
+    }));
+    setAcwrData(acwrChartData);
+
+    // Get current ACWR and current week load
+    const currentACWR = acwrPoints.length > 0 ? acwrPoints[acwrPoints.length - 1].ratio : 1.0;
+    const currentWeekLoad = weeklyLoads[weeklyLoads.length - 1] || 0;
+    const previousWeeks = weeklyLoads.slice(0, -1);
+
+    // Assess injury risk
+    const assessment = assessInjuryRisk(
+      currentACWR,
+      readinessScores,
+      previousWeeks,
+      currentWeekLoad
+    );
+
+    setRiskAssessment(assessment);
   }
 
   async function loadTeamData() {
@@ -399,7 +489,110 @@ const Index = () => {
 
         {/* Athlete Dashboard Overview */}
         {!isCoach && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <>
+            {/* Injury Risk Assessment */}
+            {riskAssessment && (
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Analisis Risiko Cedera
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <Alert className={getRiskBgColor(riskAssessment.risk)}>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle className="font-bold">
+                      Risiko: {riskAssessment.risk === 'low' ? 'Rendah' : 
+                               riskAssessment.risk === 'moderate' ? 'Sedang' : 
+                               riskAssessment.risk === 'high' ? 'Tinggi' : 'Sangat Tinggi'}
+                    </AlertTitle>
+                    <AlertDescription>
+                      <div className="mt-2 space-y-2">
+                        <p className="font-semibold">Rekomendasi:</p>
+                        <ul className="list-disc list-inside space-y-1">
+                          {riskAssessment.recommendations.map((rec: string, idx: number) => (
+                            <li key={idx} className="text-sm">{rec}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+
+                  {riskAssessment.factors && riskAssessment.factors.length > 0 && (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {riskAssessment.factors.map((factor: any, idx: number) => (
+                        <Card key={idx} className={getRiskBgColor(factor.severity)}>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm flex items-center justify-between">
+                              <span>{factor.name}</span>
+                              <span className={`text-xs ${getRiskColor(factor.severity)}`}>
+                                {factor.severity === 'low' ? 'Rendah' :
+                                 factor.severity === 'moderate' ? 'Sedang' :
+                                 factor.severity === 'high' ? 'Tinggi' : 'Sangat Tinggi'}
+                              </span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-xs text-muted-foreground">{factor.description}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ACWR Chart */}
+                  {acwrData.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">ACWR (2 Minggu Terakhir)</h4>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={acwrData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
+                          <YAxis domain={[0, 2]} stroke="hsl(var(--muted-foreground))" />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                          <Line type="monotone" dataKey="acwr" stroke="hsl(var(--primary))" strokeWidth={2} name="ACWR" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Weekly Load Chart */}
+                  {riskLoadData.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Beban Latihan Mingguan</h4>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={riskLoadData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" />
+                          <YAxis stroke="hsl(var(--muted-foreground))" />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                          <Bar dataKey="load" fill="hsl(var(--primary))" name="Load (AU)" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Readiness Trend */}
+                  {riskReadinessData.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Tren Readiness (7 Hari)</h4>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={riskReadinessData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
+                          <YAxis domain={[0, 100]} stroke="hsl(var(--muted-foreground))" />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                          <Line type="monotone" dataKey="score" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Readiness" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Load Mingguan (7 Hari)</CardTitle>
@@ -454,6 +647,7 @@ const Index = () => {
             </CardContent>
           </Card>
           </div>
+          </>
         )}
 
         {/* Feature Cards */}

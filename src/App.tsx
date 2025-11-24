@@ -10,13 +10,10 @@ import Auth from "./pages/Auth";
 import ProgramLatihan from "./pages/ProgramLatihan";
 import TesFisik from "./pages/TesFisik";
 import Readiness from "./pages/Readiness";
-import AnalisLoad from "./pages/AnalisLoad";
 import AnnualPlan from "./pages/AnnualPlan";
 import Laporan from "./pages/Laporan";
-import InjuryRisk from "./pages/InjuryRisk";
 import Profile from "./pages/Profile";
 import Historical from "./pages/Historical";
-import Goals from "./pages/Goals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,13 +68,9 @@ const App = () => {
             <Route path="/annual-plan" element={<AnnualPlan />} />
             <Route path="/program-latihan" element={<ProgramLatihan />} />
             <Route path="/tes-fisik" element={<TesFisik />} />
-            <Route path="/readiness" element={<Readiness />} />
-            <Route path="/analisis-load" element={<AnalisLoad />} />
             <Route path="/laporan" element={<Laporan />} />
-          <Route path="/injury-risk" element={<InjuryRisk />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/historical" element={<Historical />} />
-          <Route path="/goals" element={<Goals />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/historical" element={<Historical />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

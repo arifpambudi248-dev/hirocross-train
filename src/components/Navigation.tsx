@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
-import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, AlertTriangle, User, History, Goal, Menu, UserPlus } from "lucide-react";
+import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, UserPlus } from "lucide-react";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -104,11 +104,8 @@ export const Navigation = () => {
     { to: "/program-latihan", icon: ClipboardList, label: "Program Latihan" },
     { to: "/tes-fisik", icon: Target, label: "Tes Kondisi Fisik" },
     { to: "/readiness", icon: Activity, label: "Readiness" },
-    { to: "/analisis-load", icon: TrendingUp, label: "Analisis Load" },
     { to: "/laporan", icon: ClipboardList, label: "Laporan" },
-    { to: "/injury-risk", icon: AlertTriangle, label: "Injury Risk" },
-    { to: "/historical", icon: History, label: "Historis" },
-    { to: "/goals", icon: Goal, label: "Target" },
+    { to: "/historical", icon: History, label: "Historis & Target" },
     { to: "/profile", icon: User, label: "Profil" },
   ];
 

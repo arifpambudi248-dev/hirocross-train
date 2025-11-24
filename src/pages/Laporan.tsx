@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -412,32 +412,54 @@ export default function Laporan() {
         <Card>
           <CardHeader>
             <CardTitle>Acute:Chronic Workload Ratio (ACWR)</CardTitle>
+            <CardDescription>
+              Rasio beban akut (7 hari) terhadap beban kronis (28 hari). Zona optimal: 0.8-1.3
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {acwrData.length > 0 ? (
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={acwrData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis domain={[0, 2]} stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                      }}
-                    />
-                    <ReferenceLine y={0.8} stroke="hsl(var(--warning))" strokeDasharray="3 3" />
-                    <ReferenceLine y={1.3} stroke="hsl(var(--warning))" strokeDasharray="3 3" />
-                    <Line
-                      type="monotone"
-                      dataKey="ratio"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      name="ACWR"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="space-y-4">
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={acwrData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
+                      <YAxis domain={[0, 2]} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                        }}
+                      />
+                      <ReferenceLine y={0.8} stroke="hsl(var(--warning))" strokeDasharray="3 3" label="Batas Bawah" />
+                      <ReferenceLine y={1.3} stroke="hsl(var(--warning))" strokeDasharray="3 3" label="Batas Atas" />
+                      <Line
+                        type="monotone"
+                        dataKey="ratio"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        name="ACWR"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="p-3 bg-success/10 border border-success/20 rounded">
+                    <p className="text-muted-foreground">Zona Optimal</p>
+                    <p className="font-bold text-success">0.8 - 1.3</p>
+                    <p className="text-xs text-muted-foreground mt-1">Risiko cedera rendah</p>
+                  </div>
+                  <div className="p-3 bg-warning/10 border border-warning/20 rounded">
+                    <p className="text-muted-foreground">Underload</p>
+                    <p className="font-bold text-warning">&lt; 0.8</p>
+                    <p className="text-xs text-muted-foreground mt-1">Perlu peningkatan beban</p>
+                  </div>
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded">
+                    <p className="text-muted-foreground">Overload</p>
+                    <p className="font-bold text-destructive">&gt; 1.3</p>
+                    <p className="text-xs text-muted-foreground mt-1">Risiko cedera tinggi</p>
+                  </div>
+                </div>
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
