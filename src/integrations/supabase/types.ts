@@ -142,6 +142,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
           athlete_name: string
           avatar_url: string | null
           baseline_rhr: number | null
@@ -151,6 +152,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          age?: number | null
           athlete_name: string
           avatar_url?: string | null
           baseline_rhr?: number | null
@@ -160,6 +162,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          age?: number | null
           athlete_name?: string
           avatar_url?: string | null
           baseline_rhr?: number | null
