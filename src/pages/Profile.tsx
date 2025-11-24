@@ -592,32 +592,54 @@ export default function Profile() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {trainingZones.map((zone) => (
-                  <div
-                    key={zone.rpe}
-                    className="flex items-center gap-4 p-3 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
-                  >
-                    <div className={`w-12 h-12 rounded-full ${zone.color} flex items-center justify-center text-white font-bold text-lg`}>
-                      {zone.rpe}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold">{zone.name}</p>
-                        <Badge variant="outline" className="text-xs">
-                          {zone.percentage} HR Max
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{zone.description}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold">{zone.hrMin}-{zone.hrMax}</p>
-                      <p className="text-xs text-muted-foreground">bpm</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 font-semibold text-sm">RPE</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm">Target HR (bpm)</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm">Zona</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm">Deskripsi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trainingZones.map((zone) => (
+                      <tr 
+                        key={zone.rpe}
+                        className="border-b border-border/50 hover:bg-accent/5 transition-colors"
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg ${zone.color} flex items-center justify-center text-white font-bold shadow-lg`}>
+                              {zone.rpe}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-lg">
+                            {zone.hrMin}–{zone.hrMax}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {zone.percentage} HR Max
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge 
+                            variant="outline" 
+                            className={`${zone.color} text-white border-0 font-medium`}
+                          >
+                            {zone.name}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-muted-foreground">
+                          {zone.description}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <Alert className="mt-4">
+              <Alert className="mt-6">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   Gunakan zona latihan ini sebagai panduan untuk mengatur intensitas latihan. RPE 1-10 sesuai dengan persentase HR Max Anda.
