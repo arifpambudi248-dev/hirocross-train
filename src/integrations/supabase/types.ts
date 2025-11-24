@@ -104,6 +104,27 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_athletes: {
+        Row: {
+          assigned_at: string
+          athlete_id: string
+          coach_id: string
+          id: string
+        }
+        Insert: {
+          assigned_at?: string
+          athlete_id: string
+          coach_id: string
+          id?: string
+        }
+        Update: {
+          assigned_at?: string
+          athlete_id?: string
+          coach_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       physical_tests: {
         Row: {
           athlete_id: string
