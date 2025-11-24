@@ -400,7 +400,7 @@ export default function Laporan() {
                 {/* Top Chart - Training Load with Fitness/Fatigue Lines */}
                 <div className="h-80 border-b border-border/50">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={fitnessData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                    <ComposedChart data={fitnessData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                       <XAxis 
                         dataKey="date" 
@@ -423,6 +423,7 @@ export default function Laporan() {
                           borderRadius: "6px",
                         }}
                       />
+                      <Legend />
                       <Bar dataKey="load" fill="#eab308" opacity={0.6} name="Daily Load" />
                       <Line
                         type="monotone"
@@ -440,14 +441,36 @@ export default function Laporan() {
                         strokeWidth={2.5}
                         dot={false}
                       />
-                    </BarChart>
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Bottom Chart - Form % with Zones */}
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={fitnessData} margin={{ top: 0, right: 5, left: 5, bottom: 5 }}>
+                    <ComposedChart data={fitnessData} margin={{ top: 0, right: 5, left: 5, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="highRisk" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#dc2626" stopOpacity={0.2} />
+                          <stop offset="100%" stopColor="#dc2626" stopOpacity={0.2} />
+                        </linearGradient>
+                        <linearGradient id="optimal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#22c55e" stopOpacity={0.2} />
+                          <stop offset="100%" stopColor="#22c55e" stopOpacity={0.2} />
+                        </linearGradient>
+                        <linearGradient id="greyZone" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#6b7280" stopOpacity={0.2} />
+                          <stop offset="100%" stopColor="#6b7280" stopOpacity={0.2} />
+                        </linearGradient>
+                        <linearGradient id="fresh" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2} />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2} />
+                        </linearGradient>
+                        <linearGradient id="transition" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#eab308" stopOpacity={0.2} />
+                          <stop offset="100%" stopColor="#eab308" stopOpacity={0.2} />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                       <XAxis 
                         dataKey="date" 
@@ -472,45 +495,46 @@ export default function Laporan() {
                         }}
                         formatter={(value: number) => [`${value.toFixed(1)}%`, 'Form']}
                       />
-                      {/* Zone boundaries - High Risk: ≤-30, Optimal: -30 to -10, Grey: -10 to 5, Fresh: 5 to 20, Transition: ≥20 */}
-                      <ReferenceLine y={20} stroke="#dc2626" strokeDasharray="3 3" label={{ value: 'Transition', position: 'right', fill: '#dc2626', fontSize: 10 }} />
-                      <ReferenceLine y={5} stroke="#3b82f6" strokeDasharray="3 3" label={{ value: 'Fresh', position: 'right', fill: '#3b82f6', fontSize: 10 }} />
-                      <ReferenceLine y={-10} stroke="#6b7280" strokeDasharray="3 3" label={{ value: 'Grey Zone', position: 'right', fill: '#6b7280', fontSize: 10 }} />
-                      <ReferenceLine y={-30} stroke="#22c55e" strokeDasharray="3 3" label={{ value: 'Optimal', position: 'right', fill: '#22c55e', fontSize: 10 }} />
+                      {/* Zone colored areas */}
+                      <ReferenceLine y={20} stroke="#eab308" strokeDasharray="3 3" />
+                      <ReferenceLine y={5} stroke="#3b82f6" strokeDasharray="3 3" />
+                      <ReferenceLine y={-10} stroke="#6b7280" strokeDasharray="3 3" />
+                      <ReferenceLine y={-30} stroke="#22c55e" strokeDasharray="3 3" />
                       
-                      {/* Form Line with conditional coloring */}
+                      {/* Form Line */}
                       <Line
                         type="monotone"
                         dataKey="form"
                         stroke="#f59e0b"
                         strokeWidth={2}
                         dot={false}
+                        name="Form (TSB)"
                       />
-                    </LineChart>
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Zone Legend */}
                 <div className="flex justify-end gap-4 text-xs pt-2">
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-red-500 rounded-sm" />
-                    <span className="text-muted-foreground">High Risk</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-sm" />
-                    <span className="text-muted-foreground">Transition</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-cyan-400 rounded-sm" />
-                    <span className="text-muted-foreground">Fresh</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-gray-500 rounded-sm" />
-                    <span className="text-muted-foreground">Grey Zone</span>
+                    <div className="w-3 h-3 bg-red-600 rounded-sm" />
+                    <span className="text-muted-foreground">High Risk (≤-30)</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 bg-green-500 rounded-sm" />
-                    <span className="text-muted-foreground">Optimal</span>
+                    <span className="text-muted-foreground">Optimal (-30 to -10)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-gray-500 rounded-sm" />
+                    <span className="text-muted-foreground">Grey Zone (-10 to 5)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-blue-500 rounded-sm" />
+                    <span className="text-muted-foreground">Fresh (5 to 20)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-sm" />
+                    <span className="text-muted-foreground">Transition (≥20)</span>
                   </div>
                 </div>
               </div>
