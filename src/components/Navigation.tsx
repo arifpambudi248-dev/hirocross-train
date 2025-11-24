@@ -93,7 +93,9 @@ export const Navigation = () => {
     { to: "/athlete-management", icon: Users, label: "Kelola Atlet" },
   ];
 
-  const navItems = isCoach ? [...baseNavItems, ...coachNavItems, { to: "/profile", icon: User, label: "Profil" }] : [...baseNavItems, { to: "/profile", icon: User, label: "Profil" }];
+  const navItems = isCoach 
+    ? [...baseNavItems, ...coachNavItems] 
+    : [...baseNavItems, { to: "/profile", icon: User, label: "Profil" }];
 
   return (
     <nav className="border-b border-border bg-card">

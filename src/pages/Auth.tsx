@@ -14,6 +14,7 @@ const signupSchema = z.object({
   email: z.string().trim().email({ message: "Email tidak valid" }),
   password: z.string().min(6, { message: "Password minimal 6 karakter" }),
   athleteName: z.string().trim().min(2, { message: "Nama minimal 2 karakter" }).max(100),
+  role: z.enum(["athlete", "coach"], { message: "Pilih role yang valid" }),
 });
 
 const loginSchema = z.object({
@@ -29,6 +30,7 @@ export default function Auth() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [athleteName, setAthleteName] = useState("");
+  const [role, setRole] = useState<"athlete" | "coach">("athlete");
   
   // Login form
   const [loginEmail, setLoginEmail] = useState("");
@@ -60,6 +62,7 @@ export default function Auth() {
         email: signupEmail,
         password: signupPassword,
         athleteName,
+        role,
       });
 
       const redirectUrl = `${window.location.origin}/`;
@@ -71,6 +74,7 @@ export default function Auth() {
           emailRedirectTo: redirectUrl,
           data: {
             athlete_name: validated.athleteName,
+            role: validated.role,
           },
         },
       });
@@ -185,7 +189,7 @@ export default function Auth() {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nama Atlet</Label>
+                  <Label htmlFor="signup-name">Nama Lengkap</Label>
                   <Input
                     id="signup-name"
                     type="text"
@@ -216,6 +220,19 @@ export default function Auth() {
                     onChange={(e) => setSignupPassword(e.target.value)}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-role">Daftar Sebagai</Label>
+                  <select
+                    id="signup-role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as "athlete" | "coach")}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    required
+                  >
+                    <option value="athlete">Atlet</option>
+                    <option value="coach">Pelatih</option>
+                  </select>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Loading..." : "Sign Up"}
