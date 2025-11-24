@@ -22,7 +22,8 @@ import {
   Tooltip, 
   ResponsiveContainer,
   Legend,
-  ReferenceLine
+  ReferenceLine,
+  ComposedChart
 } from "recharts";
 import { 
   aggregateDailyLoad, 
@@ -359,46 +360,159 @@ export default function Laporan() {
         {/* Fitness-Fatigue-Form Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Fitness-Fatigue-Form (CTL/ATL/TSB)</CardTitle>
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle>Fitness-Fatigue-Form Analysis</CardTitle>
+                <CardDescription className="mt-1">
+                  {fitnessData.length > 0 && `${Math.floor(fitnessData.length / 7)} weeks ${fitnessData.length % 7} days`}
+                </CardDescription>
+              </div>
+              {latestFitness && (
+                <div className="flex gap-6 text-sm">
+                  <div className="text-right">
+                    <p className="text-muted-foreground">Fitness</p>
+                    <p className="text-3xl font-bold text-cyan-400">{latestFitness.fitness.toFixed(0)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-muted-foreground">Fatigue</p>
+                    <p className="text-3xl font-bold text-purple-400">{latestFitness.fatigue.toFixed(0)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-muted-foreground">Form</p>
+                    <p className="text-3xl font-bold text-yellow-400">{latestFitness.form.toFixed(0)}%</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-muted-foreground">Ramp</p>
+                    <p className="text-3xl font-bold text-foreground">
+                      {fitnessData.length > 1 
+                        ? ((fitnessData[fitnessData.length - 1].load - fitnessData[fitnessData.length - 2].load) / 
+                           fitnessData[fitnessData.length - 2].load * 100).toFixed(1)
+                        : "0.0"}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {fitnessData.length > 0 ? (
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={fitnessData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                      }}
-                    />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="fitness"
-                      stroke="hsl(var(--primary))"
-                      name="CTL (Fitness)"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="fatigue"
-                      stroke="hsl(var(--destructive))"
-                      name="ATL (Fatigue)"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="form"
-                      stroke="hsl(var(--success))"
-                      name="TSB (Form)"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="space-y-1">
+                {/* Top Chart - Training Load with Fitness/Fatigue Lines */}
+                <div className="h-80 border-b border-border/50">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={fitnessData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="hsl(var(--muted-foreground))"
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return `${date.getDate()}/${date.getMonth() + 1}`;
+                        }}
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))"
+                        tick={{ fontSize: 11 }}
+                        label={{ value: 'Training load per day', angle: -90, position: 'insideLeft', style: { fontSize: 11 } }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "6px",
+                        }}
+                      />
+                      <Bar dataKey="load" fill="hsl(var(--border))" opacity={0.3} />
+                      <Line
+                        type="monotone"
+                        dataKey="fitness"
+                        stroke="#06b6d4"
+                        name="Fitness"
+                        strokeWidth={2.5}
+                        dot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="fatigue"
+                        stroke="#a855f7"
+                        name="Fatigue"
+                        strokeWidth={2.5}
+                        dot={false}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Bottom Chart - Form % with Zones */}
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={fitnessData} margin={{ top: 0, right: 5, left: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="hsl(var(--muted-foreground))"
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return `${date.getDate()}/${date.getMonth() + 1}`;
+                        }}
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))"
+                        tick={{ fontSize: 11 }}
+                        domain={[-40, 40]}
+                        label={{ value: 'Form, %', angle: -90, position: 'insideLeft', style: { fontSize: 11 } }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "6px",
+                        }}
+                        formatter={(value: number) => [`${value.toFixed(1)}%`, 'Form']}
+                      />
+                      {/* Zone Reference Areas */}
+                      <ReferenceLine y={25} stroke="#dc2626" strokeDasharray="3 3" />
+                      <ReferenceLine y={5} stroke="#eab308" strokeDasharray="3 3" />
+                      <ReferenceLine y={-10} stroke="#6b7280" strokeDasharray="3 3" />
+                      <ReferenceLine y={-30} stroke="#22c55e" strokeDasharray="3 3" />
+                      
+                      {/* Form Line with conditional coloring */}
+                      <Line
+                        type="monotone"
+                        dataKey="form"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Zone Legend */}
+                <div className="flex justify-end gap-4 text-xs pt-2">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-red-500 rounded-sm" />
+                    <span className="text-muted-foreground">High Risk</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-sm" />
+                    <span className="text-muted-foreground">Transition</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-cyan-400 rounded-sm" />
+                    <span className="text-muted-foreground">Fresh</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-gray-500 rounded-sm" />
+                    <span className="text-muted-foreground">Grey Zone</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-green-500 rounded-sm" />
+                    <span className="text-muted-foreground">Optimal</span>
+                  </div>
+                </div>
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
