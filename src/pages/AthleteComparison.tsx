@@ -84,23 +84,40 @@ export default function AthleteComparison() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: assignments } = await supabase
+      const { data: assignments, error: assignError } = await supabase
         .from("coach_athletes")
         .select("athlete_id")
         .eq("coach_id", user.id);
 
+      if (assignError) {
+        console.error("Error loading assignments:", assignError);
+      }
+
       if (!assignments || assignments.length === 0) {
         setAthletes([]);
         setIsLoading(false);
+        toast({
+          title: "Belum Ada Atlet",
+          description: "Silakan assign atau tambahkan atlet terlebih dahulu di halaman Kelola Atlet",
+        });
         return;
       }
 
       const athleteIds = assignments.map(a => a.athlete_id);
 
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profileError } = await supabase
         .from("profiles")
         .select("id, athlete_name, avatar_url")
         .in("id", athleteIds);
+
+      if (profileError) {
+        console.error("Error loading profiles:", profileError);
+        toast({
+          title: "Error",
+          description: "Gagal memuat profil atlet",
+          variant: "destructive",
+        });
+      }
 
       if (profiles) {
         setAthletes(profiles);
