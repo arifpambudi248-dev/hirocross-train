@@ -1,85 +1,237 @@
 import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { User, Plus } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip } from "recharts";
+import { Plus, Trash2, TrendingUp, Award } from "lucide-react";
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip, ResponsiveContainer } from "recharts";
 import type { PhysicalTest } from "@/types/database";
-import { physicalTestSchema } from "@/lib/validationSchemas";
-import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
-import { z } from "zod";
 
-// Benchmark values for each category (5-scale: Elite, Excellent, Good, Average, Poor)
+// Comprehensive benchmark definitions with 5-level scoring
 const BENCHMARKS = {
-  endurance: [
-    { testName: "VO2max", elite: 65, excellent: 60, good: 50, average: 40, poor: 35, unit: "ml/kg/min", inverse: false },
-    { testName: "Cooper Test", elite: 3200, excellent: 3000, good: 2600, average: 2200, poor: 1900, unit: "m", inverse: false },
-    { testName: "Beep Test", elite: 15, excellent: 13, good: 10, average: 7, poor: 5, unit: "level", inverse: false },
+  daya_tahan: [
+    { 
+      testName: "VO2max", 
+      scale5: 65, scale4: 55, scale3: 45, scale2: 40, scale1: 35,
+      unit: "ml/kg/min", 
+      inverse: false,
+      description: "Konsumsi oksigen maksimal"
+    },
+    { 
+      testName: "Cooper Test (12 min)", 
+      scale5: 3200, scale4: 2800, scale3: 2400, scale2: 2200, scale1: 2000,
+      unit: "m", 
+      inverse: false,
+      description: "Jarak lari 12 menit"
+    },
+    { 
+      testName: "Beep Test", 
+      scale5: 15, scale4: 12, scale3: 10, scale2: 7, scale1: 5,
+      unit: "level", 
+      inverse: false,
+      description: "Multistage fitness test"
+    },
   ],
-  speed: [
-    { testName: "10m Sprint", elite: 1.6, excellent: 1.7, good: 1.85, average: 2.0, poor: 2.2, unit: "s", inverse: true },
-    { testName: "20m Sprint", elite: 2.8, excellent: 3.0, good: 3.2, average: 3.5, poor: 3.8, unit: "s", inverse: true },
-    { testName: "40m Sprint", elite: 4.9, excellent: 5.2, good: 5.6, average: 6.0, poor: 6.5, unit: "s", inverse: true },
+  kecepatan: [
+    { 
+      testName: "Sprint 10m", 
+      scale5: 1.6, scale4: 1.75, scale3: 1.9, scale2: 2.05, scale1: 2.2,
+      unit: "s", 
+      inverse: true,
+      description: "Waktu sprint 10 meter"
+    },
+    { 
+      testName: "Sprint 20m", 
+      scale5: 2.8, scale4: 3.0, scale3: 3.25, scale2: 3.5, scale1: 3.8,
+      unit: "s", 
+      inverse: true,
+      description: "Waktu sprint 20 meter"
+    },
+    { 
+      testName: "Sprint 40m", 
+      scale5: 4.9, scale4: 5.2, scale3: 5.6, scale2: 6.0, scale1: 6.5,
+      unit: "s", 
+      inverse: true,
+      description: "Waktu sprint 40 meter"
+    },
   ],
-  strength: [
-    { testName: "Squat 1RM", elite: 2.5, excellent: 2.0, good: 1.5, average: 1.2, poor: 1.0, unit: "x BW", inverse: false },
-    { testName: "Bench Press 1RM", elite: 1.8, excellent: 1.5, good: 1.2, average: 1.0, poor: 0.8, unit: "x BW", inverse: false },
-    { testName: "Deadlift 1RM", elite: 3.0, excellent: 2.5, good: 2.0, average: 1.5, poor: 1.2, unit: "x BW", inverse: false },
+  kekuatan: [
+    { 
+      testName: "Back Squat 1RM", 
+      scale5: 2.5, scale4: 2.0, scale3: 1.5, scale2: 1.2, scale1: 1.0,
+      unit: "x BW", 
+      inverse: false,
+      description: "1 Rep Max relatif terhadap berat badan"
+    },
+    { 
+      testName: "Bench Press 1RM", 
+      scale5: 1.8, scale4: 1.5, scale3: 1.2, scale2: 1.0, scale1: 0.8,
+      unit: "x BW", 
+      inverse: false,
+      description: "1 Rep Max relatif terhadap berat badan"
+    },
+    { 
+      testName: "Deadlift 1RM", 
+      scale5: 3.0, scale4: 2.5, scale3: 2.0, scale2: 1.5, scale1: 1.2,
+      unit: "x BW", 
+      inverse: false,
+      description: "1 Rep Max relatif terhadap berat badan"
+    },
+    { 
+      testName: "Pull Up Max", 
+      scale5: 20, scale4: 15, scale3: 10, scale2: 7, scale1: 5,
+      unit: "reps", 
+      inverse: false,
+      description: "Jumlah maksimal pull up"
+    },
   ],
-  agility: [
-    { testName: "T-Test", elite: 8.5, excellent: 9.0, good: 10.0, average: 11.0, poor: 12.0, unit: "s", inverse: true },
-    { testName: "Illinois Test", elite: 14.0, excellent: 15.0, good: 16.5, average: 18.0, poor: 19.5, unit: "s", inverse: true },
-    { testName: "505 Agility", elite: 2.0, excellent: 2.2, good: 2.4, average: 2.6, poor: 2.8, unit: "s", inverse: true },
+  kelincahan: [
+    { 
+      testName: "T-Test", 
+      scale5: 8.5, scale4: 9.5, scale3: 10.5, scale2: 11.5, scale1: 12.5,
+      unit: "s", 
+      inverse: true,
+      description: "Tes kelincahan bentuk T"
+    },
+    { 
+      testName: "Illinois Agility Test", 
+      scale5: 14.0, scale4: 15.5, scale3: 17.0, scale2: 18.5, scale1: 20.0,
+      unit: "s", 
+      inverse: true,
+      description: "Tes kelincahan Illinois"
+    },
+    { 
+      testName: "505 Agility Test", 
+      scale5: 2.0, scale4: 2.2, scale3: 2.4, scale2: 2.6, scale1: 2.8,
+      unit: "s", 
+      inverse: true,
+      description: "Tes kelincahan 5-0-5"
+    },
+    { 
+      testName: "Hexagon Test", 
+      scale5: 10.0, scale4: 11.5, scale3: 13.0, scale2: 14.5, scale1: 16.0,
+      unit: "s", 
+      inverse: true,
+      description: "Tes kelincahan hexagon"
+    },
   ],
-  flexibility: [
-    { testName: "Sit and Reach", elite: 25, excellent: 20, good: 15, average: 10, poor: 5, unit: "cm", inverse: false },
-    { testName: "Shoulder Flexibility", elite: -5, excellent: 0, good: 5, average: 10, poor: 15, unit: "cm", inverse: true },
+  fleksibilitas: [
+    { 
+      testName: "Sit and Reach", 
+      scale5: 25, scale4: 20, scale3: 15, scale2: 10, scale1: 5,
+      unit: "cm", 
+      inverse: false,
+      description: "Fleksibilitas hamstring"
+    },
+    { 
+      testName: "Shoulder Flexibility", 
+      scale5: -5, scale4: 0, scale3: 5, scale2: 10, scale1: 15,
+      unit: "cm", 
+      inverse: true,
+      description: "Jarak antara tangan di belakang"
+    },
+    { 
+      testName: "Hip Flexion", 
+      scale5: 130, scale4: 120, scale3: 110, scale2: 100, scale1: 90,
+      unit: "deg", 
+      inverse: false,
+      description: "Range of motion pinggul"
+    },
   ],
   power: [
-    { testName: "CMJ", elite: 65, excellent: 55, good: 45, average: 35, poor: 25, unit: "cm", inverse: false },
-    { testName: "Broad Jump", elite: 310, excellent: 280, good: 240, average: 200, poor: 170, unit: "cm", inverse: false },
-    { testName: "Medicine Ball Throw", elite: 14, excellent: 12, good: 10, average: 8, poor: 6, unit: "m", inverse: false },
+    { 
+      testName: "CMJ (Counter Movement Jump)", 
+      scale5: 65, scale4: 55, scale3: 45, scale2: 35, scale1: 25,
+      unit: "cm", 
+      inverse: false,
+      description: "Lompat vertikal dengan ayunan"
+    },
+    { 
+      testName: "Standing Broad Jump", 
+      scale5: 310, scale4: 270, scale3: 230, scale2: 200, scale1: 170,
+      unit: "cm", 
+      inverse: false,
+      description: "Lompat jauh dari posisi berdiri"
+    },
+    { 
+      testName: "Medicine Ball Throw", 
+      scale5: 14, scale4: 12, scale3: 10, scale2: 8, scale1: 6,
+      unit: "m", 
+      inverse: false,
+      description: "Lempar medicine ball overhead"
+    },
+    { 
+      testName: "Drop Jump", 
+      scale5: 70, scale4: 60, scale3: 50, scale2: 40, scale1: 30,
+      unit: "cm", 
+      inverse: false,
+      description: "Lompat setelah turun dari box"
+    },
   ],
 };
 
 const CATEGORIES = [
-  { value: "endurance", label: "Daya Tahan" },
-  { value: "speed", label: "Kecepatan" },
-  { value: "strength", label: "Kekuatan" },
-  { value: "agility", label: "Kelincahan" },
-  { value: "flexibility", label: "Fleksibilitas" },
+  { value: "daya_tahan", label: "Daya Tahan" },
+  { value: "kecepatan", label: "Kecepatan" },
+  { value: "kekuatan", label: "Kekuatan" },
+  { value: "kelincahan", label: "Kelincahan" },
+  { value: "fleksibilitas", label: "Fleksibilitas" },
   { value: "power", label: "Power" },
 ];
 
+// Function to calculate score (1-5) based on benchmark
+function calculateScore(value: number, benchmark: any): number {
+  if (benchmark.inverse) {
+    if (value <= benchmark.scale5) return 5;
+    if (value <= benchmark.scale4) return 4;
+    if (value <= benchmark.scale3) return 3;
+    if (value <= benchmark.scale2) return 2;
+    return 1;
+  } else {
+    if (value >= benchmark.scale5) return 5;
+    if (value >= benchmark.scale4) return 4;
+    if (value >= benchmark.scale3) return 3;
+    if (value >= benchmark.scale2) return 2;
+    return 1;
+  }
+}
+
+// Function to get score color
+function getScoreColor(score: number): string {
+  if (score === 5) return "bg-green-500 text-white";
+  if (score === 4) return "bg-blue-500 text-white";
+  if (score === 3) return "bg-yellow-500 text-black";
+  if (score === 2) return "bg-orange-500 text-white";
+  return "bg-red-500 text-white";
+}
+
+// Function to get score label
+function getScoreLabel(score: number): string {
+  if (score === 5) return "Excellent";
+  if (score === 4) return "Good";
+  if (score === 3) return "Average";
+  if (score === 2) return "Below Average";
+  return "Poor";
+}
+
 export default function TesFisik() {
   const [tests, setTests] = useState<PhysicalTest[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
   const [athletes, setAthletes] = useState<any[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
-  const [athleteName, setAthleteName] = useState<string>("");
-  const [coachName, setCoachName] = useState<string>("Pelatih");
-  const [sport, setSport] = useState<string>("Cabang Olahraga");
-  const [year, setYear] = useState<string>(new Date().getFullYear().toString());
-  const [age, setAge] = useState<number>(20);
-  const [weight, setWeight] = useState<number>(55);
-  const [height, setHeight] = useState<number>(1.5);
-  const [gender, setGender] = useState<string>("Pria");
   const [showDialog, setShowDialog] = useState(false);
-  const [formData, setFormData] = useState<Partial<PhysicalTest>>({
-    test_date: new Date().toISOString().split("T")[0],
-    category: "endurance",
-    test_name: "",
-    value: 0,
-    unit: "",
-    notes: "",
-  });
+  const [selectedCategory, setSelectedCategory] = useState<string>("daya_tahan");
+  const [selectedTestName, setSelectedTestName] = useState<string>("");
+  const [testValue, setTestValue] = useState<string>("");
+  const [testDate, setTestDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [notes, setNotes] = useState<string>("");
+  const [calculatedScore, setCalculatedScore] = useState<number | null>(null);
 
   useEffect(() => {
     loadUser();
@@ -91,12 +243,23 @@ export default function TesFisik() {
     }
   }, [selectedAthleteId]);
 
+  // Auto-calculate score when value changes
+  useEffect(() => {
+    if (selectedTestName && testValue) {
+      const allBenchmarks = Object.values(BENCHMARKS).flat();
+      const benchmark = allBenchmarks.find(b => b.testName === selectedTestName);
+      if (benchmark) {
+        const score = calculateScore(parseFloat(testValue), benchmark);
+        setCalculatedScore(score);
+      }
+    } else {
+      setCalculatedScore(null);
+    }
+  }, [selectedTestName, testValue]);
+
   const loadUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      setUserId(user.id);
-      
-      // Check if user is coach
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
@@ -107,7 +270,6 @@ export default function TesFisik() {
       setIsCoach(userIsCoach);
 
       if (userIsCoach) {
-        // Load all athletes
         const { data: profilesData } = await supabase
           .from("profiles")
           .select("id, athlete_name")
@@ -116,20 +278,8 @@ export default function TesFisik() {
         if (profilesData && profilesData.length > 0) {
           setAthletes(profilesData);
           setSelectedAthleteId(profilesData[0].id);
-          setAthleteName(profilesData[0].athlete_name);
         }
       } else {
-        // Load own profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("athlete_name")
-          .eq("id", user.id)
-          .single();
-        
-        if (profile) {
-          setAthleteName(profile.athlete_name);
-        }
-        
         setSelectedAthleteId(user.id);
       }
     }
@@ -143,39 +293,37 @@ export default function TesFisik() {
       .order("test_date", { ascending: false });
 
     if (error) {
-      handleError(error, getFriendlyErrorMessage(error));
+      toast.error("Gagal memuat data tes");
     } else {
       setTests((data as any[]) || []);
     }
   };
 
   const saveTest = async () => {
-    if (!selectedAthleteId || !formData.test_name || !formData.value) {
+    if (!selectedAthleteId || !selectedTestName || !testValue) {
       toast.error("Harap lengkapi semua field");
       return;
     }
 
-    try {
-      // Validate input data
-      const validatedData = physicalTestSchema.parse({
-        test_date: formData.test_date,
-        category: formData.category,
-        test_name: formData.test_name,
-        value: formData.value,
-        unit: formData.unit,
-        notes: formData.notes || undefined,
-      });
+    const allBenchmarks = Object.values(BENCHMARKS).flat();
+    const benchmark = allBenchmarks.find(b => b.testName === selectedTestName);
+    
+    if (!benchmark) {
+      toast.error("Benchmark tidak ditemukan");
+      return;
+    }
 
+    try {
       const { error } = await supabase
         .from("physical_tests")
         .insert([{
           athlete_id: selectedAthleteId,
-          test_date: validatedData.test_date,
-          category: validatedData.category,
-          test_name: validatedData.test_name,
-          value: validatedData.value,
-          unit: validatedData.unit,
-          notes: validatedData.notes || null,
+          test_date: testDate,
+          category: selectedCategory,
+          test_name: selectedTestName,
+          value: parseFloat(testValue),
+          unit: benchmark.unit,
+          notes: notes || null,
         }]);
 
       if (error) throw error;
@@ -183,121 +331,283 @@ export default function TesFisik() {
       toast.success("Tes berhasil disimpan");
       loadTests(selectedAthleteId);
       setShowDialog(false);
-      setFormData({
-        test_date: new Date().toISOString().split("T")[0],
-        category: "endurance",
-        test_name: "",
-        value: 0,
-        unit: "",
-        notes: "",
-      });
+      resetForm();
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        toast.error(error.errors[0].message);
-      } else {
-        handleError(error, getFriendlyErrorMessage(error));
-      }
+      toast.error("Gagal menyimpan tes");
+      console.error(error);
     }
   };
 
-  // Calculate BMI
-  const bmi = weight / (height * height);
-  const bmiCategory = bmi < 18.5 ? "Kurus" : bmi < 25 ? "Normal" : "Overweight";
-  
-  // Prepare chart data - get all tests and normalize scores to percentages
-  const chartData = tests.map((test) => {
-    // Find benchmark for this test
-    let percentage = 0;
-    const allBenchmarks = Object.values(BENCHMARKS).flat();
-    const benchmark = allBenchmarks.find(b => b.testName === test.test_name);
-    
-    if (benchmark) {
-      if (benchmark.inverse) {
-        percentage = Math.max(0, Math.min(100, 
-          ((benchmark.poor - test.value) / (benchmark.poor - benchmark.elite)) * 100
-        ));
-      } else {
-        percentage = Math.max(0, Math.min(100, 
-          (test.value / benchmark.elite) * 100
-        ));
-      }
+  const deleteTest = async (id: string) => {
+    if (!confirm("Hapus data tes ini?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("physical_tests")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Tes berhasil dihapus");
+      loadTests(selectedAthleteId);
+    } catch (error) {
+      toast.error("Gagal menghapus tes");
     }
-    
-    return {
-      name: test.test_name,
-      percentage: Math.round(percentage),
-      actual: percentage,
-      benchmark: 100,
-    };
-  }).slice(0, 11); // Show up to 11 tests like in the reference
+  };
 
-  // Calculate overall performance percentage
-  const overallPerformance = chartData.length > 0 
-    ? Math.round(chartData.reduce((sum, item) => sum + item.percentage, 0) / chartData.length)
-    : 0;
+  const resetForm = () => {
+    setSelectedTestName("");
+    setTestValue("");
+    setTestDate(new Date().toISOString().split("T")[0]);
+    setNotes("");
+    setCalculatedScore(null);
+  };
 
-  // Prepare radar chart data - get latest test for each benchmark
+  // Get available test names for selected category
+  const availableTests = BENCHMARKS[selectedCategory as keyof typeof BENCHMARKS] || [];
+
+  // Prepare radar chart data - only use tests that have been performed
   const radarData = (() => {
     const allBenchmarks = Object.values(BENCHMARKS).flat();
-    
-    return allBenchmarks.slice(0, 11).map(benchmark => {
-      const latestTest = tests
-        .filter(t => t.test_name === benchmark.testName)
-        .sort((a, b) => new Date(b.test_date).getTime() - new Date(a.test_date).getTime())[0];
-      
-      if (!latestTest) {
-        return {
-          subject: benchmark.testName,
-          athlete: 0,
-          elite: 100,
-          excellent: 85,
-          good: 65,
-          average: 50,
-        };
+    const performedTests = tests.filter(t => {
+      const benchmark = allBenchmarks.find(b => b.testName === t.test_name);
+      return benchmark !== undefined;
+    });
+
+    // Get latest test for each unique test name
+    const latestTestsMap = new Map<string, PhysicalTest>();
+    performedTests.forEach(test => {
+      const existing = latestTestsMap.get(test.test_name);
+      if (!existing || new Date(test.test_date) > new Date(existing.test_date)) {
+        latestTestsMap.set(test.test_name, test);
       }
-      
-      // Normalize the value to percentage (0-100)
-      let athleteScore = 0;
-      if (benchmark.inverse) {
-        athleteScore = Math.max(0, Math.min(100, 
-          ((benchmark.poor - latestTest.value) / (benchmark.poor - benchmark.elite)) * 100
-        ));
-      } else {
-        athleteScore = Math.max(0, Math.min(100, 
-          (latestTest.value / benchmark.elite) * 100
-        ));
-      }
+    });
+
+    return Array.from(latestTestsMap.values()).map(test => {
+      const benchmark = allBenchmarks.find(b => b.testName === test.test_name);
+      if (!benchmark) return null;
+
+      const score = calculateScore(test.value, benchmark);
       
       return {
-        subject: benchmark.testName,
-        athlete: Math.round(athleteScore),
-        elite: 100,
-        excellent: 85,
-        good: 65,
-        average: 50,
+        subject: test.test_name,
+        score: score * 20, // Convert 1-5 to 20-100 scale for visibility
+        fullMark: 100,
       };
-    });
+    }).filter(Boolean);
   })();
+
+  // Group tests by test name and calculate stats
+  const testGroups = tests.reduce((acc, test) => {
+    if (!acc[test.test_name]) {
+      acc[test.test_name] = [];
+    }
+    acc[test.test_name].push(test);
+    return acc;
+  }, {} as Record<string, PhysicalTest[]>);
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <div className="container mx-auto px-4 py-6">
-        {/* Header with gradient and Add Test button */}
-        <div className="mb-6 rounded-lg border-2 border-white bg-gradient-to-r from-primary/70 to-primary p-6">
-          {/* Athlete selector for coaches */}
-          {isCoach && athletes.length > 0 && (
-            <div className="mb-4">
-              <Label className="text-white">Pilih Atlet</Label>
-              <Select value={selectedAthleteId} onValueChange={(val) => {
-                setSelectedAthleteId(val);
-                const athlete = athletes.find(a => a.id === val);
-                if (athlete) setAthleteName(athlete.athlete_name);
-              }}>
-                <SelectTrigger className="bg-white border-border mt-2">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Tes Kondisi Fisik</h1>
+            <p className="text-muted-foreground">
+              Kelola dan analisis hasil tes kondisi fisik dengan norma otomatis
+            </p>
+          </div>
+
+          <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Tambah Tes
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-card max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Tambah Tes Fisik Baru</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tanggal Tes</Label>
+                    <Input
+                      type="date"
+                      value={testDate}
+                      onChange={(e) => setTestDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Kategori Biomotor</Label>
+                    <Select
+                      value={selectedCategory}
+                      onValueChange={(v) => {
+                        setSelectedCategory(v);
+                        setSelectedTestName("");
+                        setTestValue("");
+                        setCalculatedScore(null);
+                      }}
+                    >
+                      <SelectTrigger className="bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover z-50">
+                        {CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Pilih Jenis Tes</Label>
+                  <Select
+                    value={selectedTestName}
+                    onValueChange={(v) => {
+                      setSelectedTestName(v);
+                      setTestValue("");
+                      setCalculatedScore(null);
+                    }}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Pilih tes dari daftar..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover z-50 max-h-[300px]">
+                      {availableTests.map((test) => (
+                        <SelectItem key={test.testName} value={test.testName}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{test.testName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {test.description} ({test.unit})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedTestName && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Nilai Hasil Tes</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={testValue}
+                          onChange={(e) => setTestValue(e.target.value)}
+                          placeholder="Masukkan nilai..."
+                          className="flex-1"
+                        />
+                        <div className="bg-muted px-4 py-2 rounded-md flex items-center min-w-[80px] justify-center">
+                          <span className="font-semibold">
+                            {availableTests.find(t => t.testName === selectedTestName)?.unit}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {calculatedScore && (
+                      <div className="p-4 bg-secondary rounded-lg border border-border">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Skor Otomatis</p>
+                            <p className="text-2xl font-bold">
+                              {calculatedScore}/5
+                            </p>
+                          </div>
+                          <Badge className={`${getScoreColor(calculatedScore)} text-lg px-4 py-2`}>
+                            {getScoreLabel(calculatedScore)}
+                          </Badge>
+                        </div>
+
+                        {/* Show benchmark ranges */}
+                        <div className="mt-4 space-y-1 text-xs">
+                          <p className="font-semibold mb-2">Norma Pengukuran:</p>
+                          {(() => {
+                            const benchmark = availableTests.find(t => t.testName === selectedTestName);
+                            if (!benchmark) return null;
+                            return (
+                              <>
+                                <div className="flex justify-between">
+                                  <span>Excellent (5):</span>
+                                  <span className="font-semibold">
+                                    {benchmark.inverse ? `≤ ${benchmark.scale5}` : `≥ ${benchmark.scale5}`} {benchmark.unit}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Good (4):</span>
+                                  <span className="font-semibold">
+                                    {benchmark.inverse ? `≤ ${benchmark.scale4}` : `≥ ${benchmark.scale4}`} {benchmark.unit}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Average (3):</span>
+                                  <span className="font-semibold">
+                                    {benchmark.inverse ? `≤ ${benchmark.scale3}` : `≥ ${benchmark.scale3}`} {benchmark.unit}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Below Average (2):</span>
+                                  <span className="font-semibold">
+                                    {benchmark.inverse ? `≤ ${benchmark.scale2}` : `≥ ${benchmark.scale2}`} {benchmark.unit}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Poor (1):</span>
+                                  <span className="font-semibold">
+                                    {benchmark.inverse ? `> ${benchmark.scale2}` : `< ${benchmark.scale2}`} {benchmark.unit}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Catatan (Opsional)</Label>
+                      <Input
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Catatan tambahan..."
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-2 justify-end mt-4">
+                  <Button variant="outline" onClick={() => setShowDialog(false)}>
+                    Batal
+                  </Button>
+                  <Button onClick={saveTest} disabled={!selectedTestName || !testValue}>
+                    Simpan Tes
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Athlete Selector for Coach */}
+        {isCoach && athletes.length > 0 && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <Label>Pilih Atlet</Label>
+              <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
+                <SelectTrigger className="bg-background mt-2">
                   <SelectValue placeholder="Pilih atlet..." />
                 </SelectTrigger>
-                <SelectContent className="bg-popover border-border z-50">
+                <SelectContent className="bg-popover z-50">
                   {athletes.map((athlete) => (
                     <SelectItem key={athlete.id} value={athlete.id}>
                       {athlete.athlete_name}
@@ -305,328 +615,40 @@ export default function TesFisik() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
-          
-          <div className="flex items-center justify-between">
-            <h1 className="text-center flex-1 text-3xl font-bold text-white">Kondisi Fisik</h1>
-            <Dialog open={showDialog} onOpenChange={setShowDialog}>
-              <DialogTrigger asChild>
-                <Button className="bg-white text-primary hover:bg-gray-100">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah Tes
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-card">
-                <DialogHeader>
-                  <DialogTitle>Tambah Tes Fisik Baru</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Tanggal Tes</Label>
-                      <Input
-                        type="date"
-                        value={formData.test_date}
-                        onChange={(e) => setFormData({ ...formData, test_date: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Kategori</Label>
-                      <Select
-                        value={formData.category}
-                        onValueChange={(v) => setFormData({ ...formData, category: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CATEGORIES.map((cat) => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nama Tes</Label>
-                    <Input
-                      value={formData.test_name}
-                      onChange={(e) => setFormData({ ...formData, test_name: e.target.value })}
-                      placeholder="Contoh: Sprint 30m, CMJ, VO2max"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Nilai</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={formData.value}
-                        onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Satuan</Label>
-                      <Input
-                        value={formData.unit}
-                        onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                        placeholder="s, cm, kg, dll"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Catatan (Opsional)</Label>
-                    <Input
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      placeholder="Catatan tambahan"
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="outline" onClick={() => setShowDialog(false)}>
-                      Batal
-                    </Button>
-                    <Button onClick={saveTest}>Simpan Tes</Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Profile Information Section */}
-        <Card className="mb-6 bg-card">
-          <div className="grid grid-cols-12 gap-4 p-6">
-            {/* Left Column - Profile Fields */}
-            <div className="col-span-9 space-y-4">
-              {/* Row 1 */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center gap-2">
-                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Pelatih</Label>
-                  <span className="text-foreground">:</span>
-                  <Input 
-                    value={coachName} 
-                    onChange={(e) => setCoachName(e.target.value)}
-                    className="flex-1 bg-background border-border"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Usia</Label>
-                  <span className="text-foreground">:</span>
-                  <Input 
-                    type="number" 
-                    value={age} 
-                    onChange={(e) => setAge(Number(e.target.value))}
-                    className="flex-1 bg-background border-border"
-                  />
-                </div>
-              </div>
-
-              {/* Row 2 */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center gap-2">
-                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Nama Atlet</Label>
-                  <span className="text-foreground">:</span>
-                  <Input 
-                    value={athleteName} 
-                    onChange={(e) => setAthleteName(e.target.value)}
-                    className="flex-1 bg-background border-border"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Berat Badan</Label>
-                  <span className="text-foreground">:</span>
-                  <div className="flex items-center gap-2 flex-1">
-                    <Input 
-                      type="number" 
-                      value={weight} 
-                      onChange={(e) => setWeight(Number(e.target.value))}
-                      className="flex-1 bg-background border-border"
-                    />
-                    <span className="text-foreground font-semibold">Kg</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 3 */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center gap-2">
-                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Cabor</Label>
-                  <span className="text-foreground">:</span>
-                  <Input 
-                    value={sport} 
-                    onChange={(e) => setSport(e.target.value)}
-                    className="flex-1 bg-background border-border"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Tinggi Badan</Label>
-                  <span className="text-foreground">:</span>
-                  <div className="flex items-center gap-2 flex-1">
-                    <Input 
-                      type="number" 
-                      step="0.01"
-                      value={height} 
-                      onChange={(e) => setHeight(Number(e.target.value))}
-                      className="flex-1 bg-background border-border"
-                    />
-                    <span className="text-foreground font-semibold">m</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 4 */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center gap-2">
-                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Tahun</Label>
-                  <span className="text-foreground">:</span>
-                  <Input 
-                    value={year} 
-                    onChange={(e) => setYear(e.target.value)}
-                    className="flex-1 bg-background border-border"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="w-32 bg-white text-black px-3 py-2 rounded">Gender</Label>
-                  <span className="text-foreground">:</span>
-                  <Input 
-                    value={gender} 
-                    onChange={(e) => setGender(e.target.value)}
-                    className="flex-1 bg-background border-border"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - BMI Display */}
-            <div className="col-span-3 flex flex-col items-center justify-center space-y-4">
-              <User className="h-20 w-20 text-foreground" />
-              <div className="text-center">
-                <div className="text-sm font-semibold mb-2">BMI</div>
-                <div className="text-2xl font-bold mb-2">{bmi.toFixed(2)}</div>
-                <div className="space-y-1 text-xs">
-                  <div className={`px-4 py-1 rounded ${bmi < 18.5 ? 'bg-warning' : 'bg-muted'}`}>
-                    <span className="text-black font-semibold">&lt;18.5</span>
-                    <span className="ml-2 text-black">Kurus</span>
-                  </div>
-                  <div className={`px-4 py-1 rounded ${bmi >= 18.5 && bmi < 25 ? 'bg-muted' : 'bg-muted'}`}>
-                    <span className="font-semibold">18.5-24.9</span>
-                    <span className="ml-2">Normal</span>
-                  </div>
-                  <div className={`px-4 py-1 rounded ${bmi >= 25 ? 'bg-destructive' : 'bg-muted'}`}>
-                    <span className={`font-semibold ${bmi >= 25 ? 'text-white' : ''}`}>&gt;25.0</span>
-                    <span className={`ml-2 ${bmi >= 25 ? 'text-white' : ''}`}>Overweight</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Main Chart Section */}
-        <Card className="mb-6 bg-card">
-          <div className="grid grid-cols-12 gap-4 p-6">
-            {/* Chart Area */}
-            <div className="col-span-9">
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="hsl(var(--muted-foreground))"
-                    angle={-45}
-                    textAnchor="end"
-                    height={120}
-                    interval={0}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    domain={[0, 100]}
-                    ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                    tickFormatter={(value) => `${value}%`}
-                  />
-                  <Bar dataKey="benchmark" stackId="a" fill="hsl(var(--muted))" />
-                  <Bar dataKey="actual" stackId="a">
-                    {chartData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={index === 5 ? "hsl(var(--primary))" : "hsl(var(--accent))"} 
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Performance Indicator */}
-            <div className="col-span-3 flex flex-col items-center justify-center">
-              <div className="bg-info rounded-lg p-8 w-full text-center">
-                <div className="text-6xl font-bold text-white mb-2">
-                  {overallPerformance}%
-                </div>
-              </div>
-              <div className="mt-4 bg-warning text-black font-semibold px-6 py-2 rounded w-full text-center">
-                Performa {gender}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Radar Chart Section */}
-        {radarData.length > 0 && radarData.some(d => d.athlete > 0) && (
-          <Card className="mb-6 bg-card">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4 text-center">Profil Performa vs Benchmark</h2>
+        {/* Radar Chart */}
+        {radarData.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                Profil Performa Multi-Dimensi
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <ResponsiveContainer width="100%" height={500}>
                 <RadarChart data={radarData}>
                   <PolarGrid stroke="hsl(var(--border))" />
                   <PolarAngleAxis 
                     dataKey="subject" 
-                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }}
                   />
                   <PolarRadiusAxis 
                     angle={90} 
                     domain={[0, 100]}
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) => `${value / 20}/5`}
                   />
                   <Radar 
-                    name="Atlet" 
-                    dataKey="athlete" 
+                    name="Skor Atlet" 
+                    dataKey="score" 
                     stroke="hsl(var(--primary))" 
                     fill="hsl(var(--primary))" 
                     fillOpacity={0.6}
-                  />
-                  <Radar 
-                    name="Elite" 
-                    dataKey="elite" 
-                    stroke="hsl(var(--chart-4))" 
-                    fill="hsl(var(--chart-4))" 
-                    fillOpacity={0.1}
-                  />
-                  <Radar 
-                    name="Excellent" 
-                    dataKey="excellent" 
-                    stroke="hsl(var(--chart-2))" 
-                    fill="hsl(var(--chart-2))" 
-                    fillOpacity={0.1}
-                  />
-                  <Radar 
-                    name="Good" 
-                    dataKey="good" 
-                    stroke="hsl(var(--chart-1))" 
-                    fill="hsl(var(--chart-1))" 
-                    fillOpacity={0.1}
-                  />
-                  <Radar 
-                    name="Average" 
-                    dataKey="average" 
-                    stroke="hsl(var(--chart-3))" 
-                    fill="hsl(var(--chart-3))" 
-                    fillOpacity={0.1}
+                    strokeWidth={2}
                   />
                   <Legend />
                   <Tooltip
@@ -634,10 +656,96 @@ export default function TesFisik() {
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                     }}
+                    formatter={(value: any) => [`${(value / 20).toFixed(1)}/5`, 'Skor']}
                   />
                 </RadarChart>
               </ResponsiveContainer>
-            </div>
+              <p className="text-center text-sm text-muted-foreground mt-4">
+                Grafik menampilkan {radarData.length} item tes yang telah dilakukan (skala 1-5)
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Test Results by Category */}
+        <div className="space-y-6">
+          {Object.entries(testGroups).map(([testName, testList]) => {
+            const allBenchmarks = Object.values(BENCHMARKS).flat();
+            const benchmark = allBenchmarks.find(b => b.testName === testName);
+            const latestTest = testList[0];
+            const score = benchmark ? calculateScore(latestTest.value, benchmark) : null;
+
+            return (
+              <Card key={testName}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CardTitle>{testName}</CardTitle>
+                      {score && (
+                        <Badge className={getScoreColor(score)}>
+                          {score}/5 - {getScoreLabel(score)}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {testList.length} data
+                      </span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {testList.slice(0, 5).map((test) => {
+                      const testScore = benchmark ? calculateScore(test.value, benchmark) : null;
+                      return (
+                        <div 
+                          key={test.id}
+                          className="flex items-center justify-between p-3 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-lg">
+                                {test.value} {test.unit}
+                              </span>
+                              {testScore && (
+                                <Badge className={`${getScoreColor(testScore)} text-xs`}>
+                                  {testScore}/5
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                              <span>{new Date(test.test_date).toLocaleDateString('id-ID')}</span>
+                              {test.notes && <span className="italic">"{test.notes}"</span>}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteTest(test.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {tests.length === 0 && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Award className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Belum ada data tes</h3>
+              <p className="text-muted-foreground text-center mb-4">
+                Tambahkan tes fisik pertama untuk mulai tracking performa
+              </p>
+            </CardContent>
           </Card>
         )}
       </div>
