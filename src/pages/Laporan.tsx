@@ -109,11 +109,51 @@ export default function Laporan() {
   };
 
   const loadComparisonData = async () => {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, athlete_name");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     
-    if (!profiles || profiles.length === 0) {
+    // Check if user is coach
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+    
+    const isCoach = roleData?.role === 'coach';
+    
+    let profiles: any[] = [];
+    
+    if (isCoach) {
+      // Coach sees only their assigned athletes
+      const { data: assignments } = await supabase
+        .from("coach_athletes")
+        .select("athlete_id")
+        .eq("coach_id", user.id)
+        .eq("status", "accepted");
+      
+      if (!assignments || assignments.length === 0) {
+        toast.error("Tidak ada atlet yang di-assign untuk dibandingkan");
+        return;
+      }
+      
+      const athleteIds = assignments.map(a => a.athlete_id);
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, athlete_name")
+        .in("id", athleteIds);
+      
+      profiles = profilesData || [];
+    } else {
+      // Athlete only sees their own data
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, athlete_name")
+        .eq("id", user.id);
+      
+      profiles = profilesData || [];
+    }
+    
+    if (profiles.length === 0) {
       toast.error("Tidak ada data atlet untuk dibandingkan");
       return;
     }
