@@ -25,8 +25,17 @@ interface Athlete {
   assigned_at?: string;
 }
 
+interface PendingInvitation {
+  id: string;
+  athlete_id: string;
+  athlete_name: string;
+  invited_by: string;
+  created_at: string;
+}
+
 export default function AthleteManagement() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCoach, setIsCoach] = useState(false);
@@ -90,11 +99,12 @@ export default function AthleteManagement() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get assigned athletes
+      // Get only accepted athlete assignments
       const { data: assignments } = await supabase
         .from("coach_athletes")
-        .select("athlete_id, assigned_at")
-        .eq("coach_id", user.id);
+        .select("athlete_id, assigned_at, status, invited_by")
+        .eq("coach_id", user.id)
+        .eq("status", "accepted");
 
       if (!assignments || assignments.length === 0) {
         setAthletes([]);
@@ -143,6 +153,35 @@ export default function AthleteManagement() {
         }
       }
 
+      // Load pending invitations
+      const { data: pending } = await supabase
+        .from("coach_athletes")
+        .select("id, athlete_id, invited_by, assigned_at")
+        .eq("coach_id", user.id)
+        .eq("status", "pending");
+      
+      if (pending && pending.length > 0) {
+        const pendingAthleteIds = pending.map((p: any) => p.athlete_id);
+        const { data: pendingProfiles } = await supabase
+          .from("profiles")
+          .select("id, athlete_name")
+          .in("id", pendingAthleteIds);
+        
+        if (pendingProfiles) {
+          const pendingWithNames = pending.map((p: any) => {
+            const profile = pendingProfiles.find(pr => pr.id === p.athlete_id);
+            return {
+              id: p.id,
+              athlete_id: p.athlete_id,
+              athlete_name: profile?.athlete_name || "Unknown",
+              invited_by: p.invited_by || "coach",
+              created_at: p.assigned_at || new Date().toISOString()
+            };
+          });
+          setPendingInvitations(pendingWithNames);
+        }
+      }
+
       setIsLoading(false);
     } catch (error) {
       console.error("Error loading athletes:", error);
@@ -187,12 +226,15 @@ export default function AthleteManagement() {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Gagal membuat akun atlet");
 
-      // Assign athlete to coach
+      // Assign athlete to coach with accepted status (coach created the athlete)
       const { error: assignError } = await supabase
         .from("coach_athletes")
         .insert({
           coach_id: currentUser.id,
-          athlete_id: authData.user.id
+          athlete_id: authData.user.id,
+          status: 'accepted',
+          invited_by: 'coach',
+          created_by: currentUser.id
         });
 
       if (assignError) throw assignError;
@@ -263,17 +305,20 @@ export default function AthleteManagement() {
         return;
       }
 
-      // Assign athlete to coach
+      // Send invitation to existing athlete (pending status)
       const { error } = await supabase
         .from("coach_athletes")
         .insert({
           coach_id: user.id,
-          athlete_id: selectedExistingAthleteId
+          athlete_id: selectedExistingAthleteId,
+          status: 'pending',
+          invited_by: 'coach',
+          created_by: user.id
         });
 
       if (error) throw error;
 
-      sonnerToast.success("Atlet berhasil di-assign");
+      sonnerToast.success("Invitation berhasil dikirim ke atlet");
       setAssignDialogOpen(false);
       setSelectedExistingAthleteId("");
       loadAthletes();
@@ -305,6 +350,25 @@ export default function AthleteManagement() {
     } catch (error) {
       console.error("Error deleting assignment:", error);
       sonnerToast.error("Gagal menghapus assignment");
+    }
+  };
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    if (!confirm("Batalkan invitation ini?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("coach_athletes")
+        .delete()
+        .eq("id", invitationId);
+
+      if (error) throw error;
+
+      sonnerToast.success("Invitation berhasil dibatalkan");
+      loadAthletes();
+    } catch (error) {
+      console.error("Error canceling invitation:", error);
+      sonnerToast.error("Gagal membatalkan invitation");
     }
   };
 
@@ -490,14 +554,14 @@ export default function AthleteManagement() {
               <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2">
                   <Users className="h-4 w-4" />
-                  Assign Atlet
+                  Kirim Invitation
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Assign Atlet yang Sudah Terdaftar</DialogTitle>
+                  <DialogTitle>Kirim Invitation ke Atlet</DialogTitle>
                   <DialogDescription>
-                    Pilih atlet yang sudah memiliki akun untuk di-assign ke Anda
+                    Pilih atlet yang sudah terdaftar untuk mengirim invitation. Atlet akan menerima notifikasi dan bisa menerima atau menolak.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -533,7 +597,7 @@ export default function AthleteManagement() {
                         Memproses...
                       </>
                     ) : (
-                      "Assign Atlet"
+                      "Kirim Invitation"
                     )}
                   </Button>
                 </div>
@@ -603,6 +667,49 @@ export default function AthleteManagement() {
             </Dialog>
           </div>
         </div>
+
+        {/* Pending Invitations Section */}
+        {pendingInvitations.length > 0 && (
+          <Card className="mb-6 border-yellow-500/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-yellow-500" />
+                Invitation Pending ({pendingInvitations.length})
+              </CardTitle>
+              <CardDescription>
+                Invitation yang sedang menunggu konfirmasi dari atlet
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {pendingInvitations.map((invitation) => (
+                  <div key={invitation.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-yellow-500/10 text-yellow-500">
+                          {invitation.athlete_name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold">{invitation.athlete_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Dikirim {new Date(invitation.created_at).toLocaleDateString("id-ID")}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCancelInvitation(invitation.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {athletes.length === 0 ? (
           <Card>

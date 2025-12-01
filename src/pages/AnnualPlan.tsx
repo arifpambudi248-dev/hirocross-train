@@ -103,18 +103,31 @@ export default function AnnualPlan() {
       const userIsCoach = roleData?.role === 'coach';
       setIsCoach(userIsCoach);
 
-      // If coach, load all athletes
+      // If coach, load only assigned athletes with accepted status
       if (userIsCoach) {
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("id, athlete_name")
-          .order("athlete_name");
+        const { data: assignments } = await supabase
+          .from("coach_athletes")
+          .select("athlete_id")
+          .eq("coach_id", user.id)
+          .eq("status", "accepted");
         
-        if (profilesData) {
-          setAthletes(profilesData);
-          if (profilesData.length > 0) {
-            setSelectedAthleteId(profilesData[0].id);
+        if (assignments && assignments.length > 0) {
+          const athleteIds = assignments.map(a => a.athlete_id);
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, athlete_name")
+            .in("id", athleteIds)
+            .order("athlete_name");
+          
+          if (profilesData) {
+            setAthletes(profilesData);
+            if (profilesData.length > 0) {
+              setSelectedAthleteId(profilesData[0].id);
+            }
           }
+        } else {
+          setAthletes([]);
+          toast.info("Belum ada atlet yang di-assign. Silakan tambahkan di halaman Kelola Atlet.");
         }
       } else {
         // If athlete, set their own ID
