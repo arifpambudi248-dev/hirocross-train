@@ -109,19 +109,28 @@ export type Database = {
           assigned_at: string
           athlete_id: string
           coach_id: string
+          created_by: string | null
           id: string
+          invited_by: string
+          status: string
         }
         Insert: {
           assigned_at?: string
           athlete_id: string
           coach_id: string
+          created_by?: string | null
           id?: string
+          invited_by?: string
+          status?: string
         }
         Update: {
           assigned_at?: string
           athlete_id?: string
           coach_id?: string
+          created_by?: string | null
           id?: string
+          invited_by?: string
+          status?: string
         }
         Relationships: []
       }
