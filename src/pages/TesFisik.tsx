@@ -270,14 +270,25 @@ export default function TesFisik() {
       setIsCoach(userIsCoach);
 
       if (userIsCoach) {
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("id, athlete_name")
-          .order("athlete_name");
-        
-        if (profilesData && profilesData.length > 0) {
-          setAthletes(profilesData);
-          setSelectedAthleteId(profilesData[0].id);
+        // Load only assigned athletes with accepted status
+        const { data: assignments } = await supabase
+          .from("coach_athletes")
+          .select("athlete_id")
+          .eq("coach_id", user.id)
+          .eq("status", "accepted");
+
+        if (assignments && assignments.length > 0) {
+          const athleteIds = assignments.map(a => a.athlete_id);
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, athlete_name")
+            .in("id", athleteIds)
+            .order("athlete_name");
+          
+          if (profilesData && profilesData.length > 0) {
+            setAthletes(profilesData);
+            setSelectedAthleteId(profilesData[0].id);
+          }
         }
       } else {
         setSelectedAthleteId(user.id);

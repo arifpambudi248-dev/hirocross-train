@@ -216,10 +216,29 @@ const Index = () => {
   }
 
   async function loadTeamData() {
-    // Get all profiles
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Get only athletes assigned to this coach with accepted status
+    const { data: assignments } = await supabase
+      .from("coach_athletes")
+      .select("athlete_id")
+      .eq("coach_id", user.id)
+      .eq("status", "accepted");
+
+    if (!assignments || assignments.length === 0) {
+      setTeamStats([]);
+      setTeamTrends([]);
+      return;
+    }
+
+    const athleteIds = assignments.map(a => a.athlete_id);
+
+    // Get athlete profiles only for assigned athletes
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, athlete_name");
+      .select("id, athlete_name")
+      .in("id", athleteIds);
     
     if (!profiles) return;
 

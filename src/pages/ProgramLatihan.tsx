@@ -114,16 +114,26 @@ export default function ProgramLatihan() {
     setIsCoach(userIsCoach);
 
     if (userIsCoach) {
-      // Load all athletes
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, athlete_name")
-        .order("athlete_name");
-      
-      if (profilesData && profilesData.length > 0) {
-        setAthletes(profilesData);
-        setSelectedAthleteId(profilesData[0].id);
-        setAthleteName(profilesData[0].athlete_name);
+      // Load only assigned athletes with accepted status
+      const { data: assignments } = await supabase
+        .from("coach_athletes")
+        .select("athlete_id")
+        .eq("coach_id", session.user.id)
+        .eq("status", "accepted");
+
+      if (assignments && assignments.length > 0) {
+        const athleteIds = assignments.map(a => a.athlete_id);
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, athlete_name")
+          .in("id", athleteIds)
+          .order("athlete_name");
+        
+        if (profilesData && profilesData.length > 0) {
+          setAthletes(profilesData);
+          setSelectedAthleteId(profilesData[0].id);
+          setAthleteName(profilesData[0].athlete_name);
+        }
       }
     } else {
       // Load own profile
