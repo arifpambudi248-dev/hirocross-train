@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import Historical from "./pages/Historical";
 import AthleteManagement from "./pages/AthleteManagement";
 import AthleteComparison from "./pages/AthleteComparison";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ const App = () => {
             <Route path="/historical" element={<Historical />} />
             <Route path="/athlete-management" element={<AthleteManagement />} />
             <Route path="/athlete-comparison" element={<AthleteComparison />} />
+            <Route path="/notifications" element={<Notifications />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
