@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
-import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users } from "lucide-react";
+import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users, Bell } from "lucide-react";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -94,9 +94,14 @@ export const Navigation = () => {
     { to: "/athlete-comparison", icon: TrendingUp, label: "Perbandingan Atlet" },
   ];
 
+  const athleteNavItems = [
+    { to: "/profile", icon: User, label: "Profil" },
+    { to: "/notifications", icon: Bell, label: "Notifikasi" },
+  ];
+
   const navItems = isCoach 
     ? [...baseNavItems, ...coachNavItems] 
-    : [...baseNavItems, { to: "/profile", icon: User, label: "Profil" }];
+    : [...baseNavItems, ...athleteNavItems];
 
   return (
     <nav className="border-b border-border bg-card">

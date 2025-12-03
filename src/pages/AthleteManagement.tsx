@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, UserPlus, Edit, Trash2, FileDown, Users, Mail, Calendar } from "lucide-react";
+import { Loader2, UserPlus, Edit, Trash2, FileDown, Users, Mail, Calendar, Check, X, UserCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import jsPDF from "jspdf";
@@ -36,6 +36,7 @@ interface PendingInvitation {
 export default function AthleteManagement() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
+  const [athleteRequests, setAthleteRequests] = useState<PendingInvitation[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCoach, setIsCoach] = useState(false);
@@ -153,12 +154,13 @@ export default function AthleteManagement() {
         }
       }
 
-      // Load pending invitations
+      // Load pending invitations (sent by coach)
       const { data: pending } = await supabase
         .from("coach_athletes")
         .select("id, athlete_id, invited_by, assigned_at")
         .eq("coach_id", user.id)
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .eq("invited_by", "coach");
       
       if (pending && pending.length > 0) {
         const pendingAthleteIds = pending.map((p: any) => p.athlete_id);
@@ -180,6 +182,40 @@ export default function AthleteManagement() {
           });
           setPendingInvitations(pendingWithNames);
         }
+      } else {
+        setPendingInvitations([]);
+      }
+
+      // Load athlete requests (sent by athlete)
+      const { data: requests } = await supabase
+        .from("coach_athletes")
+        .select("id, athlete_id, invited_by, assigned_at")
+        .eq("coach_id", user.id)
+        .eq("status", "pending")
+        .eq("invited_by", "athlete");
+      
+      if (requests && requests.length > 0) {
+        const requestAthleteIds = requests.map((r: any) => r.athlete_id);
+        const { data: requestProfiles } = await supabase
+          .from("profiles")
+          .select("id, athlete_name")
+          .in("id", requestAthleteIds);
+        
+        if (requestProfiles) {
+          const requestsWithNames = requests.map((r: any) => {
+            const profile = requestProfiles.find(pr => pr.id === r.athlete_id);
+            return {
+              id: r.id,
+              athlete_id: r.athlete_id,
+              athlete_name: profile?.athlete_name || "Unknown",
+              invited_by: r.invited_by || "athlete",
+              created_at: r.assigned_at || new Date().toISOString()
+            };
+          });
+          setAthleteRequests(requestsWithNames);
+        }
+      } else {
+        setAthleteRequests([]);
       }
 
       setIsLoading(false);
@@ -369,6 +405,42 @@ export default function AthleteManagement() {
     } catch (error) {
       console.error("Error canceling invitation:", error);
       sonnerToast.error("Gagal membatalkan invitation");
+    }
+  };
+
+  const handleAcceptAthleteRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from("coach_athletes")
+        .update({ status: "accepted" })
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      sonnerToast.success("Request diterima! Atlet berhasil ditambahkan ke roster.");
+      loadAthletes();
+    } catch (error) {
+      console.error("Error accepting request:", error);
+      sonnerToast.error("Gagal menerima request");
+    }
+  };
+
+  const handleRejectAthleteRequest = async (requestId: string) => {
+    if (!confirm("Tolak request dari atlet ini?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("coach_athletes")
+        .delete()
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      sonnerToast.success("Request ditolak");
+      loadAthletes();
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+      sonnerToast.error("Gagal menolak request");
     }
   };
 
@@ -704,6 +776,61 @@ export default function AthleteManagement() {
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Athlete Requests Section */}
+        {athleteRequests.length > 0 && (
+          <Card className="mb-6 border-green-500/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-green-500" />
+                Request dari Atlet ({athleteRequests.length})
+              </CardTitle>
+              <CardDescription>
+                Atlet yang ingin bergabung ke roster Anda
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {athleteRequests.map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-green-500/10 text-green-500">
+                          {request.athlete_name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold">{request.athlete_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Request diterima {new Date(request.created_at).toLocaleDateString("id-ID")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRejectAthleteRequest(request.id)}
+                        className="gap-1"
+                      >
+                        <X className="h-4 w-4" />
+                        Tolak
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleAcceptAthleteRequest(request.id)}
+                        className="gap-1"
+                      >
+                        <Check className="h-4 w-4" />
+                        Terima
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
