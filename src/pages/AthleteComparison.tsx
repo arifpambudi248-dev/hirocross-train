@@ -87,7 +87,8 @@ export default function AthleteComparison() {
       const { data: assignments, error: assignError } = await supabase
         .from("coach_athletes")
         .select("athlete_id")
-        .eq("coach_id", user.id);
+        .eq("coach_id", user.id)
+        .eq("status", "accepted");
 
       if (assignError) {
         console.error("Error loading assignments:", assignError);
