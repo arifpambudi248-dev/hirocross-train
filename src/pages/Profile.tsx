@@ -105,23 +105,21 @@ export default function Profile() {
         .order("date", { ascending: true });
       setLoadData(sessions || []);
 
-      // Load physical tests (latest per category)
+      // Load physical tests (all tests, latest per test_name)
       const { data: tests } = await supabase
         .from("physical_tests")
         .select("*")
         .eq("athlete_id", user.id)
         .order("test_date", { ascending: false });
       
-      // Get latest test per category
-      const latestTests: any[] = [];
-      const categories = new Set<string>();
+      // Get latest test per test_name (not just per category)
+      const latestTestsMap = new Map<string, any>();
       tests?.forEach((test) => {
-        if (!categories.has(test.category)) {
-          categories.add(test.category);
-          latestTests.push(test);
+        if (!latestTestsMap.has(test.test_name)) {
+          latestTestsMap.set(test.test_name, test);
         }
       });
-      setPhysicalTests(latestTests);
+      setPhysicalTests(Array.from(latestTestsMap.values()));
 
       // Calculate injury risk
       if (readinessLogs && sessions) {
@@ -361,55 +359,89 @@ export default function Profile() {
 
   const totalLoad = loadData.reduce((sum, s) => sum + (s.load_final || 0), 0);
 
-  // Prepare radar chart data
-  const benchmarks: { [key: string]: number[] } = {
-    "daya_tahan": [2000, 2200, 2400, 2600, 2800],
-    "kecepatan": [7.5, 7.0, 6.5, 6.0, 5.5],
-    "kekuatan": [40, 50, 60, 70, 80],
-    "kelincahan": [20, 18, 16, 14, 12],
-    "fleksibilitas": [10, 15, 20, 25, 30],
-    "power": [30, 35, 40, 45, 50],
+  // Same benchmarks as TesFisik page for consistent scoring
+  const BENCHMARKS: { [key: string]: any[] } = {
+    daya_tahan: [
+      { testName: "VO2max", scale5: 65, scale4: 55, scale3: 45, scale2: 40, scale1: 35, unit: "ml/kg/min", inverse: false },
+      { testName: "Cooper Test (12 min)", scale5: 3200, scale4: 2800, scale3: 2400, scale2: 2200, scale1: 2000, unit: "m", inverse: false },
+      { testName: "Beep Test", scale5: 15, scale4: 12, scale3: 10, scale2: 7, scale1: 5, unit: "level", inverse: false },
+    ],
+    kecepatan: [
+      { testName: "Sprint 10m", scale5: 1.6, scale4: 1.75, scale3: 1.9, scale2: 2.05, scale1: 2.2, unit: "s", inverse: true },
+      { testName: "Sprint 20m", scale5: 2.8, scale4: 3.0, scale3: 3.25, scale2: 3.5, scale1: 3.8, unit: "s", inverse: true },
+      { testName: "Sprint 40m", scale5: 4.9, scale4: 5.2, scale3: 5.6, scale2: 6.0, scale1: 6.5, unit: "s", inverse: true },
+    ],
+    kekuatan: [
+      { testName: "Back Squat 1RM", scale5: 2.5, scale4: 2.0, scale3: 1.5, scale2: 1.2, scale1: 1.0, unit: "x BW", inverse: false },
+      { testName: "Bench Press 1RM", scale5: 1.8, scale4: 1.5, scale3: 1.2, scale2: 1.0, scale1: 0.8, unit: "x BW", inverse: false },
+      { testName: "Deadlift 1RM", scale5: 3.0, scale4: 2.5, scale3: 2.0, scale2: 1.5, scale1: 1.2, unit: "x BW", inverse: false },
+      { testName: "Pull Up Max", scale5: 20, scale4: 15, scale3: 10, scale2: 7, scale1: 5, unit: "reps", inverse: false },
+    ],
+    kelincahan: [
+      { testName: "T-Test", scale5: 8.5, scale4: 9.5, scale3: 10.5, scale2: 11.5, scale1: 12.5, unit: "s", inverse: true },
+      { testName: "Illinois Agility Test", scale5: 14.0, scale4: 15.5, scale3: 17.0, scale2: 18.5, scale1: 20.0, unit: "s", inverse: true },
+      { testName: "505 Agility Test", scale5: 2.0, scale4: 2.2, scale3: 2.4, scale2: 2.6, scale1: 2.8, unit: "s", inverse: true },
+      { testName: "Hexagon Test", scale5: 10.0, scale4: 11.5, scale3: 13.0, scale2: 14.5, scale1: 16.0, unit: "s", inverse: true },
+    ],
+    fleksibilitas: [
+      { testName: "Sit and Reach", scale5: 25, scale4: 20, scale3: 15, scale2: 10, scale1: 5, unit: "cm", inverse: false },
+      { testName: "Shoulder Flexibility", scale5: -5, scale4: 0, scale3: 5, scale2: 10, scale1: 15, unit: "cm", inverse: true },
+      { testName: "Hip Flexion", scale5: 130, scale4: 120, scale3: 110, scale2: 100, scale1: 90, unit: "deg", inverse: false },
+    ],
+    power: [
+      { testName: "CMJ (Counter Movement Jump)", scale5: 65, scale4: 55, scale3: 45, scale2: 35, scale1: 25, unit: "cm", inverse: false },
+      { testName: "Standing Broad Jump", scale5: 310, scale4: 270, scale3: 230, scale2: 200, scale1: 170, unit: "cm", inverse: false },
+      { testName: "Medicine Ball Throw", scale5: 14, scale4: 12, scale3: 10, scale2: 8, scale1: 6, unit: "m", inverse: false },
+      { testName: "Drop Jump", scale5: 70, scale4: 60, scale3: 50, scale2: 40, scale1: 30, unit: "cm", inverse: false },
+    ],
   };
 
-  const radarData = [
-    { category: "Daya Tahan", value: 0, benchmark: 0 },
-    { category: "Kecepatan", value: 0, benchmark: 0 },
-    { category: "Kekuatan", value: 0, benchmark: 0 },
-    { category: "Kelincahan", value: 0, benchmark: 0 },
-    { category: "Fleksibilitas", value: 0, benchmark: 0 },
-    { category: "Power", value: 0, benchmark: 0 },
-  ];
-
-  physicalTests.forEach((test) => {
-    const categoryMap: { [key: string]: string } = {
-      "daya_tahan": "Daya Tahan",
-      "kecepatan": "Kecepatan",
-      "kekuatan": "Kekuatan",
-      "kelincahan": "Kelincahan",
-      "fleksibilitas": "Fleksibilitas",
-      "power": "Power",
-    };
-    
-    const categoryName = categoryMap[test.category];
-    if (categoryName) {
-      const dataPoint = radarData.find(d => d.category === categoryName);
-      if (dataPoint) {
-        const benchmarkArray = benchmarks[test.category];
-        const minBench = benchmarkArray[0];
-        const maxBench = benchmarkArray[4];
-        
-        let normalizedValue: number;
-        if (test.category === "kecepatan" || test.category === "kelincahan") {
-          normalizedValue = ((maxBench - test.value) / (maxBench - minBench)) * 100;
-        } else {
-          normalizedValue = ((test.value - minBench) / (maxBench - minBench)) * 100;
-        }
-        
-        dataPoint.value = Math.max(0, Math.min(100, normalizedValue));
-        dataPoint.benchmark = 60;
-      }
+  const calculateScore = (value: number, benchmark: any): number => {
+    if (benchmark.inverse) {
+      if (value <= benchmark.scale5) return 5;
+      if (value <= benchmark.scale4) return 4;
+      if (value <= benchmark.scale3) return 3;
+      if (value <= benchmark.scale2) return 2;
+      return 1;
+    } else {
+      if (value >= benchmark.scale5) return 5;
+      if (value >= benchmark.scale4) return 4;
+      if (value >= benchmark.scale3) return 3;
+      if (value >= benchmark.scale2) return 2;
+      return 1;
     }
-  });
+  };
+
+  const getScoreColor = (score: number): string => {
+    if (score === 5) return "bg-green-500 text-white";
+    if (score === 4) return "bg-blue-500 text-white";
+    if (score === 3) return "bg-yellow-500 text-black";
+    if (score === 2) return "bg-orange-500 text-white";
+    return "bg-red-500 text-white";
+  };
+
+  const getScoreLabel = (score: number): string => {
+    if (score === 5) return "Excellent";
+    if (score === 4) return "Good";
+    if (score === 3) return "Average";
+    if (score === 2) return "Below Average";
+    return "Poor";
+  };
+
+  // Prepare radar chart data from all individual tests
+  const allBenchmarks = Object.values(BENCHMARKS).flat();
+  const radarData = physicalTests
+    .map((test) => {
+      const benchmark = allBenchmarks.find((b) => b.testName === test.test_name);
+      if (!benchmark) return null;
+      const score = calculateScore(test.value, benchmark);
+      return {
+        subject: test.test_name,
+        score: score * 20, // Convert 1-5 to 20-100 scale
+        fullMark: 100,
+      };
+    })
+    .filter(Boolean);
 
   const maxHR = profile?.age ? calculateMaxHR(profile.age) : null;
 
@@ -822,49 +854,103 @@ export default function Profile() {
           <Card>
             <CardHeader>
               <CardTitle>Profil Performa Fisik</CardTitle>
-              <CardDescription>Perbandingan dengan benchmark standar</CardDescription>
+              <CardDescription>Radar chart berdasarkan skor tes (skala 1-5 × 20)</CardDescription>
             </CardHeader>
             <CardContent>
-              {physicalTests.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
+              {radarData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="hsl(var(--border))" />
                     <PolarAngleAxis 
-                      dataKey="category" 
+                      dataKey="subject" 
                       stroke="hsl(var(--foreground))"
+                      tick={{ fontSize: 10 }}
                     />
-                    <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" />
+                    <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" domain={[0, 100]} />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'hsl(var(--card))', 
                         border: '1px solid hsl(var(--border))'
                       }}
+                      formatter={(value: number) => [`${(value / 20).toFixed(0)}/5`, 'Skor']}
                     />
-                    <Legend />
                     <Radar
                       name="Nilai Anda"
-                      dataKey="value"
+                      dataKey="score"
                       stroke="hsl(var(--primary))"
                       fill="hsl(var(--primary))"
                       fillOpacity={0.3}
                     />
-                    <Radar
-                      name="Benchmark"
-                      dataKey="benchmark"
-                      stroke="hsl(var(--muted-foreground))"
-                      fill="hsl(var(--muted-foreground))"
-                      fillOpacity={0.1}
-                    />
                   </RadarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                  Belum ada data tes fisik
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  Belum ada data tes fisik. Silakan input di halaman Tes Kondisi Fisik.
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Physical Tests Detail Table */}
+        {physicalTests.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Detail Hasil Tes Fisik</CardTitle>
+              <CardDescription>Semua hasil tes terbaru dengan skor norma</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 font-semibold text-sm">Nama Tes</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm">Kategori</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm">Nilai</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm">Skor</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm">Tanggal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {physicalTests.map((test) => {
+                      const benchmark = allBenchmarks.find((b) => b.testName === test.test_name);
+                      const score = benchmark ? calculateScore(test.value, benchmark) : null;
+                      const categoryLabels: { [key: string]: string } = {
+                        daya_tahan: "Daya Tahan",
+                        kecepatan: "Kecepatan",
+                        kekuatan: "Kekuatan",
+                        kelincahan: "Kelincahan",
+                        fleksibilitas: "Fleksibilitas",
+                        power: "Power",
+                      };
+                      return (
+                        <tr key={test.id} className="border-b border-border/50 hover:bg-accent/5 transition-colors">
+                          <td className="py-3 px-4 font-medium">{test.test_name}</td>
+                          <td className="py-3 px-4">
+                            <Badge variant="outline">{categoryLabels[test.category] || test.category}</Badge>
+                          </td>
+                          <td className="py-3 px-4">{test.value} {test.unit}</td>
+                          <td className="py-3 px-4">
+                            {score ? (
+                              <Badge className={getScoreColor(score)}>
+                                {score}/5 - {getScoreLabel(score)}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-muted-foreground">
+                            {new Date(test.test_date).toLocaleDateString('id-ID')}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
