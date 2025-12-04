@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FileDown, Users } from "lucide-react";
+import { FileDown, Users, Activity, Zap } from "lucide-react";
 import { 
   LineChart, 
   Line, 
@@ -33,10 +33,12 @@ import {
 } from "@/lib/trainingLoad";
 import type { TrainingSession, ReadinessLog, PhysicalTest } from "@/types/database";
 import { exportToPDF, exportToExcel, exportComparisonToPDF, exportComparisonToExcel, type ExportData, type AthleteComparisonData } from "@/lib/exportUtils";
+import { predictVO2maxFromRHR, getVO2maxLevel, predictPowerFromVJ, getJumpPowerCategory } from "@/lib/predictions";
 
 export default function Laporan() {
   const [userId, setUserId] = useState<string | null>(null);
   const [athleteName, setAthleteName] = useState<string>("");
+  const [athleteAge, setAthleteAge] = useState<number | null>(null);
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
   const [readinessLogs, setReadinessLogs] = useState<ReadinessLog[]>([]);
   const [physicalTests, setPhysicalTests] = useState<PhysicalTest[]>([]);
@@ -58,12 +60,13 @@ export default function Laporan() {
     // Load profile
     const { data: profile } = await supabase
       .from("profiles")
-      .select("athlete_name")
+      .select("athlete_name, age")
       .eq("id", user.id)
       .single();
     
     if (profile) {
       setAthleteName(profile.athlete_name);
+      setAthleteAge(profile.age);
     }
 
     // Load all data in parallel
@@ -397,6 +400,80 @@ export default function Laporan() {
             </CardContent>
           </Card>
         </div>
+
+        {/* VO2max and Power Predictions */}
+        {(() => {
+          const latestRHR = latestReadiness?.rhr;
+          const latestVJ = latestReadiness?.vj;
+          const predictedVO2max = latestRHR && athleteAge ? predictVO2maxFromRHR(latestRHR, athleteAge) : 0;
+          const vo2maxLevel = getVO2maxLevel(predictedVO2max, athleteAge || 25);
+          const predictedPower = latestVJ ? predictPowerFromVJ(latestVJ) : 0;
+          const powerCategory = getJumpPowerCategory(latestVJ || 0);
+
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="border-primary/20">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Prediksi VO2max
+                    </CardTitle>
+                  </div>
+                  <CardDescription className="text-xs">
+                    Estimasi dari RHR ({latestRHR || 'N/A'} bpm) & Usia ({athleteAge || 'N/A'} tahun)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-bold text-primary">
+                      {predictedVO2max || '-'}
+                    </span>
+                    <span className="text-muted-foreground mb-1">ml/kg/min</span>
+                  </div>
+                  <div className="mt-2">
+                    <Badge className={vo2maxLevel.color.replace('text-', 'bg-').replace('-500', '-500/20') + ' ' + vo2maxLevel.color}>
+                      {vo2maxLevel.level}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Formula: VO2max = 15.3 × (HRmax / RHR)
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/20">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Prediksi Power
+                    </CardTitle>
+                  </div>
+                  <CardDescription className="text-xs">
+                    Estimasi dari Vertical Jump ({latestVJ || 'N/A'} cm)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-bold text-primary">
+                      {predictedPower || '-'}
+                    </span>
+                    <span className="text-muted-foreground mb-1">Watts</span>
+                  </div>
+                  <div className="mt-2">
+                    <Badge className={powerCategory.color.replace('text-', 'bg-').replace('-500', '-500/20') + ' ' + powerCategory.color}>
+                      {powerCategory.level}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Formula: Lewis Power = √4.9 × mass × √(jump × 9.81)
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })()}
 
         {/* Fitness-Fatigue-Form Chart */}
         <Card>
