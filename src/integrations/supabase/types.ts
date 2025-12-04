@@ -177,6 +177,7 @@ export type Database = {
           avatar_url: string | null
           baseline_rhr: number | null
           baseline_vj: number | null
+          body_weight: number | null
           created_at: string
           id: string
           updated_at: string
@@ -187,6 +188,7 @@ export type Database = {
           avatar_url?: string | null
           baseline_rhr?: number | null
           baseline_vj?: number | null
+          body_weight?: number | null
           created_at?: string
           id: string
           updated_at?: string
@@ -197,6 +199,7 @@ export type Database = {
           avatar_url?: string | null
           baseline_rhr?: number | null
           baseline_vj?: number | null
+          body_weight?: number | null
           created_at?: string
           id?: string
           updated_at?: string
@@ -206,6 +209,7 @@ export type Database = {
       readiness_logs: {
         Row: {
           athlete_id: string
+          body_weight: number | null
           created_at: string
           date: string
           id: string
@@ -219,6 +223,7 @@ export type Database = {
         }
         Insert: {
           athlete_id: string
+          body_weight?: number | null
           created_at?: string
           date: string
           id?: string
@@ -232,6 +237,7 @@ export type Database = {
         }
         Update: {
           athlete_id?: string
+          body_weight?: number | null
           created_at?: string
           date?: string
           id?: string

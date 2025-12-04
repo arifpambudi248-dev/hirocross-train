@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FileDown, Users, Activity, Zap } from "lucide-react";
+import { FileDown, Users, Activity, Zap, TrendingUp } from "lucide-react";
 import { 
   LineChart, 
   Line, 
@@ -39,6 +39,7 @@ export default function Laporan() {
   const [userId, setUserId] = useState<string | null>(null);
   const [athleteName, setAthleteName] = useState<string>("");
   const [athleteAge, setAthleteAge] = useState<number | null>(null);
+  const [athleteBodyWeight, setAthleteBodyWeight] = useState<number | null>(null);
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
   const [readinessLogs, setReadinessLogs] = useState<ReadinessLog[]>([]);
   const [physicalTests, setPhysicalTests] = useState<PhysicalTest[]>([]);
@@ -60,13 +61,14 @@ export default function Laporan() {
     // Load profile
     const { data: profile } = await supabase
       .from("profiles")
-      .select("athlete_name, age")
+      .select("athlete_name, age, body_weight")
       .eq("id", user.id)
       .single();
     
     if (profile) {
       setAthleteName(profile.athlete_name);
       setAthleteAge(profile.age);
+      setAthleteBodyWeight((profile as any).body_weight);
     }
 
     // Load all data in parallel
@@ -472,6 +474,119 @@ export default function Laporan() {
                 </CardContent>
               </Card>
             </div>
+          );
+        })()}
+
+        {/* VO2max and Power Trend Chart */}
+        {(() => {
+          const trendData = readinessLogs
+            .slice()
+            .reverse()
+            .map((log) => {
+              const bodyWeight = (log as any).body_weight || athleteBodyWeight || 70;
+              const vo2max = athleteAge ? predictVO2maxFromRHR(log.rhr, athleteAge) : 0;
+              const power = predictPowerFromVJ(log.vj, bodyWeight);
+              return {
+                date: log.date,
+                vo2max,
+                power,
+                vj: log.vj,
+                rhr: log.rhr,
+              };
+            });
+
+          if (trendData.length === 0) return null;
+
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Tren Prediksi VO2max & Power
+                </CardTitle>
+                <CardDescription>
+                  Estimasi berdasarkan data readiness historis ({trendData.length} data)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="hsl(var(--muted-foreground))"
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return `${date.getDate()}/${date.getMonth() + 1}`;
+                        }}
+                      />
+                      <YAxis 
+                        yAxisId="vo2max"
+                        stroke="#06b6d4"
+                        tick={{ fontSize: 11 }}
+                        label={{ value: 'VO2max (ml/kg/min)', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: '#06b6d4' } }}
+                      />
+                      <YAxis 
+                        yAxisId="power"
+                        orientation="right"
+                        stroke="#f59e0b"
+                        tick={{ fontSize: 11 }}
+                        label={{ value: 'Power (W)', angle: 90, position: 'insideRight', style: { fontSize: 10, fill: '#f59e0b' } }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "6px",
+                        }}
+                        formatter={(value: number, name: string) => {
+                          if (name === 'vo2max') return [`${value.toFixed(1)} ml/kg/min`, 'VO2max'];
+                          if (name === 'power') return [`${value} W`, 'Power'];
+                          return [value, name];
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        yAxisId="vo2max"
+                        type="monotone"
+                        dataKey="vo2max"
+                        stroke="#06b6d4"
+                        name="VO2max"
+                        strokeWidth={2}
+                        dot={{ fill: '#06b6d4', r: 3 }}
+                      />
+                      <Line
+                        yAxisId="power"
+                        type="monotone"
+                        dataKey="power"
+                        stroke="#f59e0b"
+                        name="Power"
+                        strokeWidth={2}
+                        dot={{ fill: '#f59e0b', r: 3 }}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+                  <div className="p-3 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                    <p className="text-cyan-400 font-medium">VO2max Range</p>
+                    <p className="text-muted-foreground">
+                      Min: {Math.min(...trendData.map(d => d.vo2max)).toFixed(1)} | 
+                      Max: {Math.max(...trendData.map(d => d.vo2max)).toFixed(1)} ml/kg/min
+                    </p>
+                  </div>
+                  <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                    <p className="text-yellow-400 font-medium">Power Range</p>
+                    <p className="text-muted-foreground">
+                      Min: {Math.min(...trendData.map(d => d.power))} | 
+                      Max: {Math.max(...trendData.map(d => d.power))} W
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           );
         })()}
 
