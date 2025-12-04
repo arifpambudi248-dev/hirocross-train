@@ -37,6 +37,7 @@ export default function Readiness() {
     date: new Date().toISOString().split("T")[0],
     vj: 40,
     rhr: 60,
+    body_weight: "",
     notes: "",
   });
 
@@ -142,6 +143,8 @@ export default function Readiness() {
         baselineRhr
       );
 
+      const bodyWeight = formData.body_weight ? parseFloat(formData.body_weight) : null;
+
       const { error } = await supabase
         .from("readiness_logs")
         .insert([{
@@ -153,6 +156,7 @@ export default function Readiness() {
           rhr_score: result.rhrScore,
           readiness_score: result.readinessScore,
           readiness_zone: result.zone,
+          body_weight: bodyWeight,
           notes: validatedData.notes || null,
         }]);
 
@@ -165,6 +169,7 @@ export default function Readiness() {
         date: new Date().toISOString().split("T")[0],
         vj: 40,
         rhr: 60,
+        body_weight: "",
         notes: "",
       });
     } catch (error) {
@@ -260,6 +265,19 @@ export default function Readiness() {
                     placeholder="Catatan tambahan"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Berat Badan (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={formData.body_weight}
+                    onChange={(e) => setFormData({ ...formData, body_weight: e.target.value })}
+                    placeholder="Contoh: 70"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Opsional - untuk prediksi power yang akurat
+                  </p>
+                </div>
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">
                     Baseline: VJ = {baselineVj} cm, RHR = {baselineRhr} bpm
@@ -313,6 +331,7 @@ export default function Readiness() {
                   <TableHead>Tanggal</TableHead>
                   <TableHead>VJ (cm)</TableHead>
                   <TableHead>RHR (bpm)</TableHead>
+                  <TableHead>BB (kg)</TableHead>
                   <TableHead>Skor VJ</TableHead>
                   <TableHead>Skor RHR</TableHead>
                   <TableHead>Readiness</TableHead>
@@ -326,6 +345,7 @@ export default function Readiness() {
                     <TableCell>{log.date}</TableCell>
                     <TableCell>{log.vj}</TableCell>
                     <TableCell>{log.rhr}</TableCell>
+                    <TableCell>{(log as any).body_weight || '-'}</TableCell>
                     <TableCell>{log.vj_score}</TableCell>
                     <TableCell>{log.rhr_score}</TableCell>
                     <TableCell className="font-bold text-primary text-lg">

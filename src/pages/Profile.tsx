@@ -35,6 +35,7 @@ export default function Profile() {
   const [editAge, setEditAge] = useState("");
   const [editBaselineRHR, setEditBaselineRHR] = useState("");
   const [editBaselineVJ, setEditBaselineVJ] = useState("");
+  const [editBodyWeight, setEditBodyWeight] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   
   // Avatar upload states
@@ -76,6 +77,7 @@ export default function Profile() {
         setEditAge(profileData.age?.toString() || "");
         setEditBaselineRHR(profileData.baseline_rhr?.toString() || "60");
         setEditBaselineVJ(profileData.baseline_vj?.toString() || "40");
+        setEditBodyWeight((profileData as any).body_weight?.toString() || "");
       }
 
       // Load avatar if exists
@@ -231,9 +233,15 @@ export default function Profile() {
       const age = parseInt(editAge);
       const rhr = parseFloat(editBaselineRHR);
       const vj = parseFloat(editBaselineVJ);
+      const bodyWeight = editBodyWeight ? parseFloat(editBodyWeight) : null;
 
       if (age < 10 || age > 100) {
         sonnerToast.error("Usia harus antara 10-100 tahun");
+        return;
+      }
+
+      if (bodyWeight && (bodyWeight < 20 || bodyWeight > 200)) {
+        sonnerToast.error("Berat badan harus antara 20-200 kg");
         return;
       }
 
@@ -242,7 +250,8 @@ export default function Profile() {
         .update({
           age,
           baseline_rhr: rhr,
-          baseline_vj: vj
+          baseline_vj: vj,
+          body_weight: bodyWeight
         })
         .eq('id', user.id);
 
@@ -524,6 +533,20 @@ export default function Profile() {
                         onChange={(e) => setEditBaselineVJ(e.target.value)}
                         placeholder="Contoh: 40"
                       />
+                    </div>
+                    <div>
+                      <Label htmlFor="bodyWeight">Berat Badan (kg)</Label>
+                      <Input
+                        id="bodyWeight"
+                        type="number"
+                        step="0.1"
+                        value={editBodyWeight}
+                        onChange={(e) => setEditBodyWeight(e.target.value)}
+                        placeholder="Contoh: 70"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Digunakan untuk perhitungan power yang lebih akurat
+                      </p>
                     </div>
                     <Button
                       onClick={handleSaveProfile}
