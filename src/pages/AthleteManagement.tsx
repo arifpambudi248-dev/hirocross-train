@@ -243,37 +243,36 @@ export default function AthleteManagement() {
 
     try {
       setIsSaving(true);
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) return;
+      
+      // Get current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        sonnerToast.error("Sesi tidak ditemukan, silakan login kembali");
+        return;
+      }
 
-      // Create new user account using admin API
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newAthleteEmail,
-        password: newAthletePassword,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            athlete_name: newAthleteName,
-            role: 'athlete'
-          }
+      // Use edge function to create athlete without affecting current session
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-athlete`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            email: newAthleteEmail,
+            password: newAthletePassword,
+            athlete_name: newAthleteName
+          })
         }
-      });
+      );
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Gagal membuat akun atlet");
+      const result = await response.json();
 
-      // Assign athlete to coach with accepted status (coach created the athlete)
-      const { error: assignError } = await supabase
-        .from("coach_athletes")
-        .insert({
-          coach_id: currentUser.id,
-          athlete_id: authData.user.id,
-          status: 'accepted',
-          invited_by: 'coach',
-          created_by: currentUser.id
-        });
-
-      if (assignError) throw assignError;
+      if (!response.ok) {
+        throw new Error(result.error || "Gagal membuat akun atlet");
+      }
 
       sonnerToast.success("Atlet berhasil ditambahkan");
       setAddDialogOpen(false);
