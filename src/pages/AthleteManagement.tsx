@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, UserPlus, Edit, Trash2, FileDown, Users, Mail, Calendar, Check, X, UserCheck } from "lucide-react";
+import { Loader2, UserPlus, Edit, Trash2, FileDown, Users, Mail, Calendar, Check, X, UserCheck, Search, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import jsPDF from "jspdf";
@@ -59,6 +60,32 @@ export default function AthleteManagement() {
   const [editVJ, setEditVJ] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState<string | null>(null);
+
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "date" | "age">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Filtered and sorted athletes
+  const filteredAthletes = athletes
+    .filter(athlete => 
+      athlete.athlete_name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "name":
+          comparison = a.athlete_name.localeCompare(b.athlete_name);
+          break;
+        case "date":
+          comparison = new Date(a.assigned_at || 0).getTime() - new Date(b.assigned_at || 0).getTime();
+          break;
+        case "age":
+          comparison = (a.age || 0) - (b.age || 0);
+          break;
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
 
   useEffect(() => {
     checkCoachRole();
@@ -739,6 +766,51 @@ export default function AthleteManagement() {
           </div>
         </div>
 
+        {/* Search and Filter Bar */}
+        {athletes.length > 0 && (
+          <Card className="mb-6">
+            <CardContent className="py-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari atlet berdasarkan nama..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Select value={sortBy} onValueChange={(value: "name" | "date" | "age") => setSortBy(value)}>
+                    <SelectTrigger className="w-[140px]">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Urutkan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">Nama</SelectItem>
+                      <SelectItem value="date">Tanggal Assign</SelectItem>
+                      <SelectItem value="age">Usia</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                    title={sortOrder === "asc" ? "Ascending" : "Descending"}
+                  >
+                    {sortOrder === "asc" ? "↑" : "↓"}
+                  </Button>
+                </div>
+              </div>
+              {searchQuery && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Menampilkan {filteredAthletes.length} dari {athletes.length} atlet
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Pending Invitations Section */}
         {pendingInvitations.length > 0 && (
           <Card className="mb-6 border-yellow-500/50">
@@ -847,9 +919,22 @@ export default function AthleteManagement() {
               </p>
             </CardContent>
           </Card>
+        ) : filteredAthletes.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Search className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Tidak ditemukan</h3>
+              <p className="text-muted-foreground text-center mb-4">
+                Tidak ada atlet yang cocok dengan pencarian "{searchQuery}"
+              </p>
+              <Button variant="outline" onClick={() => setSearchQuery("")}>
+                Reset Pencarian
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {athletes.map((athlete) => (
+            {filteredAthletes.map((athlete) => (
               <Card key={athlete.id} className="overflow-hidden">
                 <CardHeader className="pb-3">
                   <div className="flex items-start gap-3">
