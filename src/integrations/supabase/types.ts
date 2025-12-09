@@ -251,6 +251,65 @@ export type Database = {
         }
         Relationships: []
       }
+      session_exercises: {
+        Row: {
+          created_at: string
+          distance_meters: number | null
+          duration_seconds: number | null
+          exercise_name: string
+          exercise_type: string
+          id: string
+          notes: string | null
+          repetitions: number | null
+          reps: number | null
+          session_id: string
+          sets: number | null
+          total_volume: number | null
+          updated_at: string
+          weight_kg: number | null
+        }
+        Insert: {
+          created_at?: string
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          exercise_name: string
+          exercise_type?: string
+          id?: string
+          notes?: string | null
+          repetitions?: number | null
+          reps?: number | null
+          session_id: string
+          sets?: number | null
+          total_volume?: number | null
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Update: {
+          created_at?: string
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          exercise_name?: string
+          exercise_type?: string
+          id?: string
+          notes?: string | null
+          repetitions?: number | null
+          reps?: number | null
+          session_id?: string
+          sets?: number | null
+          total_volume?: number | null
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_exercises_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "training_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_sessions: {
         Row: {
           athlete_name: string
