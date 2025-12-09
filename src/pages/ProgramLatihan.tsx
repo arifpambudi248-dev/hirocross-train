@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
 import { format, subDays, startOfWeek, endOfWeek, addWeeks, addDays, eachDayOfInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { Droppable } from "@/components/Droppable";
@@ -28,6 +28,8 @@ import { trainingSessionSchema, templateSchema } from "@/lib/validationSchemas";
 import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
 import { z } from "zod";
 import { ExerciseForm, Exercise, ExerciseType } from "@/components/ExerciseForm";
+import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
+import { exportSessionDetailToPDF } from "@/lib/exportUtils";
 
 type SessionExercise = {
   id: string;
@@ -97,6 +99,9 @@ export default function ProgramLatihan() {
   // View session dialog
   const [viewSessionOpen, setViewSessionOpen] = useState(false);
   const [viewingSession, setViewingSession] = useState<TrainingSession | null>(null);
+  
+  // Show volume chart
+  const [showVolumeChart, setShowVolumeChart] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -558,6 +563,14 @@ export default function ProgramLatihan() {
             </div>
 
             <div className="flex gap-2">
+              <Button
+                variant={showVolumeChart ? "default" : "outline"}
+                onClick={() => setShowVolumeChart(!showVolumeChart)}
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Grafik
+              </Button>
+              
               <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline">
@@ -790,6 +803,13 @@ export default function ProgramLatihan() {
             </CardContent>
           </Card>
 
+          {/* Weekly Volume Chart */}
+          {showVolumeChart && (
+            <div className="mb-6">
+              <WeeklyVolumeChart sessions={sessions} />
+            </div>
+          )}
+
           {/* Calendar Grid */}
           <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             {weekDays.map((day, idx) => {
@@ -956,6 +976,18 @@ export default function ProgramLatihan() {
           
           {viewingSession && (
             <div className="space-y-4">
+              {/* Export Button */}
+              {viewingSession.exercises && viewingSession.exercises.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => exportSessionDetailToPDF(viewingSession, athleteName)}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export PDF
+                </Button>
+              )}
+              
               {/* Session Metrics */}
               <div className="grid grid-cols-3 gap-3 p-3 bg-slate-950 rounded-lg border border-slate-800">
                 <div className="text-center">
