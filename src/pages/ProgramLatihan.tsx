@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
 import { format, subDays, startOfWeek, endOfWeek, addWeeks, addDays, eachDayOfInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { Droppable } from "@/components/Droppable";
@@ -27,6 +27,22 @@ import { Draggable } from "@/components/Draggable";
 import { trainingSessionSchema, templateSchema } from "@/lib/validationSchemas";
 import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
 import { z } from "zod";
+import { ExerciseForm, Exercise, ExerciseType } from "@/components/ExerciseForm";
+
+type SessionExercise = {
+  id: string;
+  session_id: string;
+  exercise_name: string;
+  exercise_type: string;
+  sets: number | null;
+  reps: number | null;
+  weight_kg: number | null;
+  distance_meters: number | null;
+  duration_seconds: number | null;
+  repetitions: number | null;
+  total_volume: number | null;
+  notes: string | null;
+};
 
 type TrainingSession = {
   id: string;
@@ -38,6 +54,7 @@ type TrainingSession = {
   load_manual: number | null;
   load_final: number;
   notes: string | null;
+  exercises?: SessionExercise[];
 };
 
 type Template = {
@@ -71,10 +88,15 @@ export default function ProgramLatihan() {
   const [duration, setDuration] = useState<number>(60);
   const [loadManual, setLoadManual] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
+  const [exercises, setExercises] = useState<Exercise[]>([]);
 
   // Template form state
   const [templateName, setTemplateName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  // View session dialog
+  const [viewSessionOpen, setViewSessionOpen] = useState(false);
+  const [viewingSession, setViewingSession] = useState<TrainingSession | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -161,7 +183,27 @@ export default function ProgramLatihan() {
         .order("date", { ascending: false });
 
       if (error) throw error;
-      setSessions(data || []);
+      
+      // Fetch exercises for all sessions
+      if (data && data.length > 0) {
+        const sessionIds = data.map(s => s.id);
+        const { data: exercisesData, error: exercisesError } = await supabase
+          .from("session_exercises")
+          .select("*")
+          .in("session_id", sessionIds);
+        
+        if (exercisesError) throw exercisesError;
+        
+        // Map exercises to sessions
+        const sessionsWithExercises = data.map(session => ({
+          ...session,
+          exercises: exercisesData?.filter(e => e.session_id === session.id) || []
+        }));
+        
+        setSessions(sessionsWithExercises);
+      } else {
+        setSessions([]);
+      }
     } catch (error: any) {
       handleError(error, getFriendlyErrorMessage(error));
     } finally {
@@ -238,7 +280,8 @@ export default function ProgramLatihan() {
       const loadAuto = computeSessionLoad(validatedData.rpe, validatedData.duration_minutes);
       const loadFinal = validatedData.load_manual !== null ? validatedData.load_manual : loadAuto;
 
-      const { error } = await supabase.from("training_sessions").insert({
+      // Insert training session
+      const { data: sessionData, error: sessionError } = await supabase.from("training_sessions").insert({
         user_id: selectedAthleteId,
         athlete_name: athleteName,
         date: validatedData.date,
@@ -249,14 +292,37 @@ export default function ProgramLatihan() {
         load_manual: validatedData.load_manual,
         load_final: loadFinal,
         notes: validatedData.notes || null,
-      });
+      }).select().single();
 
-      if (error) throw error;
+      if (sessionError) throw sessionError;
+
+      // Insert exercises if any
+      if (exercises.length > 0 && sessionData) {
+        const exercisesToInsert = exercises.map(ex => ({
+          session_id: sessionData.id,
+          exercise_name: ex.exercise_name,
+          exercise_type: ex.exercise_type,
+          sets: ex.sets || null,
+          reps: ex.reps || null,
+          weight_kg: ex.weight_kg || null,
+          distance_meters: ex.distance_meters || null,
+          duration_seconds: ex.duration_seconds || null,
+          repetitions: ex.repetitions || null,
+          total_volume: ex.total_volume || null,
+          notes: ex.notes || null,
+        }));
+
+        const { error: exercisesError } = await supabase
+          .from("session_exercises")
+          .insert(exercisesToInsert);
+
+        if (exercisesError) throw exercisesError;
+      }
 
       toast.success("Sesi latihan berhasil ditambahkan");
       setOpen(false);
       resetForm();
-      fetchSessions(userId);
+      fetchSessions(selectedAthleteId);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
@@ -356,6 +422,30 @@ export default function ProgramLatihan() {
     setLoadManual(null);
     setNotes("");
     setSelectedTemplateId("");
+    setExercises([]);
+  };
+
+  const handleViewSession = (session: TrainingSession) => {
+    setViewingSession(session);
+    setViewSessionOpen(true);
+  };
+
+  const getExerciseSummary = (session: TrainingSession) => {
+    if (!session.exercises || session.exercises.length === 0) return null;
+    
+    const strengthTotal = session.exercises
+      .filter(e => e.exercise_type === "strength")
+      .reduce((sum, e) => sum + ((e.sets || 0) * (e.reps || 0) * (e.weight_kg || 0)), 0);
+    
+    const cardioTotal = session.exercises
+      .filter(e => e.exercise_type === "cardio")
+      .reduce((sum, e) => sum + (e.distance_meters || 0), 0);
+    
+    const skillTotal = session.exercises
+      .filter(e => e.exercise_type === "skill")
+      .reduce((sum, e) => sum + (e.repetitions || 0), 0);
+    
+    return { strengthTotal, cardioTotal, skillTotal };
   };
 
   const getWeekDays = () => {
@@ -629,9 +719,14 @@ export default function ProgramLatihan() {
                         placeholder="Catatan tambahan..."
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        rows={3}
+                        rows={2}
                         className="bg-slate-950 border-slate-800"
                       />
+                    </div>
+
+                    {/* Exercise Details */}
+                    <div className="border-t border-slate-800 pt-4">
+                      <ExerciseForm exercises={exercises} onChange={setExercises} />
                     </div>
 
                     {/* Save as Template */}
@@ -741,16 +836,59 @@ export default function ProgramLatihan() {
                                 </div>
                                 
                                 {/* Metrics */}
-                                  <div className="space-y-1 text-xs">
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400">RPE</span>
-                                      <span className="font-semibold text-white">{session.rpe}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400">Load</span>
-                                      <span className="font-semibold text-primary">{session.load_final}</span>
-                                    </div>
+                                <div className="space-y-1 text-xs">
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">RPE</span>
+                                    <span className="font-semibold text-white">{session.rpe}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">Load</span>
+                                    <span className="font-semibold text-primary">{session.load_final}</span>
+                                  </div>
                                 </div>
+
+                                {/* Exercise Summary Icons */}
+                                {session.exercises && session.exercises.length > 0 && (
+                                  <div className="flex items-center gap-1 pt-1 border-t border-slate-800">
+                                    {(() => {
+                                      const summary = getExerciseSummary(session);
+                                      if (!summary) return null;
+                                      return (
+                                        <>
+                                          {summary.strengthTotal > 0 && (
+                                            <div className="flex items-center gap-0.5 text-xs text-blue-400" title={`${summary.strengthTotal.toLocaleString()} kg`}>
+                                              <Dumbbell className="w-3 h-3" />
+                                              <span>{summary.strengthTotal >= 1000 ? `${(summary.strengthTotal/1000).toFixed(0)}k` : summary.strengthTotal}</span>
+                                            </div>
+                                          )}
+                                          {summary.cardioTotal > 0 && (
+                                            <div className="flex items-center gap-0.5 text-xs text-green-400" title={`${(summary.cardioTotal/1000).toFixed(1)} km`}>
+                                              <Footprints className="w-3 h-3" />
+                                              <span>{(summary.cardioTotal/1000).toFixed(1)}k</span>
+                                            </div>
+                                          )}
+                                          {summary.skillTotal > 0 && (
+                                            <div className="flex items-center gap-0.5 text-xs text-orange-400" title={`${summary.skillTotal} repetisi`}>
+                                              <Target className="w-3 h-3" />
+                                              <span>{summary.skillTotal}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5 ml-auto"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleViewSession(session);
+                                      }}
+                                    >
+                                      <Eye className="w-3 h-3 text-slate-400" />
+                                    </Button>
+                                  </div>
+                                )}
                                 
                                 {/* Intensity Bar */}
                                 <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
@@ -805,6 +943,153 @@ export default function ProgramLatihan() {
           </Card>
         ) : null}
       </DragOverlay>
+
+      {/* View Session Detail Dialog */}
+      <Dialog open={viewSessionOpen} onOpenChange={setViewSessionOpen}>
+        <DialogContent className="max-w-lg bg-slate-900 border-slate-800 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{viewingSession?.session_name || "Detail Sesi Latihan"}</DialogTitle>
+            <DialogDescription>
+              {viewingSession && format(new Date(viewingSession.date), "EEEE, dd MMMM yyyy", { locale: localeId })}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingSession && (
+            <div className="space-y-4">
+              {/* Session Metrics */}
+              <div className="grid grid-cols-3 gap-3 p-3 bg-slate-950 rounded-lg border border-slate-800">
+                <div className="text-center">
+                  <div className="text-xs text-slate-400">Durasi</div>
+                  <div className="font-semibold text-white">{viewingSession.duration_minutes} menit</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-slate-400">RPE</div>
+                  <div className={`font-semibold ${viewingSession.rpe && viewingSession.rpe >= 8 ? 'text-red-400' : viewingSession.rpe && viewingSession.rpe >= 6 ? 'text-orange-400' : 'text-green-400'}`}>
+                    {viewingSession.rpe}/10
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-slate-400">Load</div>
+                  <div className="font-semibold text-primary">{viewingSession.load_final} AU</div>
+                </div>
+              </div>
+
+              {/* Exercise Details */}
+              {viewingSession.exercises && viewingSession.exercises.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-white">Detail Latihan ({viewingSession.exercises.length} latihan)</h4>
+                  
+                  {/* Strength Exercises */}
+                  {viewingSession.exercises.filter(e => e.exercise_type === "strength").length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-blue-400">
+                        <Dumbbell className="w-4 h-4" />
+                        Strength
+                      </div>
+                      <div className="space-y-2">
+                        {viewingSession.exercises.filter(e => e.exercise_type === "strength").map((ex, idx) => (
+                          <div key={idx} className="p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                            <div className="font-medium text-white">{ex.exercise_name}</div>
+                            <div className="flex gap-4 text-xs text-slate-400 mt-1">
+                              <span>{ex.sets} set × {ex.reps} rep</span>
+                              <span>{ex.weight_kg} kg</span>
+                              <span className="text-blue-400 font-semibold">
+                                Total: {((ex.sets || 0) * (ex.reps || 0) * (ex.weight_kg || 0)).toLocaleString()} kg
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cardio Exercises */}
+                  {viewingSession.exercises.filter(e => e.exercise_type === "cardio").length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-green-400">
+                        <Footprints className="w-4 h-4" />
+                        Cardio
+                      </div>
+                      <div className="space-y-2">
+                        {viewingSession.exercises.filter(e => e.exercise_type === "cardio").map((ex, idx) => (
+                          <div key={idx} className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
+                            <div className="font-medium text-white">{ex.exercise_name}</div>
+                            <div className="flex gap-4 text-xs text-slate-400 mt-1">
+                              <span>Jarak: {(ex.distance_meters || 0) >= 1000 ? `${((ex.distance_meters || 0)/1000).toFixed(2)} km` : `${ex.distance_meters} m`}</span>
+                              {ex.duration_seconds && (
+                                <span>Waktu: {Math.floor((ex.duration_seconds || 0) / 60)}:{String((ex.duration_seconds || 0) % 60).padStart(2, '0')}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Skill Exercises */}
+                  {viewingSession.exercises.filter(e => e.exercise_type === "skill").length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-orange-400">
+                        <Target className="w-4 h-4" />
+                        Skill
+                      </div>
+                      <div className="space-y-2">
+                        {viewingSession.exercises.filter(e => e.exercise_type === "skill").map((ex, idx) => (
+                          <div key={idx} className="p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                            <div className="font-medium text-white">{ex.exercise_name}</div>
+                            <div className="text-xs text-slate-400 mt-1">
+                              <span>Repetisi: <span className="text-orange-400 font-semibold">{ex.repetitions}</span></span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Total Summary */}
+                  {(() => {
+                    const summary = getExerciseSummary(viewingSession);
+                    if (!summary) return null;
+                    return (
+                      <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                        <div className="text-xs font-semibold text-slate-400 mb-2">Total Volume Sesi</div>
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          {summary.strengthTotal > 0 && (
+                            <div>
+                              <span className="text-slate-500">Strength:</span>
+                              <span className="ml-1 font-bold text-blue-400">{summary.strengthTotal.toLocaleString()} kg</span>
+                            </div>
+                          )}
+                          {summary.cardioTotal > 0 && (
+                            <div>
+                              <span className="text-slate-500">Cardio:</span>
+                              <span className="ml-1 font-bold text-green-400">{(summary.cardioTotal / 1000).toFixed(2)} km</span>
+                            </div>
+                          )}
+                          {summary.skillTotal > 0 && (
+                            <div>
+                              <span className="text-slate-500">Skill:</span>
+                              <span className="ml-1 font-bold text-orange-400">{summary.skillTotal} rep</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Notes */}
+              {viewingSession.notes && (
+                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Catatan</div>
+                  <p className="text-sm text-white">{viewingSession.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DndContext>
   );
 }
