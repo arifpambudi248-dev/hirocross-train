@@ -253,3 +253,208 @@ export const exportComparisonToExcel = (athletes: AthleteComparisonData[]) => {
   
   XLSX.writeFile(workbook, `perbandingan-atlet-${new Date().toISOString().split('T')[0]}.xlsx`);
 };
+
+// Session Exercise Types
+export interface SessionExercise {
+  exercise_name: string;
+  exercise_type: string;
+  sets: number | null;
+  reps: number | null;
+  weight_kg: number | null;
+  distance_meters: number | null;
+  duration_seconds: number | null;
+  repetitions: number | null;
+  total_volume: number | null;
+}
+
+export interface SessionWithExercises {
+  id: string;
+  date: string;
+  session_name: string | null;
+  rpe: number | null;
+  duration_minutes: number | null;
+  load_final: number;
+  notes: string | null;
+  exercises?: SessionExercise[];
+}
+
+export const exportSessionDetailToPDF = (
+  session: SessionWithExercises,
+  athleteName: string
+) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.width;
+  
+  // Title
+  doc.setFontSize(18);
+  doc.text("Detail Sesi Latihan", pageWidth / 2, 15, { align: "center" });
+  
+  doc.setFontSize(12);
+  doc.text(athleteName, pageWidth / 2, 23, { align: "center" });
+  
+  doc.setFontSize(10);
+  const sessionDate = new Date(session.date).toLocaleDateString("id-ID", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+  doc.text(sessionDate, pageWidth / 2, 30, { align: "center" });
+  
+  let yPos = 40;
+  
+  // Session Info
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("Informasi Sesi", 14, yPos);
+  yPos += 8;
+  
+  const sessionInfo = [
+    ["Nama Sesi", session.session_name || "Latihan"],
+    ["Durasi", `${session.duration_minutes} menit`],
+    ["RPE", `${session.rpe}/10`],
+    ["Training Load", `${session.load_final} AU`],
+  ];
+  
+  autoTable(doc, {
+    startY: yPos,
+    head: [["Parameter", "Nilai"]],
+    body: sessionInfo,
+    theme: "grid",
+    headStyles: { fillColor: [220, 38, 38] }, // Red color matching branding
+    styles: { fontSize: 10 },
+  });
+  
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+  
+  // Exercise Details
+  if (session.exercises && session.exercises.length > 0) {
+    // Strength Exercises
+    const strengthExercises = session.exercises.filter(e => e.exercise_type === "strength");
+    if (strengthExercises.length > 0) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Latihan Strength", 14, yPos);
+      yPos += 6;
+      
+      const strengthData = strengthExercises.map(e => [
+        e.exercise_name,
+        e.sets?.toString() || "-",
+        e.reps?.toString() || "-",
+        e.weight_kg ? `${e.weight_kg} kg` : "-",
+        `${((e.sets || 0) * (e.reps || 0) * (e.weight_kg || 0)).toLocaleString()} kg`
+      ]);
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [["Latihan", "Set", "Rep", "Beban", "Total Volume"]],
+        body: strengthData,
+        theme: "grid",
+        headStyles: { fillColor: [59, 130, 246] }, // Blue
+        styles: { fontSize: 9 },
+      });
+      
+      const totalStrength = strengthExercises.reduce(
+        (sum, e) => sum + ((e.sets || 0) * (e.reps || 0) * (e.weight_kg || 0)), 0
+      );
+      
+      yPos = (doc as any).lastAutoTable.finalY + 2;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Volume Strength: ${totalStrength.toLocaleString()} kg`, 14, yPos);
+      yPos += 10;
+    }
+    
+    // Cardio Exercises
+    const cardioExercises = session.exercises.filter(e => e.exercise_type === "cardio");
+    if (cardioExercises.length > 0) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Latihan Cardio", 14, yPos);
+      yPos += 6;
+      
+      const cardioData = cardioExercises.map(e => {
+        const dist = e.distance_meters || 0;
+        const distDisplay = dist >= 1000 ? `${(dist / 1000).toFixed(2)} km` : `${dist} m`;
+        const durSec = e.duration_seconds || 0;
+        const durDisplay = durSec > 0 ? `${Math.floor(durSec / 60)}:${String(durSec % 60).padStart(2, "0")}` : "-";
+        return [e.exercise_name, distDisplay, durDisplay];
+      });
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [["Latihan", "Jarak", "Waktu"]],
+        body: cardioData,
+        theme: "grid",
+        headStyles: { fillColor: [34, 197, 94] }, // Green
+        styles: { fontSize: 9 },
+      });
+      
+      const totalDistance = cardioExercises.reduce((sum, e) => sum + (e.distance_meters || 0), 0);
+      
+      yPos = (doc as any).lastAutoTable.finalY + 2;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Jarak: ${(totalDistance / 1000).toFixed(2)} km`, 14, yPos);
+      yPos += 10;
+    }
+    
+    // Skill Exercises
+    const skillExercises = session.exercises.filter(e => e.exercise_type === "skill");
+    if (skillExercises.length > 0) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Latihan Skill", 14, yPos);
+      yPos += 6;
+      
+      const skillData = skillExercises.map(e => [
+        e.exercise_name,
+        e.repetitions?.toString() || "-"
+      ]);
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [["Latihan", "Repetisi"]],
+        body: skillData,
+        theme: "grid",
+        headStyles: { fillColor: [249, 115, 22] }, // Orange
+        styles: { fontSize: 9 },
+      });
+      
+      const totalReps = skillExercises.reduce((sum, e) => sum + (e.repetitions || 0), 0);
+      
+      yPos = (doc as any).lastAutoTable.finalY + 2;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Repetisi: ${totalReps.toLocaleString()}`, 14, yPos);
+      yPos += 10;
+    }
+  }
+  
+  // Notes
+  if (session.notes) {
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Catatan", 14, yPos);
+    yPos += 6;
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const splitNotes = doc.splitTextToSize(session.notes, pageWidth - 28);
+    doc.text(splitNotes, 14, yPos);
+  }
+  
+  // Save
+  const fileName = `detail-sesi-${session.session_name?.replace(/\s+/g, "-") || "latihan"}-${session.date}.pdf`;
+  doc.save(fileName);
+};
+
+// Weekly volume data for charts
+export interface WeeklyVolumeData {
+  week: string;
+  weekStart: string;
+  strengthVolume: number;
+  cardioVolume: number;
+  skillVolume: number;
+  sessionCount: number;
+}
