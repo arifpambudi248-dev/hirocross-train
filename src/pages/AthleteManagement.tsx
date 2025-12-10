@@ -70,8 +70,14 @@ export default function AthleteManagement() {
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
+  const [assignSearchQuery, setAssignSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "date" | "age">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Filtered athletes for assign dialog
+  const filteredAssignAthletes = allAthletesWithStatus.filter(athlete =>
+    athlete.athlete_name.toLowerCase().includes(assignSearchQuery.toLowerCase())
+  );
 
   // Filtered and sorted athletes
   const filteredAthletes = athletes
@@ -736,14 +742,28 @@ export default function AthleteManagement() {
                   </p>
 
                   <div>
-                    <Label htmlFor="existing-athlete">Pilih Atlet</Label>
+                    <Label htmlFor="assign-search">Cari Atlet</Label>
+                    <div className="relative mt-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="assign-search"
+                        placeholder="Cari berdasarkan nama..."
+                        value={assignSearchQuery}
+                        onChange={(e) => setAssignSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label>Pilih Atlet</Label>
                     <div className="mt-2 max-h-60 overflow-y-auto space-y-2 border rounded-md p-2">
-                      {allAthletesWithStatus.length === 0 ? (
+                      {filteredAssignAthletes.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-4">
-                          Tidak ada atlet terdaftar
+                          {assignSearchQuery ? "Tidak ditemukan atlet dengan nama tersebut" : "Tidak ada atlet terdaftar"}
                         </p>
                       ) : (
-                        allAthletesWithStatus.map(athlete => (
+                        filteredAssignAthletes.map(athlete => (
                           <div
                             key={athlete.id}
                             onClick={() => {
