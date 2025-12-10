@@ -15,6 +15,11 @@ interface SessionExercise {
 
 interface TrainingSession {
   date: string;
+  // Pre-calculated volumes from database
+  strength_volume?: number;
+  cardio_distance?: number;
+  skill_reps?: number;
+  // Legacy: exercises array for fallback calculation
   exercises?: SessionExercise[];
 }
 
@@ -34,8 +39,6 @@ export function WeeklyVolumeChart({ sessions }: WeeklyVolumeChartProps) {
     }>();
 
     sessions.forEach(session => {
-      if (!session.exercises || session.exercises.length === 0) return;
-
       const sessionDate = parseISO(session.date);
       const weekStart = startOfWeek(sessionDate, { weekStartsOn: 1 });
       const weekKey = format(weekStart, "yyyy-MM-dd");
@@ -53,15 +56,23 @@ export function WeeklyVolumeChart({ sessions }: WeeklyVolumeChartProps) {
       const weekData = weekMap.get(weekKey)!;
       weekData.sessionCount++;
 
-      session.exercises.forEach(ex => {
-        if (ex.exercise_type === "strength") {
-          weekData.strengthVolume += (ex.sets || 0) * (ex.reps || 0) * (ex.weight_kg || 0);
-        } else if (ex.exercise_type === "cardio") {
-          weekData.cardioVolume += ex.distance_meters || 0;
-        } else if (ex.exercise_type === "skill") {
-          weekData.skillVolume += ex.repetitions || 0;
-        }
-      });
+      // Use pre-calculated volumes from database if available
+      if (session.strength_volume !== undefined || session.cardio_distance !== undefined || session.skill_reps !== undefined) {
+        weekData.strengthVolume += session.strength_volume || 0;
+        weekData.cardioVolume += session.cardio_distance || 0;
+        weekData.skillVolume += session.skill_reps || 0;
+      } else if (session.exercises && session.exercises.length > 0) {
+        // Fallback: calculate from exercises array
+        session.exercises.forEach(ex => {
+          if (ex.exercise_type === "strength") {
+            weekData.strengthVolume += (ex.sets || 0) * (ex.reps || 0) * (ex.weight_kg || 0);
+          } else if (ex.exercise_type === "cardio") {
+            weekData.cardioVolume += ex.distance_meters || 0;
+          } else if (ex.exercise_type === "skill") {
+            weekData.skillVolume += ex.repetitions || 0;
+          }
+        });
+      }
     });
 
     // Convert to array and sort by date

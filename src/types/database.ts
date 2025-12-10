@@ -13,6 +13,10 @@ export type TrainingSession = {
   load_manual: number | null;
   load_final: number;
   notes: string;
+  // New comprehensive volume columns
+  strength_volume?: number;
+  cardio_distance?: number;
+  skill_reps?: number;
   created_at?: string;
   updated_at?: string;
 };
@@ -39,6 +43,7 @@ export type ReadinessLog = {
   rhr_score: number;
   readiness_score: number;
   readiness_zone: 'low' | 'moderate' | 'prime';
+  body_weight?: number | null;
   notes: string;
   created_at: string;
 };
