@@ -79,6 +79,18 @@ serve(async (req) => {
 
     if (createError) {
       console.error("Error creating user:", createError);
+      
+      // Handle specific error for email already exists
+      if (createError.message?.includes("already been registered") || createError.code === "email_exists") {
+        return new Response(
+          JSON.stringify({ 
+            error: "Email ini sudah terdaftar. Gunakan fitur 'Assign Atlet' untuk menambahkan atlet yang sudah memiliki akun.",
+            code: "EMAIL_EXISTS"
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: createError.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
