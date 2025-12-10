@@ -313,6 +313,7 @@ export type Database = {
       training_sessions: {
         Row: {
           athlete_name: string
+          cardio_distance: number | null
           created_at: string
           date: string
           duration_minutes: number | null
@@ -323,11 +324,14 @@ export type Database = {
           notes: string | null
           rpe: number | null
           session_name: string | null
+          skill_reps: number | null
+          strength_volume: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           athlete_name: string
+          cardio_distance?: number | null
           created_at?: string
           date: string
           duration_minutes?: number | null
@@ -338,11 +342,14 @@ export type Database = {
           notes?: string | null
           rpe?: number | null
           session_name?: string | null
+          skill_reps?: number | null
+          strength_volume?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           athlete_name?: string
+          cardio_distance?: number | null
           created_at?: string
           date?: string
           duration_minutes?: number | null
@@ -353,6 +360,8 @@ export type Database = {
           notes?: string | null
           rpe?: number | null
           session_name?: string | null
+          skill_reps?: number | null
+          strength_volume?: number | null
           updated_at?: string
           user_id?: string
         }

@@ -56,6 +56,10 @@ type TrainingSession = {
   load_manual: number | null;
   load_final: number;
   notes: string | null;
+  // Comprehensive volume columns
+  strength_volume?: number;
+  cardio_distance?: number;
+  skill_reps?: number;
   exercises?: SessionExercise[];
 };
 
@@ -476,7 +480,20 @@ export default function ProgramLatihan() {
       ? Math.round(weekSessions.reduce((sum, s) => sum + (s.rpe || 0), 0) / weekSessions.length * 10) / 10
       : 0;
 
-    return { totalLoad, totalDuration, avgRPE, sessionCount: weekSessions.length };
+    // Comprehensive volume metrics
+    const totalStrengthVolume = weekSessions.reduce((sum, s) => sum + (s.strength_volume || 0), 0);
+    const totalCardioDistance = weekSessions.reduce((sum, s) => sum + (s.cardio_distance || 0), 0);
+    const totalSkillReps = weekSessions.reduce((sum, s) => sum + (s.skill_reps || 0), 0);
+
+    return { 
+      totalLoad, 
+      totalDuration, 
+      avgRPE, 
+      sessionCount: weekSessions.length,
+      totalStrengthVolume,
+      totalCardioDistance,
+      totalSkillReps
+    };
   };
 
   const goToPreviousWeek = () => {
@@ -776,7 +793,7 @@ export default function ProgramLatihan() {
           {/* Weekly Summary */}
           <Card className="mb-6 bg-slate-900 border-slate-800">
             <CardContent className="p-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-slate-400">Total</span>
@@ -798,6 +815,41 @@ export default function ProgramLatihan() {
                 <div className="space-y-1">
                   <div className="text-sm text-slate-400">Sesi</div>
                   <div className="text-xl font-bold text-white">{weeklyMetrics.sessionCount}</div>
+                </div>
+
+                {/* Comprehensive Volume Metrics */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-sm text-blue-400">
+                    <Dumbbell className="w-3 h-3" />
+                    <span>Strength</span>
+                  </div>
+                  <div className="text-xl font-bold text-blue-400">
+                    {weeklyMetrics.totalStrengthVolume >= 1000 
+                      ? `${(weeklyMetrics.totalStrengthVolume / 1000).toFixed(1)}k` 
+                      : weeklyMetrics.totalStrengthVolume} kg
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-sm text-green-400">
+                    <Footprints className="w-3 h-3" />
+                    <span>Cardio</span>
+                  </div>
+                  <div className="text-xl font-bold text-green-400">
+                    {weeklyMetrics.totalCardioDistance >= 1000 
+                      ? `${(weeklyMetrics.totalCardioDistance / 1000).toFixed(1)} km` 
+                      : `${weeklyMetrics.totalCardioDistance} m`}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-sm text-orange-400">
+                    <Target className="w-3 h-3" />
+                    <span>Skill</span>
+                  </div>
+                  <div className="text-xl font-bold text-orange-400">
+                    {weeklyMetrics.totalSkillReps} rep
+                  </div>
                 </div>
               </div>
             </CardContent>
