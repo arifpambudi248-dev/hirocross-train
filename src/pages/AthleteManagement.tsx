@@ -326,11 +326,19 @@ export default function AthleteManagement() {
       const result = await response.json();
 
       if (!response.ok) {
-        // Handle specific email exists error
+        // Handle specific email exists error - auto switch to assign dialog
         if (result.code === "EMAIL_EXISTS" || response.status === 409) {
-          sonnerToast.error("Email sudah terdaftar", {
-            description: "Gunakan 'Assign Atlet' untuk menambahkan atlet yang sudah memiliki akun."
+          sonnerToast.info("Email sudah terdaftar", {
+            description: "Membuka dialog Assign Atlet untuk invite atlet yang sudah terdaftar..."
           });
+          setAddDialogOpen(false);
+          setNewAthleteEmail("");
+          setNewAthleteName("");
+          setNewAthletePassword("");
+          // Auto open assign dialog
+          setTimeout(() => {
+            setAssignDialogOpen(true);
+          }, 300);
           return;
         }
         throw new Error(result.error || "Gagal membuat akun atlet");
