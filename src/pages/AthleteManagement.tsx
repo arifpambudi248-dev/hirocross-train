@@ -172,17 +172,21 @@ export default function AthleteManagement() {
       }
 
       // Load all athletes for assign dialog with status
-      const { data: allRoles } = await supabase
+      const { data: allRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id")
         .eq("role", "athlete");
 
-      if (allRoles) {
+      console.log("All athlete roles:", allRoles, "Error:", rolesError);
+
+      if (allRoles && allRoles.length > 0) {
         const athleteUserIds = allRoles.map(r => r.user_id);
-        const { data: allProfiles } = await supabase
+        const { data: allProfiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, athlete_name, avatar_url")
           .in("id", athleteUserIds);
+
+        console.log("All athlete profiles:", allProfiles, "Error:", profilesError);
 
         // Get all assignments/invitations for this coach
         const { data: coachAssignments } = await supabase
@@ -190,10 +194,12 @@ export default function AthleteManagement() {
           .select("athlete_id, status")
           .eq("coach_id", user.id);
 
+        console.log("Coach assignments:", coachAssignments);
+
         const assignmentMap = new Map<string, string>();
         coachAssignments?.forEach(a => assignmentMap.set(a.athlete_id, a.status));
 
-        if (allProfiles) {
+        if (allProfiles && allProfiles.length > 0) {
           // Build athletes with status, excluding current coach
           const athletesWithStatus = allProfiles
             .filter(p => p.id !== user.id)
@@ -206,12 +212,17 @@ export default function AthleteManagement() {
                 : 'available') as 'available' | 'pending' | 'assigned'
             }));
           
+          console.log("Athletes with status:", athletesWithStatus);
           setAllAthletesWithStatus(athletesWithStatus);
           
           // Keep available only for backward compatibility
           const availableAthletes = athletesWithStatus.filter(a => a.status === 'available');
           setAllUsers(availableAthletes);
         }
+      } else {
+        console.log("No athlete roles found or error occurred");
+        setAllAthletesWithStatus([]);
+        setAllUsers([]);
       }
 
       // Load pending invitations (sent by coach)

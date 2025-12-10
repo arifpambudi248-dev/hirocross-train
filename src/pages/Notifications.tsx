@@ -217,12 +217,15 @@ export default function Notifications() {
     setIsSearching(true);
     try {
       // Get all users with coach role
-      const { data: coachRoles } = await supabase
+      const { data: coachRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id")
         .eq("role", "coach");
 
+      console.log("Coach roles:", coachRoles, "Error:", rolesError);
+
       if (!coachRoles || coachRoles.length === 0) {
+        console.log("No coach roles found");
         setCoaches([]);
         setIsSearching(false);
         return;
