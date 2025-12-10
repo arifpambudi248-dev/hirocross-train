@@ -149,27 +149,26 @@ export default function AthleteManagement() {
 
       if (!assignments || assignments.length === 0) {
         setAthletes([]);
-        setIsLoading(false);
-        return;
-      }
+        // DON'T return early - we still need to load all athletes for assign dialog
+      } else {
+        const athleteIds = assignments.map(a => a.athlete_id);
 
-      const athleteIds = assignments.map(a => a.athlete_id);
+        // Get athlete profiles
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", athleteIds);
 
-      // Get athlete profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("*")
-        .in("id", athleteIds);
-
-      if (profiles) {
-        const athletesWithAssignmentDate = profiles.map(profile => {
-          const assignment = assignments.find(a => a.athlete_id === profile.id);
-          return {
-            ...profile,
-            assigned_at: assignment?.assigned_at
-          };
-        });
-        setAthletes(athletesWithAssignmentDate);
+        if (profiles) {
+          const athletesWithAssignmentDate = profiles.map(profile => {
+            const assignment = assignments.find(a => a.athlete_id === profile.id);
+            return {
+              ...profile,
+              assigned_at: assignment?.assigned_at
+            };
+          });
+          setAthletes(athletesWithAssignmentDate);
+        }
       }
 
       // Load all athletes for assign dialog with status
