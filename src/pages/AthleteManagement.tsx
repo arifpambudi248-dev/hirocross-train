@@ -326,6 +326,13 @@ export default function AthleteManagement() {
       const result = await response.json();
 
       if (!response.ok) {
+        // Handle specific email exists error
+        if (result.code === "EMAIL_EXISTS" || response.status === 409) {
+          sonnerToast.error("Email sudah terdaftar", {
+            description: "Gunakan 'Assign Atlet' untuk menambahkan atlet yang sudah memiliki akun."
+          });
+          return;
+        }
         throw new Error(result.error || "Gagal membuat akun atlet");
       }
 
