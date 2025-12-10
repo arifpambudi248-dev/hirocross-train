@@ -39,6 +39,13 @@ export default function AthleteManagement() {
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [athleteRequests, setAthleteRequests] = useState<PendingInvitation[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [allAthletesWithStatus, setAllAthletesWithStatus] = useState<Array<{
+    id: string;
+    athlete_name: string;
+    avatar_url: string | null;
+    status: 'available' | 'pending' | 'assigned';
+  }>>([]);
+  const [directAssignMode, setDirectAssignMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCoach, setIsCoach] = useState(false);
   const { toast } = useToast();
@@ -159,7 +166,7 @@ export default function AthleteManagement() {
         setAthletes(athletesWithAssignmentDate);
       }
 
-      // Load all athletes for assign dialog
+      // Load all athletes for assign dialog with status
       const { data: allRoles } = await supabase
         .from("user_roles")
         .select("user_id")
@@ -172,19 +179,32 @@ export default function AthleteManagement() {
           .select("id, athlete_name, avatar_url")
           .in("id", athleteUserIds);
 
-        // Get all pending invitations to this coach
-        const { data: pendingAssignments } = await supabase
+        // Get all assignments/invitations for this coach
+        const { data: coachAssignments } = await supabase
           .from("coach_athletes")
-          .select("athlete_id")
+          .select("athlete_id, status")
           .eq("coach_id", user.id);
 
-        const pendingOrAssignedIds = pendingAssignments?.map(p => p.athlete_id) || [];
+        const assignmentMap = new Map<string, string>();
+        coachAssignments?.forEach(a => assignmentMap.set(a.athlete_id, a.status));
 
         if (allProfiles) {
-          // Filter out already assigned/pending athletes AND exclude current coach
-          const availableAthletes = allProfiles.filter(
-            p => !pendingOrAssignedIds.includes(p.id) && p.id !== user.id
-          );
+          // Build athletes with status, excluding current coach
+          const athletesWithStatus = allProfiles
+            .filter(p => p.id !== user.id)
+            .map(p => ({
+              id: p.id,
+              athlete_name: p.athlete_name,
+              avatar_url: p.avatar_url,
+              status: (assignmentMap.has(p.id) 
+                ? (assignmentMap.get(p.id) === 'accepted' ? 'assigned' : 'pending')
+                : 'available') as 'available' | 'pending' | 'assigned'
+            }));
+          
+          setAllAthletesWithStatus(athletesWithStatus);
+          
+          // Keep available only for backward compatibility
+          const availableAthletes = athletesWithStatus.filter(a => a.status === 'available');
           setAllUsers(availableAthletes);
         }
       }
@@ -375,20 +395,26 @@ export default function AthleteManagement() {
         return;
       }
 
-      // Send invitation to existing athlete (pending status)
+      // Direct assign mode: immediately accepted, Invitation mode: pending
+      const assignStatus = directAssignMode ? 'accepted' : 'pending';
+      
       const { error } = await supabase
         .from("coach_athletes")
         .insert({
           coach_id: user.id,
           athlete_id: selectedExistingAthleteId,
-          status: 'pending',
+          status: assignStatus,
           invited_by: 'coach',
           created_by: user.id
         });
 
       if (error) throw error;
 
-      sonnerToast.success("Invitation berhasil dikirim ke atlet");
+      if (directAssignMode) {
+        sonnerToast.success("Atlet berhasil langsung ditambahkan ke roster");
+      } else {
+        sonnerToast.success("Invitation berhasil dikirim ke atlet");
+      }
       setAssignDialogOpen(false);
       setSelectedExistingAthleteId("");
       loadAthletes();
@@ -660,37 +686,97 @@ export default function AthleteManagement() {
               <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2">
                   <Users className="h-4 w-4" />
-                  Kirim Invitation
+                  Assign Atlet
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Kirim Invitation ke Atlet</DialogTitle>
+                  <DialogTitle>Assign Atlet</DialogTitle>
                   <DialogDescription>
-                    Pilih atlet yang sudah terdaftar untuk mengirim invitation. Atlet akan menerima notifikasi dan bisa menerima atau menolak.
+                    Pilih atlet yang sudah terdaftar untuk ditambahkan ke roster Anda.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
+                  {/* Mode Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Mode:</span>
+                      <Badge variant={directAssignMode ? "default" : "secondary"}>
+                        {directAssignMode ? "Direct Assign" : "Invitation"}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDirectAssignMode(!directAssignMode)}
+                    >
+                      {directAssignMode ? "Ganti ke Invitation" : "Ganti ke Direct"}
+                    </Button>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground">
+                    {directAssignMode 
+                      ? "Direct Assign: Atlet langsung masuk ke roster tanpa konfirmasi"
+                      : "Invitation: Atlet akan menerima notifikasi dan harus konfirmasi"}
+                  </p>
+
                   <div>
                     <Label htmlFor="existing-athlete">Pilih Atlet</Label>
-                    <select
-                      id="existing-athlete"
-                      value={selectedExistingAthleteId}
-                      onChange={(e) => setSelectedExistingAthleteId(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">-- Pilih Atlet --</option>
-                      {allUsers.map(user => (
-                        <option key={user.id} value={user.id}>
-                          {user.athlete_name}
-                        </option>
-                      ))}
-                    </select>
-                    {allUsers.length === 0 && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Tidak ada atlet yang belum di-assign
-                      </p>
-                    )}
+                    <div className="mt-2 max-h-60 overflow-y-auto space-y-2 border rounded-md p-2">
+                      {allAthletesWithStatus.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Tidak ada atlet terdaftar
+                        </p>
+                      ) : (
+                        allAthletesWithStatus.map(athlete => (
+                          <div
+                            key={athlete.id}
+                            onClick={() => {
+                              if (athlete.status === 'available') {
+                                setSelectedExistingAthleteId(athlete.id);
+                              }
+                            }}
+                            className={`flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors ${
+                              selectedExistingAthleteId === athlete.id
+                                ? 'bg-primary/10 border border-primary'
+                                : athlete.status === 'available'
+                                  ? 'hover:bg-muted'
+                                  : 'opacity-50 cursor-not-allowed'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={athlete.avatar_url || undefined} />
+                                <AvatarFallback className="text-xs">
+                                  {athlete.athlete_name.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm font-medium">{athlete.athlete_name}</span>
+                            </div>
+                            <Badge
+                              variant={
+                                athlete.status === 'available' 
+                                  ? 'outline' 
+                                  : athlete.status === 'pending' 
+                                    ? 'secondary' 
+                                    : 'default'
+                              }
+                              className={
+                                athlete.status === 'available'
+                                  ? 'border-green-500 text-green-500'
+                                  : athlete.status === 'pending'
+                                    ? 'border-yellow-500 text-yellow-500 bg-yellow-500/10'
+                                    : ''
+                              }
+                            >
+                              {athlete.status === 'available' && 'Available'}
+                              {athlete.status === 'pending' && 'Pending'}
+                              {athlete.status === 'assigned' && 'Assigned'}
+                            </Badge>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                   <Button
                     onClick={handleAssignExistingAthlete}
@@ -702,6 +788,8 @@ export default function AthleteManagement() {
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Memproses...
                       </>
+                    ) : directAssignMode ? (
+                      "Langsung Assign"
                     ) : (
                       "Kirim Invitation"
                     )}
