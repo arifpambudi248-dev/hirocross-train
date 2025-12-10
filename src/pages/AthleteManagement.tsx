@@ -159,7 +159,7 @@ export default function AthleteManagement() {
         setAthletes(athletesWithAssignmentDate);
       }
 
-      // Load all users (athletes only) for assign dialog
+      // Load all athletes for assign dialog
       const { data: allRoles } = await supabase
         .from("user_roles")
         .select("user_id")
@@ -169,15 +169,23 @@ export default function AthleteManagement() {
         const athleteUserIds = allRoles.map(r => r.user_id);
         const { data: allProfiles } = await supabase
           .from("profiles")
-          .select("id, athlete_name")
+          .select("id, athlete_name, avatar_url")
           .in("id", athleteUserIds);
 
+        // Get all pending invitations to this coach
+        const { data: pendingAssignments } = await supabase
+          .from("coach_athletes")
+          .select("athlete_id")
+          .eq("coach_id", user.id);
+
+        const pendingOrAssignedIds = pendingAssignments?.map(p => p.athlete_id) || [];
+
         if (allProfiles) {
-          // Filter out already assigned athletes AND exclude current coach
-          const unassignedAthletes = allProfiles.filter(
-            p => !athleteIds.includes(p.id) && p.id !== user.id
+          // Filter out already assigned/pending athletes AND exclude current coach
+          const availableAthletes = allProfiles.filter(
+            p => !pendingOrAssignedIds.includes(p.id) && p.id !== user.id
           );
-          setAllUsers(unassignedAthletes);
+          setAllUsers(availableAthletes);
         }
       }
 
