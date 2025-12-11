@@ -69,7 +69,7 @@ export default function AnnualPlan() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [autoAdjust, setAutoAdjust] = useState(false);
-  const [periodizationType, setPeriodizationType] = useState<"traditional" | "block">("traditional");
+  const [periodizationType, setPeriodizationType] = useState<"traditional" | "block" | "undulating">("traditional");
   const [blockWeeks, setBlockWeeks] = useState({ accumulation: 3, transmutation: 2, realization: 1 });
   const [isEditingBlockParams, setIsEditingBlockParams] = useState(false);
   const [blockParameters, setBlockParameters] = useState({
@@ -222,9 +222,14 @@ export default function AnnualPlan() {
       setEditableLoads(selectedPlan.planned_loads || {});
       setSelectedAthleteId(selectedPlan.athlete_id);
       setShowLoadDialog(false);
-      setTimeout(() => {
-        generatePlan();
-      }, 100);
+      
+      // Generate plan directly with loaded data (not relying on state)
+      generatePlanWithData(
+        selectedPlan.start_date,
+        selectedPlan.competition_date,
+        selectedPlan.percentages,
+        selectedPlan.athlete_id
+      );
     }
   };
 
@@ -333,9 +338,198 @@ export default function AnnualPlan() {
     fetchTrainingSessions(format(start, "yyyy-MM-dd"), format(competition, "yyyy-MM-dd"));
   };
 
+  const generatePlanWithData = (
+    planStartDate: string,
+    planCompetitionDate: string,
+    percentages: EditablePercentages,
+    athleteId: string
+  ) => {
+    if (!planStartDate || !planCompetitionDate) {
+      toast.error("Harap isi tanggal mulai dan tanggal pertandingan");
+      return;
+    }
+
+    const start = new Date(planStartDate);
+    const competition = new Date(planCompetitionDate);
+
+    if (start >= competition) {
+      toast.error("Tanggal pertandingan harus setelah tanggal mulai latihan");
+      return;
+    }
+
+    const totalDays = differenceInDays(competition, start);
+
+    if (totalDays < 14) {
+      toast.error("Durasi perencanaan minimal 14 hari");
+      return;
+    }
+
+    const gppDays = Math.round(totalDays * (percentages.gpp / 100));
+    const sppDays = Math.round(totalDays * (percentages.spp / 100));
+    const preDays = Math.round(totalDays * (percentages.pre / 100));
+    const compDays = totalDays - gppDays - sppDays - preDays;
+
+    const gppStart = start;
+    const gppEnd = addDays(gppStart, gppDays - 1);
+    const sppStart = addDays(gppEnd, 1);
+    const sppEnd = addDays(sppStart, sppDays - 1);
+    const preStart = addDays(sppEnd, 1);
+    const preEnd = addDays(preStart, preDays - 1);
+    const compStart = addDays(preEnd, 1);
+    const compEnd = competition;
+
+    const newPhases: Phase[] = [
+      {
+        name: "Persiapan Umum (GPP)",
+        color: "bg-chart-1",
+        startDate: format(gppStart, "yyyy-MM-dd"),
+        endDate: format(gppEnd, "yyyy-MM-dd"),
+        durationDays: gppDays,
+        percentage: percentages.gpp,
+      },
+      {
+        name: "Persiapan Khusus (SPP)",
+        color: "bg-chart-2",
+        startDate: format(sppStart, "yyyy-MM-dd"),
+        endDate: format(sppEnd, "yyyy-MM-dd"),
+        durationDays: sppDays,
+        percentage: percentages.spp,
+      },
+      {
+        name: "Pra Kompetisi",
+        color: "bg-chart-3",
+        startDate: format(preStart, "yyyy-MM-dd"),
+        endDate: format(preEnd, "yyyy-MM-dd"),
+        durationDays: preDays,
+        percentage: percentages.pre,
+      },
+      {
+        name: "Kompetisi",
+        color: "bg-chart-4",
+        startDate: format(compStart, "yyyy-MM-dd"),
+        endDate: format(compEnd, "yyyy-MM-dd"),
+        durationDays: compDays,
+        percentage: percentages.comp,
+      },
+    ];
+
+    setPhases(newPhases);
+    toast.success("Annual plan berhasil dimuat");
+    fetchTrainingSessionsWithId(format(start, "yyyy-MM-dd"), format(competition, "yyyy-MM-dd"), athleteId);
+  };
+
+  const fetchTrainingSessionsWithId = async (start: string, end: string, athleteId: string) => {
+    if (!athleteId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("training_sessions")
+        .select("*")
+        .eq("user_id", athleteId)
+        .gte("date", start)
+        .lte("date", end)
+        .order("date", { ascending: true });
+
+      if (error) throw error;
+      setTrainingSessions(data || []);
+    } catch (error) {
+      console.error("Error fetching training sessions:", error);
+    }
+  };
+
+  const generateUndulatingPeriodization = () => {
+    if (!startDate || !competitionDate) {
+      toast.error("Harap isi tanggal mulai dan tanggal pertandingan");
+      return;
+    }
+
+    const start = new Date(startDate);
+    const competition = new Date(competitionDate);
+
+    if (start >= competition) {
+      toast.error("Tanggal pertandingan harus setelah tanggal mulai latihan");
+      return;
+    }
+
+    const totalDays = differenceInDays(competition, start);
+    const totalWeeks = Math.floor(totalDays / 7);
+
+    if (totalWeeks < 4) {
+      toast.error("Durasi minimal 4 minggu untuk undulating periodization");
+      return;
+    }
+
+    const newPhases: Phase[] = [];
+    let currentDate = start;
+
+    // Undulating pattern: alternates intensity levels weekly
+    // Pattern: Light -> Moderate -> Heavy -> Deload (repeat)
+    const undulatingPattern = [
+      { name: "Light Week", color: "bg-green-500", loadFactor: 0.6 },
+      { name: "Moderate Week", color: "bg-yellow-500", loadFactor: 0.75 },
+      { name: "Heavy Week", color: "bg-red-500", loadFactor: 0.9 },
+      { name: "Deload Week", color: "bg-blue-500", loadFactor: 0.5 },
+    ];
+
+    let weekNumber = 1;
+    
+    while (differenceInDays(competition, currentDate) >= 7) {
+      const patternIndex = (weekNumber - 1) % 4;
+      const pattern = undulatingPattern[patternIndex];
+      const weekEnd = addDays(currentDate, 6);
+      
+      // Adjust for final weeks - taper down
+      const weeksToGo = Math.floor(differenceInDays(competition, currentDate) / 7);
+      let weekName = `Week ${weekNumber} - ${pattern.name}`;
+      let weekColor = pattern.color;
+      
+      if (weeksToGo <= 2) {
+        weekName = `Week ${weekNumber} - Taper`;
+        weekColor = "bg-primary";
+      } else if (weeksToGo === 3) {
+        weekName = `Week ${weekNumber} - Pre-Competition`;
+        weekColor = "bg-chart-3";
+      }
+
+      newPhases.push({
+        name: weekName,
+        color: weekColor,
+        startDate: format(currentDate, "yyyy-MM-dd"),
+        endDate: format(weekEnd, "yyyy-MM-dd"),
+        durationDays: 7,
+        percentage: (7 / totalDays) * 100,
+      });
+
+      currentDate = addDays(weekEnd, 1);
+      weekNumber++;
+    }
+
+    // Handle remaining days
+    const remainingDays = differenceInDays(competition, currentDate) + 1;
+    if (remainingDays > 0) {
+      newPhases.push({
+        name: `Week ${weekNumber} - Competition Week`,
+        color: "bg-chart-4",
+        startDate: format(currentDate, "yyyy-MM-dd"),
+        endDate: format(competition, "yyyy-MM-dd"),
+        durationDays: remainingDays,
+        percentage: (remainingDays / totalDays) * 100,
+      });
+    }
+
+    setPhases(newPhases);
+    toast.success("Undulating periodization berhasil dibuat");
+    fetchTrainingSessions(format(start, "yyyy-MM-dd"), format(competition, "yyyy-MM-dd"));
+  };
+
   const generatePlan = () => {
     if (periodizationType === "block") {
       generateBlockPeriodization();
+      return;
+    }
+    
+    if (periodizationType === "undulating") {
+      generateUndulatingPeriodization();
       return;
     }
 
@@ -674,7 +868,7 @@ export default function AnnualPlan() {
                 <Label htmlFor="periodType">Tipe Periodisasi</Label>
                 <Select 
                   value={periodizationType} 
-                  onValueChange={(val: "traditional" | "block") => setPeriodizationType(val)}
+                  onValueChange={(val: "traditional" | "block" | "undulating") => setPeriodizationType(val)}
                   disabled={!isCoach}
                 >
                   <SelectTrigger className="bg-background border-border">
@@ -683,6 +877,7 @@ export default function AnnualPlan() {
                   <SelectContent className="bg-popover border-border z-50">
                     <SelectItem value="traditional">Traditional</SelectItem>
                     <SelectItem value="block">Block Periodization</SelectItem>
+                    <SelectItem value="undulating">Undulating</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
