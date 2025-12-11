@@ -3,6 +3,36 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import type { TrainingSession, ReadinessLog, PhysicalTest } from '@/types/database';
 
+// Brand color: HIROCROSS_TRAIN Red
+const BRAND_RED: [number, number, number] = [220, 38, 38];
+
+// Add branding header to PDF
+const addPDFHeader = (doc: jsPDF, title: string, subtitle?: string) => {
+  const pageWidth = doc.internal.pageSize.width;
+  
+  // Title with white HIROCROSS_TRAIN
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.setFillColor(BRAND_RED[0], BRAND_RED[1], BRAND_RED[2]);
+  doc.rect(0, 0, pageWidth, 35, 'F');
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('HIROCROSS_TRAIN', pageWidth / 2, 15, { align: 'center' });
+  
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'normal');
+  doc.text(title, pageWidth / 2, 25, { align: 'center' });
+  
+  if (subtitle) {
+    doc.setFontSize(10);
+    doc.text(subtitle, pageWidth / 2, 32, { align: 'center' });
+  }
+  
+  doc.setTextColor(0, 0, 0);
+  
+  return 45;
+};
+
 export interface ExportData {
   athleteName: string;
   weeklyLoad: number;
@@ -20,19 +50,12 @@ export interface ExportData {
 
 export const exportToPDF = (data: ExportData) => {
   const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.width;
   
-  // Title
-  doc.setFontSize(20);
-  doc.text('Laporan Latihan Atlet', pageWidth / 2, 15, { align: 'center' });
-  
-  doc.setFontSize(14);
-  doc.text(data.athleteName, pageWidth / 2, 25, { align: 'center' });
+  let yPos = addPDFHeader(doc, 'Laporan Latihan Atlet', data.athleteName);
   
   doc.setFontSize(10);
-  doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, pageWidth / 2, 32, { align: 'center' });
-  
-  let yPos = 40;
+  doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 14, yPos);
+  yPos += 8;
   
   // Summary metrics
   doc.setFontSize(12);
@@ -56,7 +79,7 @@ export const exportToPDF = (data: ExportData) => {
     head: [['Metrik', 'Nilai']],
     body: metrics,
     theme: 'grid',
-    headStyles: { fillColor: [13, 148, 136] },
+    headStyles: { fillColor: BRAND_RED },
   });
   
   yPos = (doc as any).lastAutoTable.finalY + 10;
@@ -81,7 +104,7 @@ export const exportToPDF = (data: ExportData) => {
       head: [['Tanggal', 'Nama Sesi', 'Durasi (min)', 'RPE', 'Beban']],
       body: sessionData,
       theme: 'grid',
-      headStyles: { fillColor: [13, 148, 136] },
+      headStyles: { fillColor: BRAND_RED },
     });
     
     yPos = (doc as any).lastAutoTable.finalY + 10;
@@ -106,7 +129,7 @@ export const exportToPDF = (data: ExportData) => {
       head: [['Tanggal', 'Kategori', 'Tes', 'Hasil']],
       body: testData,
       theme: 'grid',
-      headStyles: { fillColor: [13, 148, 136] },
+      headStyles: { fillColor: BRAND_RED },
     });
   }
   
@@ -204,13 +227,8 @@ export interface AthleteComparisonData {
 
 export const exportComparisonToPDF = (athletes: AthleteComparisonData[]) => {
   const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.width;
   
-  doc.setFontSize(20);
-  doc.text('Perbandingan Performa Atlet', pageWidth / 2, 15, { align: 'center' });
-  
-  doc.setFontSize(10);
-  doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, pageWidth / 2, 25, { align: 'center' });
+  const yPos = addPDFHeader(doc, 'Perbandingan Performa Atlet', `Tanggal: ${new Date().toLocaleDateString('id-ID')}`);
   
   const comparisonData = athletes.map(a => [
     a.athleteName,
@@ -224,11 +242,11 @@ export const exportComparisonToPDF = (athletes: AthleteComparisonData[]) => {
   ]);
   
   autoTable(doc, {
-    startY: 35,
+    startY: yPos,
     head: [['Atlet', 'Beban 7H', 'CTL', 'ATL', 'TSB', 'ACWR', 'Readiness', 'Zona']],
     body: comparisonData,
     theme: 'grid',
-    headStyles: { fillColor: [13, 148, 136] },
+    headStyles: { fillColor: BRAND_RED },
   });
   
   doc.save(`perbandingan-atlet-${new Date().toISOString().split('T')[0]}.pdf`);
@@ -283,25 +301,15 @@ export const exportSessionDetailToPDF = (
   athleteName: string
 ) => {
   const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.width;
   
-  // Title
-  doc.setFontSize(18);
-  doc.text("Detail Sesi Latihan", pageWidth / 2, 15, { align: "center" });
-  
-  doc.setFontSize(12);
-  doc.text(athleteName, pageWidth / 2, 23, { align: "center" });
-  
-  doc.setFontSize(10);
   const sessionDate = new Date(session.date).toLocaleDateString("id-ID", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric"
   });
-  doc.text(sessionDate, pageWidth / 2, 30, { align: "center" });
   
-  let yPos = 40;
+  let yPos = addPDFHeader(doc, 'Detail Sesi Latihan', `${athleteName} - ${sessionDate}`);
   
   // Session Info
   doc.setFontSize(12);
@@ -321,7 +329,7 @@ export const exportSessionDetailToPDF = (
     head: [["Parameter", "Nilai"]],
     body: sessionInfo,
     theme: "grid",
-    headStyles: { fillColor: [220, 38, 38] }, // Red color matching branding
+    headStyles: { fillColor: BRAND_RED },
     styles: { fontSize: 10 },
   });
   
@@ -440,7 +448,8 @@ export const exportSessionDetailToPDF = (
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    const splitNotes = doc.splitTextToSize(session.notes, pageWidth - 28);
+    const notesPageWidth = doc.internal.pageSize.width;
+    const splitNotes = doc.splitTextToSize(session.notes, notesPageWidth - 28);
     doc.text(splitNotes, 14, yPos);
   }
   
@@ -458,3 +467,193 @@ export interface WeeklyVolumeData {
   skillVolume: number;
   sessionCount: number;
 }
+
+// Annual Plan Export
+export interface AnnualPlanPhase {
+  name: string;
+  startDate: string;
+  endDate: string;
+  durationDays: number;
+  percentage: number;
+  plannedLoad?: number;
+  actualLoad?: number;
+}
+
+export interface AnnualPlanExportData {
+  athleteName: string;
+  planName: string;
+  startDate: string;
+  competitionDate: string;
+  periodizationType: string;
+  phases: AnnualPlanPhase[];
+}
+
+export const exportAnnualPlanToPDF = (data: AnnualPlanExportData) => {
+  const doc = new jsPDF();
+  
+  let yPos = addPDFHeader(doc, 'Annual Plan Periodization', `${data.athleteName} - ${data.planName}`);
+  
+  doc.setFontSize(10);
+  doc.text(`Periode: ${data.startDate} s/d ${data.competitionDate}`, 14, yPos);
+  doc.text(`Tipe Periodisasi: ${data.periodizationType}`, 14, yPos + 6);
+  yPos += 16;
+  
+  const phaseData = data.phases.map(p => [
+    p.name,
+    p.startDate,
+    p.endDate,
+    `${p.durationDays} hari`,
+    `${p.percentage.toFixed(1)}%`,
+    p.plannedLoad?.toFixed(0) || '-',
+    p.actualLoad?.toFixed(0) || '-',
+  ]);
+  
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Fase', 'Mulai', 'Selesai', 'Durasi', '%', 'Planned Load', 'Actual Load']],
+    body: phaseData,
+    theme: 'grid',
+    headStyles: { fillColor: BRAND_RED },
+    styles: { fontSize: 9 },
+  });
+  
+  doc.save(`annual-plan-${data.athleteName}-${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+// Readiness Export
+export interface ReadinessExportData {
+  athleteName: string;
+  logs: ReadinessLog[];
+  baselineVj: number;
+  baselineRhr: number;
+}
+
+export const exportReadinessToPDF = (data: ReadinessExportData) => {
+  const doc = new jsPDF();
+  
+  let yPos = addPDFHeader(doc, 'Laporan Readiness Harian', data.athleteName);
+  
+  doc.setFontSize(10);
+  doc.text(`Baseline VJ: ${data.baselineVj} cm | Baseline RHR: ${data.baselineRhr} bpm`, 14, yPos);
+  doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 14, yPos + 6);
+  yPos += 16;
+  
+  if (data.logs.length > 0) {
+    const latestLog = data.logs[0];
+    const summaryData = [
+      ['Readiness Terkini', `${latestLog.readiness_score} (${latestLog.readiness_zone})`],
+      ['VJ Terkini', `${latestLog.vj} cm (Skor: ${latestLog.vj_score})`],
+      ['RHR Terkini', `${latestLog.rhr} bpm (Skor: ${latestLog.rhr_score})`],
+    ];
+    
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Metrik', 'Nilai']],
+      body: summaryData,
+      theme: 'grid',
+      headStyles: { fillColor: BRAND_RED },
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+  }
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Riwayat Readiness (30 Hari)', 14, yPos);
+  yPos += 8;
+  
+  const logData = data.logs.slice(0, 30).map(l => [
+    l.date,
+    l.vj.toString(),
+    l.rhr.toString(),
+    l.vj_score.toString(),
+    l.rhr_score.toString(),
+    l.readiness_score.toString(),
+    l.readiness_zone,
+  ]);
+  
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Tanggal', 'VJ', 'RHR', 'Skor VJ', 'Skor RHR', 'Readiness', 'Zona']],
+    body: logData,
+    theme: 'grid',
+    headStyles: { fillColor: BRAND_RED },
+    styles: { fontSize: 9 },
+  });
+  
+  doc.save(`readiness-${data.athleteName}-${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+// Physical Tests Export
+export interface PhysicalTestExportData {
+  athleteName: string;
+  tests: PhysicalTest[];
+  testScores?: { testName: string; score: number; value: number; unit: string }[];
+}
+
+export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
+  const doc = new jsPDF();
+  
+  let yPos = addPDFHeader(doc, 'Laporan Tes Kondisi Fisik', data.athleteName);
+  
+  doc.setFontSize(10);
+  doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 14, yPos);
+  yPos += 10;
+  
+  // Group by category
+  const testsByCategory = data.tests.reduce((acc, test) => {
+    if (!acc[test.category]) acc[test.category] = [];
+    acc[test.category].push(test);
+    return acc;
+  }, {} as Record<string, PhysicalTest[]>);
+  
+  // Latest test per category summary
+  if (data.testScores && data.testScores.length > 0) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Ringkasan Performa', 14, yPos);
+    yPos += 8;
+    
+    const scoreData = data.testScores.map(s => [
+      s.testName,
+      `${s.value} ${s.unit}`,
+      s.score.toString(),
+      s.score >= 4 ? 'Baik' : s.score >= 3 ? 'Cukup' : 'Kurang',
+    ]);
+    
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Tes', 'Nilai', 'Skor (1-5)', 'Kategori']],
+      body: scoreData,
+      theme: 'grid',
+      headStyles: { fillColor: BRAND_RED },
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+  }
+  
+  // All tests history
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Riwayat Tes Fisik', 14, yPos);
+  yPos += 8;
+  
+  const testData = data.tests.map(t => [
+    t.test_date,
+    t.category,
+    t.test_name,
+    `${t.value} ${t.unit}`,
+    t.notes || '-',
+  ]);
+  
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Tanggal', 'Kategori', 'Tes', 'Hasil', 'Catatan']],
+    body: testData,
+    theme: 'grid',
+    headStyles: { fillColor: BRAND_RED },
+    styles: { fontSize: 9 },
+  });
+  
+  doc.save(`tes-fisik-${data.athleteName}-${new Date().toISOString().split('T')[0]}.pdf`);
+};

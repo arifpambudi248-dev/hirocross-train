@@ -16,7 +16,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, FileDown } from "lucide-react";
+import { exportReadinessToPDF, type ReadinessExportData } from "@/lib/exportUtils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceLine } from "recharts";
 import { computeReadinessScore } from "@/lib/readiness";
 import type { ReadinessLog, Profile } from "@/types/database";
@@ -204,10 +205,32 @@ export default function Readiness() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Readiness Harian</CardTitle>
-              <Button onClick={() => setShowForm(!showForm)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Log Readiness
-              </Button>
+              <div className="flex items-center gap-2">
+                {logs.length > 0 && (
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => {
+                      const athleteNameData = athletes.find(a => a.id === selectedAthleteId)?.athlete_name || 'Atlet';
+                      const exportData: ReadinessExportData = {
+                        athleteName: athleteNameData,
+                        logs,
+                        baselineVj,
+                        baselineRhr,
+                      };
+                      exportReadinessToPDF(exportData);
+                      toast.success('PDF berhasil diekspor');
+                    }}
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Ekspor PDF
+                  </Button>
+                )}
+                <Button onClick={() => setShowForm(!showForm)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Log Readiness
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">

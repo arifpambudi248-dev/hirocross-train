@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, TrendingUp, Award } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Award, FileDown } from "lucide-react";
+import { exportPhysicalTestsToPDF, type PhysicalTestExportData } from "@/lib/exportUtils";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip, ResponsiveContainer } from "recharts";
 import type { PhysicalTest } from "@/types/database";
 
@@ -431,13 +432,54 @@ export default function TesFisik() {
             </p>
           </div>
 
-          <Dialog open={showDialog} onOpenChange={setShowDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Tambah Tes
+          <div className="flex items-center gap-2">
+            {tests.length > 0 && (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => {
+                  const athleteNameData = athletes.find(a => a.id === selectedAthleteId)?.athlete_name || 'Atlet';
+                  // Calculate scores for latest tests
+                  const allBenchmarks = Object.values(BENCHMARKS).flat();
+                  const latestTestsMap = new Map<string, PhysicalTest>();
+                  tests.forEach(test => {
+                    const existing = latestTestsMap.get(test.test_name);
+                    if (!existing || new Date(test.test_date) > new Date(existing.test_date)) {
+                      latestTestsMap.set(test.test_name, test);
+                    }
+                  });
+                  
+                  const testScores = Array.from(latestTestsMap.values()).map(test => {
+                    const benchmark = allBenchmarks.find(b => b.testName === test.test_name);
+                    const score = benchmark ? calculateScore(test.value, benchmark) : 0;
+                    return {
+                      testName: test.test_name,
+                      score,
+                      value: test.value,
+                      unit: test.unit,
+                    };
+                  });
+                  
+                  const exportData: PhysicalTestExportData = {
+                    athleteName: athleteNameData,
+                    tests,
+                    testScores,
+                  };
+                  exportPhysicalTestsToPDF(exportData);
+                  toast.success('PDF berhasil diekspor');
+                }}
+              >
+                <FileDown className="h-4 w-4" />
+                Ekspor PDF
               </Button>
-            </DialogTrigger>
+            )}
+            <Dialog open={showDialog} onOpenChange={setShowDialog}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tambah Tes
+                </Button>
+              </DialogTrigger>
             <DialogContent className="bg-card max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Tambah Tes Fisik Baru</DialogTitle>
@@ -607,6 +649,7 @@ export default function TesFisik() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Athlete Selector for Coach */}
