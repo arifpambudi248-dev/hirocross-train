@@ -12,7 +12,12 @@ import logo from "@/assets/hirocross-logo.png";
 
 const signupSchema = z.object({
   email: z.string().trim().email({ message: "Email tidak valid" }),
-  password: z.string().min(6, { message: "Password minimal 6 karakter" }),
+  password: z.string()
+    .min(8, { message: "Password minimal 8 karakter" })
+    .regex(/[A-Z]/, { message: "Password harus mengandung huruf besar" })
+    .regex(/[a-z]/, { message: "Password harus mengandung huruf kecil" })
+    .regex(/[0-9]/, { message: "Password harus mengandung angka" })
+    .regex(/[^A-Za-z0-9]/, { message: "Password harus mengandung karakter khusus (!@#$%^&*)" }),
   athleteName: z.string().trim().min(2, { message: "Nama minimal 2 karakter" }).max(100),
   role: z.enum(["athlete", "coach"], { message: "Pilih role yang valid" }),
 });
@@ -215,11 +220,14 @@ export default function Auth() {
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="Minimal 6 karakter"
+                    placeholder="Min 8 karakter, huruf besar/kecil, angka, simbol"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
                     required
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Harus mengandung huruf besar, huruf kecil, angka, dan karakter khusus
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-role">Daftar Sebagai</Label>
