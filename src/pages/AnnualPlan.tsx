@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from "recharts";
-import { Pencil, Save, FolderOpen, Plus } from "lucide-react";
+import { Pencil, Save, FolderOpen, Plus, FileDown } from "lucide-react";
+import { exportAnnualPlanToPDF, type AnnualPlanExportData } from "@/lib/exportUtils";
 import {
   Dialog,
   DialogContent,
@@ -797,6 +798,36 @@ export default function AnnualPlan() {
                     </div>
                   </DialogContent>
                 </Dialog>
+                {phases.length > 0 && (
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => {
+                      const athleteNameData = athletes.find(a => a.id === selectedAthleteId)?.athlete_name || 'Atlet';
+                      const exportData: AnnualPlanExportData = {
+                        athleteName: athleteNameData,
+                        planName: planName || 'Annual Plan',
+                        startDate,
+                        competitionDate,
+                        periodizationType: periodizationType === 'traditional' ? 'Traditional' : periodizationType === 'block' ? 'Block Periodization' : 'Undulating',
+                        phases: phases.map(p => ({
+                          name: p.name,
+                          startDate: p.startDate,
+                          endDate: p.endDate,
+                          durationDays: p.durationDays,
+                          percentage: p.percentage,
+                          plannedLoad: editableLoads[p.name],
+                          actualLoad: phasesWithLoad.find(pw => pw.name === p.name)?.actualLoad,
+                        })),
+                      };
+                      exportAnnualPlanToPDF(exportData);
+                      toast.success('PDF berhasil diekspor');
+                    }}
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Ekspor PDF
+                  </Button>
+                )}
                 {isCoach && (
                   <>
                     <Button onClick={createNewPlan} variant="outline" className="gap-2">
