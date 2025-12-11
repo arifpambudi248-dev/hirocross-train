@@ -77,6 +77,13 @@ export default function AnnualPlan() {
     transmutation: { volume: 70, intensity: 75, peaking: 60 },
     realization: { volume: 40, intensity: 90, peaking: 95 },
   });
+  const [undulatingParameters, setUndulatingParameters] = useState({
+    light: { intensity: 60, volume: 70 },
+    moderate: { intensity: 75, volume: 85 },
+    heavy: { intensity: 90, volume: 100 },
+    deload: { intensity: 50, volume: 50 },
+    taper: { intensity: 40, volume: 40 },
+  });
 
   useEffect(() => {
     loadUser();
@@ -462,13 +469,12 @@ export default function AnnualPlan() {
     const newPhases: Phase[] = [];
     let currentDate = start;
 
-    // Undulating pattern: alternates intensity levels weekly
-    // Pattern: Light -> Moderate -> Heavy -> Deload (repeat)
+    // Undulating pattern: alternates intensity levels weekly using configurable parameters
     const undulatingPattern = [
-      { name: "Light Week", color: "bg-green-500", loadFactor: 0.6 },
-      { name: "Moderate Week", color: "bg-yellow-500", loadFactor: 0.75 },
-      { name: "Heavy Week", color: "bg-red-500", loadFactor: 0.9 },
-      { name: "Deload Week", color: "bg-blue-500", loadFactor: 0.5 },
+      { name: "Light Week", color: "bg-green-500", intensity: undulatingParameters.light.intensity, volume: undulatingParameters.light.volume },
+      { name: "Moderate Week", color: "bg-yellow-500", intensity: undulatingParameters.moderate.intensity, volume: undulatingParameters.moderate.volume },
+      { name: "Heavy Week", color: "bg-red-500", intensity: undulatingParameters.heavy.intensity, volume: undulatingParameters.heavy.volume },
+      { name: "Deload Week", color: "bg-blue-500", intensity: undulatingParameters.deload.intensity, volume: undulatingParameters.deload.volume },
     ];
 
     let weekNumber = 1;
@@ -980,6 +986,208 @@ export default function AnnualPlan() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
                   1 siklus = {blockWeeks.accumulation + blockWeeks.transmutation + blockWeeks.realization} minggu
+                </p>
+              </div>
+            )}
+
+            {/* Undulating Periodization Configuration */}
+            {periodizationType === "undulating" && (
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-sm font-medium mb-3 block">Konfigurasi Undulating (Intensitas & Volume %)</Label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded"></div>
+                      Light Week
+                    </Label>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.light.intensity}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            light: { ...prev.light, intensity: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Volume</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.light.volume}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            light: { ...prev.light, volume: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-2">
+                      <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                      Moderate Week
+                    </Label>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.moderate.intensity}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            moderate: { ...prev.moderate, intensity: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Volume</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.moderate.volume}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            moderate: { ...prev.moderate, volume: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-500 rounded"></div>
+                      Heavy Week
+                    </Label>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.heavy.intensity}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            heavy: { ...prev.heavy, intensity: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Volume</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.heavy.volume}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            heavy: { ...prev.heavy, volume: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                      Deload Week
+                    </Label>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.deload.intensity}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            deload: { ...prev.deload, intensity: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Volume</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.deload.volume}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            deload: { ...prev.deload, volume: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-2">
+                      <div className="w-3 h-3 bg-primary rounded"></div>
+                      Taper Week
+                    </Label>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.taper.intensity}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            taper: { ...prev.taper, intensity: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground w-14">Volume</span>
+                        <Input
+                          type="number"
+                          min="30"
+                          max="100"
+                          value={undulatingParameters.taper.volume}
+                          onChange={(e) => setUndulatingParameters(prev => ({
+                            ...prev,
+                            taper: { ...prev.taper, volume: Number(e.target.value) }
+                          }))}
+                          className="h-7 text-xs"
+                          disabled={!isCoach}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Pola: Light → Moderate → Heavy → Deload (berulang). Minggu terakhir otomatis menjadi Taper.
                 </p>
               </div>
             )}
@@ -1506,6 +1714,159 @@ export default function AnnualPlan() {
                       </ul>
                       <p className="text-xs text-muted-foreground mt-3">
                         Setiap blok memiliki fokus berbeda yang saling melengkapi untuk mencapai performa optimal pada waktu kompetisi.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Undulating Periodization Visualization */}
+            {periodizationType === "undulating" && phases.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Visualisasi Pola Undulating</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {/* Line chart showing undulating pattern */}
+                    <ResponsiveContainer width="100%" height={300}>
+                      <ComposedChart
+                        data={phases.map((phase, index) => {
+                          let weekType = 'normal';
+                          let intensity = 50;
+                          let volume = 50;
+                          
+                          if (phase.name.includes('Light')) {
+                            weekType = 'light';
+                            intensity = undulatingParameters.light.intensity;
+                            volume = undulatingParameters.light.volume;
+                          } else if (phase.name.includes('Moderate')) {
+                            weekType = 'moderate';
+                            intensity = undulatingParameters.moderate.intensity;
+                            volume = undulatingParameters.moderate.volume;
+                          } else if (phase.name.includes('Heavy')) {
+                            weekType = 'heavy';
+                            intensity = undulatingParameters.heavy.intensity;
+                            volume = undulatingParameters.heavy.volume;
+                          } else if (phase.name.includes('Deload')) {
+                            weekType = 'deload';
+                            intensity = undulatingParameters.deload.intensity;
+                            volume = undulatingParameters.deload.volume;
+                          } else if (phase.name.includes('Taper') || phase.name.includes('Pre-Competition')) {
+                            weekType = 'taper';
+                            intensity = undulatingParameters.taper.intensity;
+                            volume = undulatingParameters.taper.volume;
+                          } else if (phase.name.includes('Competition')) {
+                            weekType = 'competition';
+                            intensity = 30;
+                            volume = 20;
+                          }
+                          
+                          return {
+                            week: `W${index + 1}`,
+                            fullName: phase.name,
+                            Intensitas: intensity,
+                            Volume: volume,
+                            type: weekType,
+                          };
+                        })}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis 
+                          dataKey="week" 
+                          stroke="hsl(var(--muted-foreground))"
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                        />
+                        <YAxis 
+                          stroke="hsl(var(--muted-foreground))"
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          label={{ value: '%', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
+                          domain={[0, 100]}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload[0]) {
+                              return payload[0].payload.fullName;
+                            }
+                            return label;
+                          }}
+                        />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="Intensitas" 
+                          stroke="#F44336" 
+                          strokeWidth={3}
+                          dot={{ fill: '#F44336', r: 5 }}
+                          activeDot={{ r: 8 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="Volume" 
+                          stroke="#FFC107" 
+                          strokeWidth={3}
+                          dot={{ fill: '#FFC107', r: 5 }}
+                          activeDot={{ r: 8 }}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+
+                    {/* Weekly type indicators */}
+                    <div className="flex flex-wrap gap-2">
+                      {phases.map((phase, index) => {
+                        let bgColor = 'bg-muted';
+                        if (phase.name.includes('Light')) bgColor = 'bg-green-500';
+                        else if (phase.name.includes('Moderate')) bgColor = 'bg-yellow-500';
+                        else if (phase.name.includes('Heavy')) bgColor = 'bg-red-500';
+                        else if (phase.name.includes('Deload')) bgColor = 'bg-blue-500';
+                        else if (phase.name.includes('Taper') || phase.name.includes('Pre-Competition')) bgColor = 'bg-primary';
+                        else if (phase.name.includes('Competition')) bgColor = 'bg-chart-4';
+                        
+                        return (
+                          <div 
+                            key={index}
+                            className={`${bgColor} px-2 py-1 rounded text-xs text-white font-medium`}
+                            title={`${phase.startDate} - ${phase.endDate}`}
+                          >
+                            W{index + 1}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="bg-muted/50 p-4 rounded-lg text-sm space-y-2">
+                      <h5 className="font-semibold mb-2">Pola Undulating Periodization:</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-green-500 rounded"></div>
+                          <span className="text-muted-foreground">Light Week</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                          <span className="text-muted-foreground">Moderate Week</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-red-500 rounded"></div>
+                          <span className="text-muted-foreground">Heavy Week</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                          <span className="text-muted-foreground">Deload Week</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-primary rounded"></div>
+                          <span className="text-muted-foreground">Taper Week</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-3">
+                        Undulating periodization menggunakan variasi intensitas dan volume mingguan dalam pola berulang untuk mencegah plateau dan memaksimalkan adaptasi latihan.
                       </p>
                     </div>
                   </div>
