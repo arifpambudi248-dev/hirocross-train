@@ -3,6 +3,7 @@ import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { FileDown, Users, Activity, Zap, TrendingUp } from "lucide-react";
@@ -46,23 +47,79 @@ export default function Laporan() {
   const [loading, setLoading] = useState(true);
   const [showComparison, setShowComparison] = useState(false);
   const [allAthletes, setAllAthletes] = useState<AthleteComparisonData[]>([]);
+  
+  // Coach-specific state
+  const [isCoach, setIsCoach] = useState(false);
+  const [athletes, setAthletes] = useState<{ id: string; athlete_name: string }[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
 
   useEffect(() => {
-    loadData();
+    checkAuthAndLoadData();
   }, []);
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (selectedAthleteId && isCoach) {
+      loadAthleteData(selectedAthleteId);
+    }
+  }, [selectedAthleteId]);
+
+  const checkAuthAndLoadData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     
     setUserId(user.id);
     setLoading(true);
 
+    // Check if user is coach
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+    
+    const userIsCoach = roleData?.role === 'coach';
+    setIsCoach(userIsCoach);
+
+    if (userIsCoach) {
+      // Load assigned athletes for coach
+      const { data: assignments } = await supabase
+        .from("coach_athletes")
+        .select("athlete_id")
+        .eq("coach_id", user.id)
+        .eq("status", "accepted");
+
+      if (assignments && assignments.length > 0) {
+        const athleteIds = assignments.map(a => a.athlete_id);
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, athlete_name")
+          .in("id", athleteIds)
+          .order("athlete_name");
+        
+        if (profilesData && profilesData.length > 0) {
+          setAthletes(profilesData);
+          setSelectedAthleteId(profilesData[0].id);
+          await loadAthleteData(profilesData[0].id);
+        } else {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    } else {
+      // Load own data for athlete
+      await loadAthleteData(user.id);
+    }
+  };
+
+  const loadAthleteData = async (athleteId: string) => {
+    setLoading(true);
+
     // Load profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("athlete_name, age, body_weight")
-      .eq("id", user.id)
+      .eq("id", athleteId)
       .single();
     
     if (profile) {
@@ -76,18 +133,18 @@ export default function Laporan() {
       supabase
         .from("training_sessions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", athleteId)
         .order("date", { ascending: true }),
       supabase
         .from("readiness_logs")
         .select("*")
-        .eq("athlete_id", user.id)
+        .eq("athlete_id", athleteId)
         .order("date", { ascending: false })
         .limit(30),
       supabase
         .from("physical_tests")
         .select("*")
-        .eq("athlete_id", user.id)
+        .eq("athlete_id", athleteId)
         .order("test_date", { ascending: false })
         .limit(20)
     ]);
@@ -309,7 +366,27 @@ export default function Laporan() {
       <Navigation />
       <div className="container mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <h1 className="text-3xl font-bold text-foreground">Laporan Komprehensif</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold text-foreground">Laporan Komprehensif</h1>
+            
+            {/* Athlete selector for coaches */}
+            {isCoach && athletes.length > 0 && (
+              <Select value={selectedAthleteId} onValueChange={(val) => {
+                setSelectedAthleteId(val);
+              }}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Pilih atlet..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {athletes.map((athlete) => (
+                    <SelectItem key={athlete.id} value={athlete.id}>
+                      {athlete.athlete_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button
               onClick={handleExportPDF}
