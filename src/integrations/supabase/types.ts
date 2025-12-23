@@ -253,12 +253,14 @@ export type Database = {
       }
       session_exercises: {
         Row: {
+          completed_at: string | null
           created_at: string
           distance_meters: number | null
           duration_seconds: number | null
           exercise_name: string
           exercise_type: string
           id: string
+          is_completed: boolean | null
           notes: string | null
           repetitions: number | null
           reps: number | null
@@ -269,12 +271,14 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           distance_meters?: number | null
           duration_seconds?: number | null
           exercise_name: string
           exercise_type?: string
           id?: string
+          is_completed?: boolean | null
           notes?: string | null
           repetitions?: number | null
           reps?: number | null
@@ -285,12 +289,14 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           distance_meters?: number | null
           duration_seconds?: number | null
           exercise_name?: string
           exercise_type?: string
           id?: string
+          is_completed?: boolean | null
           notes?: string | null
           repetitions?: number | null
           reps?: number | null
@@ -312,12 +318,14 @@ export type Database = {
       }
       training_sessions: {
         Row: {
+          assigned_by: string | null
           athlete_name: string
           cardio_distance: number | null
           created_at: string
           date: string
           duration_minutes: number | null
           id: string
+          is_assigned: boolean | null
           load_auto: number | null
           load_final: number | null
           load_manual: number | null
@@ -330,12 +338,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assigned_by?: string | null
           athlete_name: string
           cardio_distance?: number | null
           created_at?: string
           date: string
           duration_minutes?: number | null
           id?: string
+          is_assigned?: boolean | null
           load_auto?: number | null
           load_final?: number | null
           load_manual?: number | null
@@ -348,12 +358,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          assigned_by?: string | null
           athlete_name?: string
           cardio_distance?: number | null
           created_at?: string
           date?: string
           duration_minutes?: number | null
           id?: string
+          is_assigned?: boolean | null
           load_auto?: number | null
           load_final?: number | null
           load_manual?: number | null

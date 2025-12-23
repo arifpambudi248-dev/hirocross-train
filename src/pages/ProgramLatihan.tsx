@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
 import { format, subDays, startOfWeek, endOfWeek, addWeeks, addDays, eachDayOfInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3 } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { Droppable } from "@/components/Droppable";
@@ -44,6 +44,8 @@ type SessionExercise = {
   repetitions: number | null;
   total_volume: number | null;
   notes: string | null;
+  is_completed?: boolean;
+  completed_at?: string | null;
 };
 
 type TrainingSession = {
@@ -61,6 +63,9 @@ type TrainingSession = {
   cardio_distance?: number;
   skill_reps?: number;
   exercises?: SessionExercise[];
+  // Assignment columns
+  is_assigned?: boolean;
+  assigned_by?: string | null;
 };
 
 type Template = {
@@ -301,6 +306,9 @@ export default function ProgramLatihan() {
         load_manual: validatedData.load_manual,
         load_final: loadFinal,
         notes: validatedData.notes || null,
+        // Track if coach assigned this session
+        is_assigned: isCoach && selectedAthleteId !== userId,
+        assigned_by: isCoach && selectedAthleteId !== userId ? userId : null,
       }).select().single();
 
       if (sessionError) throw sessionError;
@@ -437,6 +445,45 @@ export default function ProgramLatihan() {
   const handleViewSession = (session: TrainingSession) => {
     setViewingSession(session);
     setViewSessionOpen(true);
+  };
+
+  const handleToggleExerciseComplete = async (exerciseId: string, currentStatus: boolean) => {
+    try {
+      const newStatus = !currentStatus;
+      const { error } = await supabase
+        .from("session_exercises")
+        .update({
+          is_completed: newStatus,
+          completed_at: newStatus ? new Date().toISOString() : null
+        })
+        .eq("id", exerciseId);
+
+      if (error) throw error;
+
+      // Update local state
+      if (viewingSession) {
+        const updatedExercises = viewingSession.exercises?.map(ex =>
+          ex.id === exerciseId ? { ...ex, is_completed: newStatus, completed_at: newStatus ? new Date().toISOString() : null } : ex
+        );
+        setViewingSession({ ...viewingSession, exercises: updatedExercises });
+        
+        // Also update in sessions list
+        setSessions(prev => prev.map(s =>
+          s.id === viewingSession.id ? { ...s, exercises: updatedExercises } : s
+        ));
+      }
+
+      toast.success(newStatus ? "Latihan ditandai selesai" : "Status latihan dibatalkan");
+    } catch (error: any) {
+      handleError(error, getFriendlyErrorMessage(error));
+    }
+  };
+
+  const getSessionCompletionStatus = (session: TrainingSession) => {
+    if (!session.exercises || session.exercises.length === 0) return null;
+    const completed = session.exercises.filter(e => e.is_completed).length;
+    const total = session.exercises.length;
+    return { completed, total, isComplete: completed === total };
   };
 
   const getExerciseSummary = (session: TrainingSession) => {
@@ -924,22 +971,35 @@ export default function ProgramLatihan() {
                                   <div className="flex items-center gap-1 pt-1 border-t border-slate-800">
                                     {(() => {
                                       const summary = getExerciseSummary(session);
-                                      if (!summary) return null;
+                                      const completionStatus = getSessionCompletionStatus(session);
                                       return (
                                         <>
-                                          {summary.strengthTotal > 0 && (
+                                          {/* Completion indicator */}
+                                          {completionStatus && (
+                                            <div 
+                                              className={`flex items-center gap-0.5 text-xs ${completionStatus.isComplete ? 'text-green-400' : 'text-slate-500'}`} 
+                                              title={`${completionStatus.completed}/${completionStatus.total} selesai`}
+                                            >
+                                              {completionStatus.isComplete ? (
+                                                <CheckCircle className="w-3 h-3" />
+                                              ) : (
+                                                <span className="text-[10px]">{completionStatus.completed}/{completionStatus.total}</span>
+                                              )}
+                                            </div>
+                                          )}
+                                          {summary && summary.strengthTotal > 0 && (
                                             <div className="flex items-center gap-0.5 text-xs text-blue-400" title={`${summary.strengthTotal.toLocaleString()} kg`}>
                                               <Dumbbell className="w-3 h-3" />
                                               <span>{summary.strengthTotal >= 1000 ? `${(summary.strengthTotal/1000).toFixed(0)}k` : summary.strengthTotal}</span>
                                             </div>
                                           )}
-                                          {summary.cardioTotal > 0 && (
+                                          {summary && summary.cardioTotal > 0 && (
                                             <div className="flex items-center gap-0.5 text-xs text-green-400" title={`${(summary.cardioTotal/1000).toFixed(1)} km`}>
                                               <Footprints className="w-3 h-3" />
                                               <span>{(summary.cardioTotal/1000).toFixed(1)}k</span>
                                             </div>
                                           )}
-                                          {summary.skillTotal > 0 && (
+                                          {summary && summary.skillTotal > 0 && (
                                             <div className="flex items-center gap-0.5 text-xs text-orange-400" title={`${summary.skillTotal} repetisi`}>
                                               <Target className="w-3 h-3" />
                                               <span>{summary.skillTotal}</span>
@@ -1058,10 +1118,33 @@ export default function ProgramLatihan() {
                 </div>
               </div>
 
+              {/* Completion Progress */}
+              {(() => {
+                const status = getSessionCompletionStatus(viewingSession);
+                if (!status) return null;
+                return (
+                  <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-slate-400">Progress Latihan</span>
+                      <span className={`text-sm font-semibold ${status.isComplete ? 'text-green-400' : 'text-yellow-400'}`}>
+                        {status.completed}/{status.total} selesai
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all ${status.isComplete ? 'bg-green-500' : 'bg-yellow-500'}`}
+                        style={{ width: `${(status.completed / status.total) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Exercise Details */}
               {viewingSession.exercises && viewingSession.exercises.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-semibold text-white">Detail Latihan ({viewingSession.exercises.length} latihan)</h4>
+                  <p className="text-xs text-slate-400">Klik tombol untuk menandai latihan yang sudah selesai</p>
                   
                   {/* Strength Exercises */}
                   {viewingSession.exercises.filter(e => e.exercise_type === "strength").length > 0 && (
@@ -1071,15 +1154,36 @@ export default function ProgramLatihan() {
                         Strength
                       </div>
                       <div className="space-y-2">
-                        {viewingSession.exercises.filter(e => e.exercise_type === "strength").map((ex, idx) => (
-                          <div key={idx} className="p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                            <div className="font-medium text-white">{ex.exercise_name}</div>
-                            <div className="flex gap-4 text-xs text-slate-400 mt-1">
-                              <span>{ex.sets} set × {ex.reps} rep</span>
-                              <span>{ex.weight_kg} kg</span>
-                              <span className="text-blue-400 font-semibold">
-                                Total: {((ex.sets || 0) * (ex.reps || 0) * (ex.weight_kg || 0)).toLocaleString()} kg
-                              </span>
+                        {viewingSession.exercises.filter(e => e.exercise_type === "strength").map((ex) => (
+                          <div 
+                            key={ex.id} 
+                            className={`p-2 rounded-lg flex items-start gap-3 ${
+                              ex.is_completed 
+                                ? 'bg-green-500/20 border border-green-500/50' 
+                                : 'bg-blue-500/10 border border-blue-500/30'
+                            }`}
+                          >
+                            <button
+                              onClick={() => handleToggleExerciseComplete(ex.id, ex.is_completed || false)}
+                              className="mt-0.5 flex-shrink-0"
+                            >
+                              {ex.is_completed ? (
+                                <CheckCircle className="w-5 h-5 text-green-400" />
+                              ) : (
+                                <Circle className="w-5 h-5 text-slate-500 hover:text-blue-400 transition-colors" />
+                              )}
+                            </button>
+                            <div className="flex-1">
+                              <div className={`font-medium ${ex.is_completed ? 'text-green-300 line-through' : 'text-white'}`}>
+                                {ex.exercise_name}
+                              </div>
+                              <div className="flex gap-4 text-xs text-slate-400 mt-1">
+                                <span>{ex.sets} set × {ex.reps} rep</span>
+                                <span>{ex.weight_kg} kg</span>
+                                <span className="text-blue-400 font-semibold">
+                                  Total: {((ex.sets || 0) * (ex.reps || 0) * (ex.weight_kg || 0)).toLocaleString()} kg
+                                </span>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -1095,14 +1199,35 @@ export default function ProgramLatihan() {
                         Cardio
                       </div>
                       <div className="space-y-2">
-                        {viewingSession.exercises.filter(e => e.exercise_type === "cardio").map((ex, idx) => (
-                          <div key={idx} className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-                            <div className="font-medium text-white">{ex.exercise_name}</div>
-                            <div className="flex gap-4 text-xs text-slate-400 mt-1">
-                              <span>Jarak: {(ex.distance_meters || 0) >= 1000 ? `${((ex.distance_meters || 0)/1000).toFixed(2)} km` : `${ex.distance_meters} m`}</span>
-                              {ex.duration_seconds && (
-                                <span>Waktu: {Math.floor((ex.duration_seconds || 0) / 60)}:{String((ex.duration_seconds || 0) % 60).padStart(2, '0')}</span>
+                        {viewingSession.exercises.filter(e => e.exercise_type === "cardio").map((ex) => (
+                          <div 
+                            key={ex.id} 
+                            className={`p-2 rounded-lg flex items-start gap-3 ${
+                              ex.is_completed 
+                                ? 'bg-green-500/20 border border-green-500/50' 
+                                : 'bg-green-500/10 border border-green-500/30'
+                            }`}
+                          >
+                            <button
+                              onClick={() => handleToggleExerciseComplete(ex.id, ex.is_completed || false)}
+                              className="mt-0.5 flex-shrink-0"
+                            >
+                              {ex.is_completed ? (
+                                <CheckCircle className="w-5 h-5 text-green-400" />
+                              ) : (
+                                <Circle className="w-5 h-5 text-slate-500 hover:text-green-400 transition-colors" />
                               )}
+                            </button>
+                            <div className="flex-1">
+                              <div className={`font-medium ${ex.is_completed ? 'text-green-300 line-through' : 'text-white'}`}>
+                                {ex.exercise_name}
+                              </div>
+                              <div className="flex gap-4 text-xs text-slate-400 mt-1">
+                                <span>Jarak: {(ex.distance_meters || 0) >= 1000 ? `${((ex.distance_meters || 0)/1000).toFixed(2)} km` : `${ex.distance_meters} m`}</span>
+                                {ex.duration_seconds && (
+                                  <span>Waktu: {Math.floor((ex.duration_seconds || 0) / 60)}:{String((ex.duration_seconds || 0) % 60).padStart(2, '0')}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -1118,11 +1243,32 @@ export default function ProgramLatihan() {
                         Skill
                       </div>
                       <div className="space-y-2">
-                        {viewingSession.exercises.filter(e => e.exercise_type === "skill").map((ex, idx) => (
-                          <div key={idx} className="p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                            <div className="font-medium text-white">{ex.exercise_name}</div>
-                            <div className="text-xs text-slate-400 mt-1">
-                              <span>Repetisi: <span className="text-orange-400 font-semibold">{ex.repetitions}</span></span>
+                        {viewingSession.exercises.filter(e => e.exercise_type === "skill").map((ex) => (
+                          <div 
+                            key={ex.id} 
+                            className={`p-2 rounded-lg flex items-start gap-3 ${
+                              ex.is_completed 
+                                ? 'bg-green-500/20 border border-green-500/50' 
+                                : 'bg-orange-500/10 border border-orange-500/30'
+                            }`}
+                          >
+                            <button
+                              onClick={() => handleToggleExerciseComplete(ex.id, ex.is_completed || false)}
+                              className="mt-0.5 flex-shrink-0"
+                            >
+                              {ex.is_completed ? (
+                                <CheckCircle className="w-5 h-5 text-green-400" />
+                              ) : (
+                                <Circle className="w-5 h-5 text-slate-500 hover:text-orange-400 transition-colors" />
+                              )}
+                            </button>
+                            <div className="flex-1">
+                              <div className={`font-medium ${ex.is_completed ? 'text-green-300 line-through' : 'text-white'}`}>
+                                {ex.exercise_name}
+                              </div>
+                              <div className="text-xs text-slate-400 mt-1">
+                                <span>Repetisi: <span className="text-orange-400 font-semibold">{ex.repetitions}</span></span>
+                              </div>
                             </div>
                           </div>
                         ))}
