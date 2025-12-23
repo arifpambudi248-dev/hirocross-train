@@ -324,6 +324,7 @@ export type Database = {
           assigned_by: string | null
           athlete_name: string
           cardio_distance: number | null
+          cooldown_notes: string | null
           created_at: string
           date: string
           duration_minutes: number | null
@@ -333,17 +334,20 @@ export type Database = {
           load_final: number | null
           load_manual: number | null
           notes: string | null
+          recovery_notes: string | null
           rpe: number | null
           session_name: string | null
           skill_reps: number | null
           strength_volume: number | null
           updated_at: string
           user_id: string
+          warmup_notes: string | null
         }
         Insert: {
           assigned_by?: string | null
           athlete_name: string
           cardio_distance?: number | null
+          cooldown_notes?: string | null
           created_at?: string
           date: string
           duration_minutes?: number | null
@@ -353,17 +357,20 @@ export type Database = {
           load_final?: number | null
           load_manual?: number | null
           notes?: string | null
+          recovery_notes?: string | null
           rpe?: number | null
           session_name?: string | null
           skill_reps?: number | null
           strength_volume?: number | null
           updated_at?: string
           user_id: string
+          warmup_notes?: string | null
         }
         Update: {
           assigned_by?: string | null
           athlete_name?: string
           cardio_distance?: number | null
+          cooldown_notes?: string | null
           created_at?: string
           date?: string
           duration_minutes?: number | null
@@ -373,12 +380,14 @@ export type Database = {
           load_final?: number | null
           load_manual?: number | null
           notes?: string | null
+          recovery_notes?: string | null
           rpe?: number | null
           session_name?: string | null
           skill_reps?: number | null
           strength_volume?: number | null
           updated_at?: string
           user_id?: string
+          warmup_notes?: string | null
         }
         Relationships: []
       }

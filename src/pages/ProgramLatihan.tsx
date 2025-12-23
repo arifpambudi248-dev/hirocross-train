@@ -27,7 +27,7 @@ import { Draggable } from "@/components/Draggable";
 import { trainingSessionSchema, templateSchema } from "@/lib/validationSchemas";
 import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
 import { z } from "zod";
-import { ExerciseForm, Exercise, ExerciseType, ExercisePhase } from "@/components/ExerciseForm";
+import { ExerciseForm, Exercise, ExerciseType, ExercisePhase, PhaseNotes } from "@/components/ExerciseForm";
 import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
 import { exportSessionDetailToPDF } from "@/lib/exportUtils";
 
@@ -59,14 +59,15 @@ type TrainingSession = {
   load_manual: number | null;
   load_final: number;
   notes: string | null;
-  // Comprehensive volume columns
   strength_volume?: number;
   cardio_distance?: number;
   skill_reps?: number;
   exercises?: SessionExercise[];
-  // Assignment columns
   is_assigned?: boolean;
   assigned_by?: string | null;
+  warmup_notes?: string | null;
+  cooldown_notes?: string | null;
+  recovery_notes?: string | null;
 };
 
 type Template = {
@@ -101,6 +102,7 @@ export default function ProgramLatihan() {
   const [loadManual, setLoadManual] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [phaseNotes, setPhaseNotes] = useState<PhaseNotes>({ warmup: "", cooldown: "", recovery: "" });
 
   // Template form state
   const [templateName, setTemplateName] = useState("");
@@ -310,6 +312,10 @@ export default function ProgramLatihan() {
         // Track if coach assigned this session
         is_assigned: isCoach && selectedAthleteId !== userId,
         assigned_by: isCoach && selectedAthleteId !== userId ? userId : null,
+        // Phase notes
+        warmup_notes: phaseNotes.warmup || null,
+        cooldown_notes: phaseNotes.cooldown || null,
+        recovery_notes: phaseNotes.recovery || null,
       }).select().single();
 
       if (sessionError) throw sessionError;
@@ -442,6 +448,7 @@ export default function ProgramLatihan() {
     setNotes("");
     setSelectedTemplateId("");
     setExercises([]);
+    setPhaseNotes({ warmup: "", cooldown: "", recovery: "" });
   };
 
   const handleViewSession = (session: TrainingSession) => {
@@ -833,7 +840,7 @@ export default function ProgramLatihan() {
 
                     {/* Exercise Details */}
                     <div className="border-t border-slate-800 pt-4">
-                      <ExerciseForm exercises={exercises} onChange={setExercises} />
+                      <ExerciseForm exercises={exercises} onChange={setExercises} phaseNotes={phaseNotes} onPhaseNotesChange={setPhaseNotes} />
                     </div>
 
                     {/* Save as Template */}
@@ -1170,10 +1177,21 @@ export default function ProgramLatihan() {
                 );
               })()}
 
-              {/* Exercise Details */}
+              {/* Phase-based Exercise Details */}
+              {/* Warm Up Section */}
+              {viewingSession.warmup_notes && (
+                <div className="p-3 rounded-lg border bg-amber-500/20 border-amber-500/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-semibold text-amber-400">Warm Up</span>
+                  </div>
+                  <p className="text-sm text-white whitespace-pre-line">{viewingSession.warmup_notes}</p>
+                </div>
+              )}
+
+              {/* Main/Inti Exercise Details */}
               {viewingSession.exercises && viewingSession.exercises.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-white">Detail Latihan ({viewingSession.exercises.length} latihan)</h4>
+                <div className="space-y-3 p-3 rounded-lg border bg-primary/20 border-primary/50">
+                  <h4 className="font-semibold text-primary">Latihan Inti ({viewingSession.exercises.length} latihan)</h4>
                   <p className="text-xs text-slate-400">Klik tombol untuk menandai latihan yang sudah selesai</p>
                   
                   {/* Strength Exercises */}

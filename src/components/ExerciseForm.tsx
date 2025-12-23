@@ -25,9 +25,17 @@ export type Exercise = {
   notes?: string;
 };
 
+export type PhaseNotes = {
+  warmup: string;
+  cooldown: string;
+  recovery: string;
+};
+
 interface ExerciseFormProps {
   exercises: Exercise[];
   onChange: (exercises: Exercise[]) => void;
+  phaseNotes: PhaseNotes;
+  onPhaseNotesChange: (notes: PhaseNotes) => void;
 }
 
 const EXERCISE_TEMPLATES: Record<ExerciseType, string[]> = {
@@ -72,7 +80,7 @@ const PHASE_COLORS: Record<ExercisePhase, string> = {
   recovery: "bg-purple-500/20 border-purple-500/50 text-purple-400"
 };
 
-export function ExerciseForm({ exercises, onChange }: ExerciseFormProps) {
+export function ExerciseForm({ exercises, onChange, phaseNotes, onPhaseNotesChange }: ExerciseFormProps) {
   const [activePhase, setActivePhase] = useState<ExercisePhase>("main");
   const [newExerciseType, setNewExerciseType] = useState<ExerciseType>("strength");
 
