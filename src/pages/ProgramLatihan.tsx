@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
 import { format, subDays, startOfWeek, endOfWeek, addWeeks, addDays, eachDayOfInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { Droppable } from "@/components/Droppable";
@@ -27,7 +27,7 @@ import { Draggable } from "@/components/Draggable";
 import { trainingSessionSchema, templateSchema } from "@/lib/validationSchemas";
 import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
 import { z } from "zod";
-import { ExerciseForm, Exercise, ExerciseType } from "@/components/ExerciseForm";
+import { ExerciseForm, Exercise, ExerciseType, ExercisePhase } from "@/components/ExerciseForm";
 import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
 import { exportSessionDetailToPDF } from "@/lib/exportUtils";
 
@@ -36,6 +36,7 @@ type SessionExercise = {
   session_id: string;
   exercise_name: string;
   exercise_type: string;
+  exercise_phase?: string;
   sets: number | null;
   reps: number | null;
   weight_kg: number | null;
@@ -319,6 +320,7 @@ export default function ProgramLatihan() {
           session_id: sessionData.id,
           exercise_name: ex.exercise_name,
           exercise_type: ex.exercise_type,
+          exercise_phase: ex.exercise_phase || 'main',
           sets: ex.sets || null,
           reps: ex.reps || null,
           weight_kg: ex.weight_kg || null,
@@ -497,11 +499,39 @@ export default function ProgramLatihan() {
       .filter(e => e.exercise_type === "cardio")
       .reduce((sum, e) => sum + (e.distance_meters || 0), 0);
     
+    const speedTotal = session.exercises
+      .filter(e => e.exercise_type === "speed")
+      .reduce((sum, e) => sum + (e.distance_meters || 0), 0);
+    
     const skillTotal = session.exercises
       .filter(e => e.exercise_type === "skill")
       .reduce((sum, e) => sum + (e.repetitions || 0), 0);
     
-    return { strengthTotal, cardioTotal, skillTotal };
+    const techniqueTotal = session.exercises
+      .filter(e => e.exercise_type === "technique")
+      .reduce((sum, e) => sum + (e.repetitions || 0), 0);
+    
+    return { strengthTotal, cardioTotal, speedTotal, skillTotal, techniqueTotal };
+  };
+
+  const getPhaseLabel = (phase: string) => {
+    const labels: Record<string, string> = {
+      warmup: "Warm Up",
+      main: "Inti",
+      cooldown: "Cooling Down",
+      recovery: "Recovery"
+    };
+    return labels[phase] || "Inti";
+  };
+
+  const getPhaseColor = (phase: string) => {
+    const colors: Record<string, string> = {
+      warmup: "bg-amber-500/20 border-amber-500/50 text-amber-400",
+      main: "bg-primary/20 border-primary/50 text-primary",
+      cooldown: "bg-cyan-500/20 border-cyan-500/50 text-cyan-400",
+      recovery: "bg-purple-500/20 border-purple-500/50 text-purple-400"
+    };
+    return colors[phase] || colors.main;
   };
 
   const getWeekDays = () => {

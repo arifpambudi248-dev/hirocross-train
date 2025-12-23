@@ -258,6 +258,7 @@ export type Database = {
           distance_meters: number | null
           duration_seconds: number | null
           exercise_name: string
+          exercise_phase: string | null
           exercise_type: string
           id: string
           is_completed: boolean | null
@@ -276,6 +277,7 @@ export type Database = {
           distance_meters?: number | null
           duration_seconds?: number | null
           exercise_name: string
+          exercise_phase?: string | null
           exercise_type?: string
           id?: string
           is_completed?: boolean | null
@@ -294,6 +296,7 @@ export type Database = {
           distance_meters?: number | null
           duration_seconds?: number | null
           exercise_name?: string
+          exercise_phase?: string | null
           exercise_type?: string
           id?: string
           is_completed?: boolean | null
