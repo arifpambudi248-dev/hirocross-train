@@ -5,11 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Flame, Dumbbell, Snowflake, Sparkles } from "lucide-react";
+import { Plus, Trash2, Flame, Dumbbell, Snowflake, Sparkles, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 
-export type ExerciseType = "strength" | "cardio" | "skill" | "speed" | "technique";
+export type ExerciseType = "strength" | "endurance" | "skill" | "speed" | "technique" | "tactics";
 
 export type MainExercise = {
   id: string;
@@ -38,27 +38,30 @@ interface TrainingSessionFormProps {
   initialData?: Partial<SessionFormData>;
   onSubmit: (data: SessionFormData) => void;
   onCancel: () => void;
+  isEditing?: boolean;
 }
 
 const SESSION_TYPES = [
   { value: "rest", label: "REST" },
   { value: "strength", label: "STRENGTH" },
-  { value: "cardio", label: "CARDIO" },
+  { value: "endurance", label: "ENDURANCE" },
   { value: "skill", label: "SKILL" },
   { value: "speed", label: "SPEED" },
   { value: "technique", label: "TEKNIK" },
+  { value: "tactics", label: "TAKTIK" },
   { value: "mixed", label: "CAMPURAN" },
 ];
 
-const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
-  strength: "Kuat (kg)",
-  cardio: "Jarak (m)",
-  skill: "Repetisi",
-  speed: "Jarak (m)",
-  technique: "Repetisi",
-};
+const EXERCISE_TYPE_OPTIONS = [
+  { value: "strength", label: "Kuat (kg)" },
+  { value: "endurance", label: "Endurance (m)" },
+  { value: "skill", label: "Skill" },
+  { value: "speed", label: "Speed (m)" },
+  { value: "technique", label: "Teknik" },
+  { value: "tactics", label: "Taktik" },
+];
 
-export function TrainingSessionForm({ selectedDate, initialData, onSubmit, onCancel }: TrainingSessionFormProps) {
+export function TrainingSessionForm({ selectedDate, initialData, onSubmit, onCancel, isEditing = false }: TrainingSessionFormProps) {
   const [formData, setFormData] = useState<SessionFormData>({
     date: selectedDate,
     sessionType: initialData?.sessionType || "rest",
@@ -119,7 +122,10 @@ export function TrainingSessionForm({ selectedDate, initialData, onSubmit, onCan
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header with date, checkbox and session type */}
       <div className="flex items-center justify-between gap-4 pb-4 border-b border-border">
-        <h2 className="text-xl font-bold text-foreground">{headerTitle}</h2>
+        <div className="flex items-center gap-2">
+          {isEditing && <Pencil className="w-4 h-4 text-muted-foreground" />}
+          <h2 className="text-xl font-bold text-foreground">{headerTitle}</h2>
+        </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Checkbox
@@ -186,15 +192,15 @@ export function TrainingSessionForm({ selectedDate, initialData, onSubmit, onCan
                 value={exercise.exercise_type}
                 onValueChange={(val) => updateMainExercise(exercise.id, { exercise_type: val as ExerciseType })}
               >
-                <SelectTrigger className="w-32 bg-background border-border">
+                <SelectTrigger className="w-36 bg-background border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="strength">Kuat (kg)</SelectItem>
-                  <SelectItem value="cardio">Jarak (m)</SelectItem>
-                  <SelectItem value="skill">Skill</SelectItem>
-                  <SelectItem value="speed">Speed</SelectItem>
-                  <SelectItem value="technique">Teknik</SelectItem>
+                  {EXERCISE_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Input
@@ -318,7 +324,7 @@ export function TrainingSessionForm({ selectedDate, initialData, onSubmit, onCan
           Batal
         </Button>
         <Button type="submit" className="flex-1">
-          Simpan Sesi
+          {isEditing ? "Update Sesi" : "Simpan Sesi"}
         </Button>
       </div>
     </form>
