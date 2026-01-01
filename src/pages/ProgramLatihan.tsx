@@ -906,10 +906,30 @@ export default function ProgramLatihan() {
       ? Math.round(monthSessions.reduce((sum, s) => sum + (s.rpe || 0), 0) / monthSessions.length * 10) / 10
       : 0;
 
-    // Comprehensive volume metrics
-    const totalStrengthVolume = monthSessions.reduce((sum, s) => sum + (s.strength_volume || 0), 0);
-    const totalCardioDistance = monthSessions.reduce((sum, s) => sum + (s.cardio_distance || 0), 0);
-    const totalSkillReps = monthSessions.reduce((sum, s) => sum + (s.skill_reps || 0), 0);
+    // Calculate volume from exercises
+    let totalStrengthVolume = 0;
+    let totalEnduranceDistance = 0;
+    let totalSprintDistance = 0;
+    let totalTeknikReps = 0;
+    let totalTaktikReps = 0;
+
+    monthSessions.forEach(session => {
+      if (session.exercises) {
+        session.exercises.forEach(ex => {
+          if (ex.exercise_type === 'strength') {
+            totalStrengthVolume += (ex.sets || 0) * (ex.reps || 0) * (ex.weight_kg || 0);
+          } else if (ex.exercise_type === 'cardio' || ex.exercise_type === 'endurance') {
+            totalEnduranceDistance += ex.distance_meters || 0;
+          } else if (ex.exercise_type === 'speed') {
+            totalSprintDistance += ex.distance_meters || 0;
+          } else if (ex.exercise_type === 'technique') {
+            totalTeknikReps += ex.repetitions || 0;
+          } else if (ex.exercise_type === 'tactics') {
+            totalTaktikReps += ex.repetitions || 0;
+          }
+        });
+      }
+    });
 
     return { 
       totalLoad, 
@@ -917,8 +937,10 @@ export default function ProgramLatihan() {
       avgRPE, 
       sessionCount: monthSessions.length,
       totalStrengthVolume,
-      totalCardioDistance,
-      totalSkillReps
+      totalEnduranceDistance,
+      totalSprintDistance,
+      totalTeknikReps,
+      totalTaktikReps
     };
   };
 
@@ -1285,22 +1307,42 @@ export default function ProgramLatihan() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-1 text-sm text-green-400">
                     <Footprints className="w-3 h-3" />
-                    <span>Cardio</span>
+                    <span>Endurance</span>
                   </div>
                   <div className="text-xl font-bold text-green-400">
-                    {monthlyMetrics.totalCardioDistance >= 1000 
-                      ? `${(monthlyMetrics.totalCardioDistance / 1000).toFixed(1)} km` 
-                      : `${monthlyMetrics.totalCardioDistance} m`}
+                    {monthlyMetrics.totalEnduranceDistance >= 1000 
+                      ? `${(monthlyMetrics.totalEnduranceDistance / 1000).toFixed(1)} km` 
+                      : `${monthlyMetrics.totalEnduranceDistance} m`}
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-sm text-orange-400">
-                    <Target className="w-3 h-3" />
-                    <span>Skill</span>
+                  <div className="flex items-center gap-1 text-sm text-yellow-400">
+                    <Zap className="w-3 h-3" />
+                    <span>Sprint</span>
                   </div>
-                  <div className="text-xl font-bold text-orange-400">
-                    {monthlyMetrics.totalSkillReps} rep
+                  <div className="text-xl font-bold text-yellow-400">
+                    {monthlyMetrics.totalSprintDistance} m
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-sm text-pink-400">
+                    <Crosshair className="w-3 h-3" />
+                    <span>Teknik</span>
+                  </div>
+                  <div className="text-xl font-bold text-pink-400">
+                    {monthlyMetrics.totalTeknikReps} kali
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-sm text-purple-400">
+                    <Target className="w-3 h-3" />
+                    <span>Taktik</span>
+                  </div>
+                  <div className="text-xl font-bold text-purple-400">
+                    {monthlyMetrics.totalTaktikReps} kali
                   </div>
                 </div>
               </div>
