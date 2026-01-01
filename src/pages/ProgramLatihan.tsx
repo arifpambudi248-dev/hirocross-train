@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
 import { format, subDays, startOfWeek, endOfWeek, addWeeks, addDays, eachDayOfInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { Droppable } from "@/components/Droppable";
@@ -27,10 +27,10 @@ import { Draggable } from "@/components/Draggable";
 import { trainingSessionSchema, templateSchema } from "@/lib/validationSchemas";
 import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
 import { z } from "zod";
-import { ExerciseForm, Exercise, ExerciseType, ExercisePhase, PhaseNotes } from "@/components/ExerciseForm";
+import { ExerciseForm, Exercise, ExercisePhase, PhaseNotes } from "@/components/ExerciseForm";
 import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
 import { exportSessionDetailToPDF } from "@/lib/exportUtils";
-import { TrainingSessionForm, SessionFormData, MainExercise } from "@/components/TrainingSessionForm";
+import { TrainingSessionForm, SessionFormData, MainExercise, ExerciseType } from "@/components/TrainingSessionForm";
 
 type SessionExercise = {
   id: string;
@@ -116,6 +116,10 @@ export default function ProgramLatihan() {
   // New form dialog
   const [newFormOpen, setNewFormOpen] = useState(false);
   const [selectedFormDate, setSelectedFormDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  
+  // Edit form dialog
+  const [editFormOpen, setEditFormOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<TrainingSession | null>(null);
   
   // Show volume chart
   const [showVolumeChart, setShowVolumeChart] = useState(false);
@@ -515,8 +519,8 @@ export default function ProgramLatihan() {
           sets: ex.sets || null,
           reps: ex.reps || null,
           weight_kg: ex.exercise_type === 'strength' ? ex.weight_or_distance : null,
-          distance_meters: (ex.exercise_type === 'cardio' || ex.exercise_type === 'speed') ? ex.weight_or_distance : null,
-          repetitions: (ex.exercise_type === 'skill' || ex.exercise_type === 'technique') ? ex.weight_or_distance : null,
+          distance_meters: (ex.exercise_type === 'endurance' || ex.exercise_type === 'speed') ? ex.weight_or_distance : null,
+          repetitions: (ex.exercise_type === 'skill' || ex.exercise_type === 'technique' || ex.exercise_type === 'tactics') ? ex.weight_or_distance : null,
           total_volume: ex.exercise_type === 'strength' 
             ? (ex.sets || 0) * (ex.reps || 0) * (ex.weight_or_distance || 0)
             : ex.weight_or_distance || 0,
@@ -536,6 +540,104 @@ export default function ProgramLatihan() {
     } catch (error: any) {
       handleError(error, getFriendlyErrorMessage(error));
     }
+  };
+
+  const handleEditSession = (session: TrainingSession) => {
+    setEditingSession(session);
+    setEditFormOpen(true);
+  };
+
+  const handleEditFormSubmit = async (formData: SessionFormData) => {
+    if (!userId || !editingSession) return;
+
+    try {
+      const loadAuto = computeSessionLoad(formData.rpe, formData.durationMinutes);
+      const loadFinal = loadAuto;
+
+      // Update training session
+      const { error: sessionError } = await supabase
+        .from("training_sessions")
+        .update({
+          session_name: formData.sessionType !== 'rest' ? `Latihan ${formData.sessionType.charAt(0).toUpperCase() + formData.sessionType.slice(1)}` : 'Rest Day',
+          rpe: formData.rpe,
+          duration_minutes: formData.durationMinutes,
+          load_auto: loadAuto,
+          load_final: loadFinal,
+          notes: formData.notes || null,
+          warmup_notes: formData.warmupNotes || null,
+          cooldown_notes: formData.cooldownNotes || null,
+          recovery_notes: formData.recoveryNotes || null,
+        })
+        .eq('id', editingSession.id);
+
+      if (sessionError) throw sessionError;
+
+      // Delete old exercises
+      await supabase
+        .from("session_exercises")
+        .delete()
+        .eq('session_id', editingSession.id);
+
+      // Insert new exercises if any
+      if (formData.mainExercises.length > 0) {
+        const exercisesToInsert = formData.mainExercises.map(ex => ({
+          session_id: editingSession.id,
+          exercise_name: ex.exercise_name,
+          exercise_type: ex.exercise_type,
+          exercise_phase: 'main',
+          sets: ex.sets || null,
+          reps: ex.reps || null,
+          weight_kg: ex.exercise_type === 'strength' ? ex.weight_or_distance : null,
+          distance_meters: (ex.exercise_type === 'endurance' || ex.exercise_type === 'speed') ? ex.weight_or_distance : null,
+          repetitions: (ex.exercise_type === 'skill' || ex.exercise_type === 'technique' || ex.exercise_type === 'tactics') ? ex.weight_or_distance : null,
+          total_volume: ex.exercise_type === 'strength' 
+            ? (ex.sets || 0) * (ex.reps || 0) * (ex.weight_or_distance || 0)
+            : ex.weight_or_distance || 0,
+          notes: null,
+        }));
+
+        const { error: exercisesError } = await supabase
+          .from("session_exercises")
+          .insert(exercisesToInsert);
+
+        if (exercisesError) throw exercisesError;
+      }
+
+      toast.success("Sesi latihan berhasil diperbarui");
+      setEditFormOpen(false);
+      setEditingSession(null);
+      setViewSessionOpen(false);
+      fetchSessions(selectedAthleteId);
+    } catch (error: any) {
+      handleError(error, getFriendlyErrorMessage(error));
+    }
+  };
+
+  const getEditFormInitialData = (session: TrainingSession): Partial<SessionFormData> => {
+    return {
+      sessionType: session.session_name?.toLowerCase().includes('strength') ? 'strength' :
+                   session.session_name?.toLowerCase().includes('endurance') ? 'endurance' :
+                   session.session_name?.toLowerCase().includes('cardio') ? 'endurance' :
+                   session.session_name?.toLowerCase().includes('speed') ? 'speed' :
+                   session.session_name?.toLowerCase().includes('skill') ? 'skill' :
+                   session.session_name?.toLowerCase().includes('teknik') ? 'technique' :
+                   session.session_name?.toLowerCase().includes('taktik') ? 'tactics' :
+                   session.session_name?.toLowerCase().includes('rest') ? 'rest' : 'mixed',
+      warmupNotes: session.warmup_notes || "",
+      cooldownNotes: session.cooldown_notes || "",
+      recoveryNotes: session.recovery_notes || "",
+      durationMinutes: session.duration_minutes || 60,
+      rpe: session.rpe || 5,
+      notes: session.notes || "",
+      mainExercises: session.exercises?.map(ex => ({
+        id: ex.id,
+        exercise_name: ex.exercise_name,
+        exercise_type: (ex.exercise_type === 'cardio' ? 'endurance' : ex.exercise_type) as ExerciseType,
+        sets: ex.sets || undefined,
+        reps: ex.reps || undefined,
+        weight_or_distance: ex.weight_kg || ex.distance_meters || ex.repetitions || undefined,
+      })) || [],
+    };
   };
 
   const handleToggleExerciseComplete = async (exerciseId: string, currentStatus: boolean) => {
@@ -585,7 +687,7 @@ export default function ProgramLatihan() {
       .reduce((sum, e) => sum + ((e.sets || 0) * (e.reps || 0) * (e.weight_kg || 0)), 0);
     
     const cardioTotal = session.exercises
-      .filter(e => e.exercise_type === "cardio")
+      .filter(e => e.exercise_type === "cardio" || e.exercise_type === "endurance")
       .reduce((sum, e) => sum + (e.distance_meters || 0), 0);
     
     const speedTotal = session.exercises
@@ -599,8 +701,76 @@ export default function ProgramLatihan() {
     const techniqueTotal = session.exercises
       .filter(e => e.exercise_type === "technique")
       .reduce((sum, e) => sum + (e.repetitions || 0), 0);
+
+    const tacticsTotal = session.exercises
+      .filter(e => e.exercise_type === "tactics")
+      .reduce((sum, e) => sum + (e.repetitions || 0), 0);
     
-    return { strengthTotal, cardioTotal, speedTotal, skillTotal, techniqueTotal };
+    return { strengthTotal, cardioTotal, speedTotal, skillTotal, techniqueTotal, tacticsTotal };
+  };
+
+  const renderExercisesByType = (exercises: SessionExercise[], type: string, label: string, Icon: any, color: string) => {
+    const filtered = exercises.filter(e => e.exercise_type === type);
+    if (filtered.length === 0) return null;
+    
+    const colorClasses: Record<string, { text: string; bg: string; border: string }> = {
+      blue: { text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
+      green: { text: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30' },
+      yellow: { text: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' },
+      orange: { text: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30' },
+      pink: { text: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/30' },
+      purple: { text: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30' },
+    };
+    const c = colorClasses[color] || colorClasses.blue;
+
+    return (
+      <div className="space-y-2">
+        <div className={`flex items-center gap-2 text-sm font-medium ${c.text}`}>
+          <Icon className="w-4 h-4" />
+          {label}
+        </div>
+        <div className="space-y-2">
+          {filtered.map((ex) => (
+            <div 
+              key={ex.id} 
+              className={`p-2 rounded-lg flex items-start gap-3 ${
+                ex.is_completed ? 'bg-green-500/20 border border-green-500/50' : `${c.bg} border ${c.border}`
+              }`}
+            >
+              <button
+                onClick={() => handleToggleExerciseComplete(ex.id, ex.is_completed || false)}
+                className="mt-0.5 flex-shrink-0"
+              >
+                {ex.is_completed ? (
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                ) : (
+                  <Circle className={`w-5 h-5 text-slate-500 hover:${c.text} transition-colors`} />
+                )}
+              </button>
+              <div className="flex-1">
+                <div className={`font-medium ${ex.is_completed ? 'text-green-300 line-through' : 'text-white'}`}>
+                  {ex.exercise_name}
+                </div>
+                <div className="flex gap-4 text-xs text-slate-400 mt-1">
+                  {type === 'strength' && (
+                    <>
+                      <span>{ex.sets} set × {ex.reps} rep</span>
+                      <span>{ex.weight_kg} kg</span>
+                    </>
+                  )}
+                  {(type === 'cardio' || type === 'endurance' || type === 'speed') && (
+                    <span>Jarak: {(ex.distance_meters || 0) >= 1000 ? `${((ex.distance_meters || 0)/1000).toFixed(2)} km` : `${ex.distance_meters} m`}</span>
+                  )}
+                  {(type === 'skill' || type === 'technique' || type === 'tactics') && (
+                    <span>Repetisi: <span className={`${c.text} font-semibold`}>{ex.repetitions}</span></span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   const getPhaseLabel = (phase: string) => {
@@ -1218,17 +1388,27 @@ export default function ProgramLatihan() {
           
           {viewingSession && (
             <div className="space-y-4">
-              {/* Export Button */}
-              {viewingSession.exercises && viewingSession.exercises.length > 0 && (
+              {/* Action Buttons */}
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="w-full"
-                  onClick={() => exportSessionDetailToPDF(viewingSession, athleteName)}
+                  className="flex-1"
+                  onClick={() => handleEditSession(viewingSession)}
                 >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Export PDF
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Edit Sesi
                 </Button>
-              )}
+                {viewingSession.exercises && viewingSession.exercises.length > 0 && (
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => exportSessionDetailToPDF(viewingSession, athleteName)}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Export PDF
+                  </Button>
+                )}
+              </div>
               
               {/* Session Metrics */}
               <div className="grid grid-cols-3 gap-3 p-3 bg-slate-950 rounded-lg border border-slate-800">
@@ -1270,12 +1450,11 @@ export default function ProgramLatihan() {
                 );
               })()}
 
-              {/* Phase-based Exercise Details */}
               {/* Warm Up Section */}
               {viewingSession.warmup_notes && (
                 <div className="p-3 rounded-lg border bg-amber-500/20 border-amber-500/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-semibold text-amber-400">Warm Up</span>
+                    <span className="text-xs font-semibold text-amber-400 uppercase">🔥 Warm Up</span>
                   </div>
                   <p className="text-sm text-white whitespace-pre-line">{viewingSession.warmup_notes}</p>
                 </div>
@@ -1284,138 +1463,17 @@ export default function ProgramLatihan() {
               {/* Main/Inti Exercise Details */}
               {viewingSession.exercises && viewingSession.exercises.length > 0 && (
                 <div className="space-y-3 p-3 rounded-lg border bg-primary/20 border-primary/50">
-                  <h4 className="font-semibold text-primary">Latihan Inti ({viewingSession.exercises.length} latihan)</h4>
+                  <h4 className="font-semibold text-primary">💪 Main Set ({viewingSession.exercises.length} latihan)</h4>
                   <p className="text-xs text-slate-400">Klik tombol untuk menandai latihan yang sudah selesai</p>
                   
-                  {/* Strength Exercises */}
-                  {viewingSession.exercises.filter(e => e.exercise_type === "strength").length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-medium text-blue-400">
-                        <Dumbbell className="w-4 h-4" />
-                        Strength
-                      </div>
-                      <div className="space-y-2">
-                        {viewingSession.exercises.filter(e => e.exercise_type === "strength").map((ex) => (
-                          <div 
-                            key={ex.id} 
-                            className={`p-2 rounded-lg flex items-start gap-3 ${
-                              ex.is_completed 
-                                ? 'bg-green-500/20 border border-green-500/50' 
-                                : 'bg-blue-500/10 border border-blue-500/30'
-                            }`}
-                          >
-                            <button
-                              onClick={() => handleToggleExerciseComplete(ex.id, ex.is_completed || false)}
-                              className="mt-0.5 flex-shrink-0"
-                            >
-                              {ex.is_completed ? (
-                                <CheckCircle className="w-5 h-5 text-green-400" />
-                              ) : (
-                                <Circle className="w-5 h-5 text-slate-500 hover:text-blue-400 transition-colors" />
-                              )}
-                            </button>
-                            <div className="flex-1">
-                              <div className={`font-medium ${ex.is_completed ? 'text-green-300 line-through' : 'text-white'}`}>
-                                {ex.exercise_name}
-                              </div>
-                              <div className="flex gap-4 text-xs text-slate-400 mt-1">
-                                <span>{ex.sets} set × {ex.reps} rep</span>
-                                <span>{ex.weight_kg} kg</span>
-                                <span className="text-blue-400 font-semibold">
-                                  Total: {((ex.sets || 0) * (ex.reps || 0) * (ex.weight_kg || 0)).toLocaleString()} kg
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Cardio Exercises */}
-                  {viewingSession.exercises.filter(e => e.exercise_type === "cardio").length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-medium text-green-400">
-                        <Footprints className="w-4 h-4" />
-                        Cardio
-                      </div>
-                      <div className="space-y-2">
-                        {viewingSession.exercises.filter(e => e.exercise_type === "cardio").map((ex) => (
-                          <div 
-                            key={ex.id} 
-                            className={`p-2 rounded-lg flex items-start gap-3 ${
-                              ex.is_completed 
-                                ? 'bg-green-500/20 border border-green-500/50' 
-                                : 'bg-green-500/10 border border-green-500/30'
-                            }`}
-                          >
-                            <button
-                              onClick={() => handleToggleExerciseComplete(ex.id, ex.is_completed || false)}
-                              className="mt-0.5 flex-shrink-0"
-                            >
-                              {ex.is_completed ? (
-                                <CheckCircle className="w-5 h-5 text-green-400" />
-                              ) : (
-                                <Circle className="w-5 h-5 text-slate-500 hover:text-green-400 transition-colors" />
-                              )}
-                            </button>
-                            <div className="flex-1">
-                              <div className={`font-medium ${ex.is_completed ? 'text-green-300 line-through' : 'text-white'}`}>
-                                {ex.exercise_name}
-                              </div>
-                              <div className="flex gap-4 text-xs text-slate-400 mt-1">
-                                <span>Jarak: {(ex.distance_meters || 0) >= 1000 ? `${((ex.distance_meters || 0)/1000).toFixed(2)} km` : `${ex.distance_meters} m`}</span>
-                                {ex.duration_seconds && (
-                                  <span>Waktu: {Math.floor((ex.duration_seconds || 0) / 60)}:{String((ex.duration_seconds || 0) % 60).padStart(2, '0')}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Skill Exercises */}
-                  {viewingSession.exercises.filter(e => e.exercise_type === "skill").length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-medium text-orange-400">
-                        <Target className="w-4 h-4" />
-                        Skill
-                      </div>
-                      <div className="space-y-2">
-                        {viewingSession.exercises.filter(e => e.exercise_type === "skill").map((ex) => (
-                          <div 
-                            key={ex.id} 
-                            className={`p-2 rounded-lg flex items-start gap-3 ${
-                              ex.is_completed 
-                                ? 'bg-green-500/20 border border-green-500/50' 
-                                : 'bg-orange-500/10 border border-orange-500/30'
-                            }`}
-                          >
-                            <button
-                              onClick={() => handleToggleExerciseComplete(ex.id, ex.is_completed || false)}
-                              className="mt-0.5 flex-shrink-0"
-                            >
-                              {ex.is_completed ? (
-                                <CheckCircle className="w-5 h-5 text-green-400" />
-                              ) : (
-                                <Circle className="w-5 h-5 text-slate-500 hover:text-orange-400 transition-colors" />
-                              )}
-                            </button>
-                            <div className="flex-1">
-                              <div className={`font-medium ${ex.is_completed ? 'text-green-300 line-through' : 'text-white'}`}>
-                                {ex.exercise_name}
-                              </div>
-                              <div className="text-xs text-slate-400 mt-1">
-                                <span>Repetisi: <span className="text-orange-400 font-semibold">{ex.repetitions}</span></span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Render exercises by type */}
+                  {renderExercisesByType(viewingSession.exercises, "strength", "Strength", Dumbbell, "blue")}
+                  {renderExercisesByType(viewingSession.exercises, "endurance", "Endurance", Footprints, "green")}
+                  {renderExercisesByType(viewingSession.exercises, "cardio", "Cardio", Footprints, "green")}
+                  {renderExercisesByType(viewingSession.exercises, "speed", "Speed", Zap, "yellow")}
+                  {renderExercisesByType(viewingSession.exercises, "skill", "Skill", Target, "orange")}
+                  {renderExercisesByType(viewingSession.exercises, "technique", "Teknik", Crosshair, "pink")}
+                  {renderExercisesByType(viewingSession.exercises, "tactics", "Taktik", Target, "purple")}
 
                   {/* Total Summary */}
                   {(() => {
@@ -1433,7 +1491,7 @@ export default function ProgramLatihan() {
                           )}
                           {summary.cardioTotal > 0 && (
                             <div>
-                              <span className="text-slate-500">Cardio:</span>
+                              <span className="text-slate-500">Endurance:</span>
                               <span className="ml-1 font-bold text-green-400">{(summary.cardioTotal / 1000).toFixed(2)} km</span>
                             </div>
                           )}
@@ -1443,6 +1501,24 @@ export default function ProgramLatihan() {
                               <span className="ml-1 font-bold text-orange-400">{summary.skillTotal} rep</span>
                             </div>
                           )}
+                          {summary.speedTotal > 0 && (
+                            <div>
+                              <span className="text-slate-500">Speed:</span>
+                              <span className="ml-1 font-bold text-yellow-400">{summary.speedTotal} m</span>
+                            </div>
+                          )}
+                          {summary.techniqueTotal > 0 && (
+                            <div>
+                              <span className="text-slate-500">Teknik:</span>
+                              <span className="ml-1 font-bold text-pink-400">{summary.techniqueTotal} rep</span>
+                            </div>
+                          )}
+                          {summary.tacticsTotal > 0 && (
+                            <div>
+                              <span className="text-slate-500">Taktik:</span>
+                              <span className="ml-1 font-bold text-purple-400">{summary.tacticsTotal} rep</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -1450,10 +1526,30 @@ export default function ProgramLatihan() {
                 </div>
               )}
 
-              {/* Notes */}
+              {/* Cooling Down Section */}
+              {viewingSession.cooldown_notes && (
+                <div className="p-3 rounded-lg border bg-cyan-500/20 border-cyan-500/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-semibold text-cyan-400 uppercase">❄️ Cooling Down</span>
+                  </div>
+                  <p className="text-sm text-white whitespace-pre-line">{viewingSession.cooldown_notes}</p>
+                </div>
+              )}
+
+              {/* Recovery & Notes Section */}
+              {viewingSession.recovery_notes && (
+                <div className="p-3 rounded-lg border bg-emerald-500/20 border-emerald-500/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-semibold text-emerald-400 uppercase">✨ Recovery & Notes</span>
+                  </div>
+                  <p className="text-sm text-white whitespace-pre-line">{viewingSession.recovery_notes}</p>
+                </div>
+              )}
+
+              {/* Additional Notes */}
               {viewingSession.notes && (
                 <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <div className="text-xs font-semibold text-slate-400 mb-1">Catatan</div>
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Catatan Tambahan</div>
                   <p className="text-sm text-white">{viewingSession.notes}</p>
                 </div>
               )}
@@ -1470,6 +1566,24 @@ export default function ProgramLatihan() {
             onSubmit={handleNewFormSubmit}
             onCancel={() => setNewFormOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Training Session Form Dialog */}
+      <Dialog open={editFormOpen} onOpenChange={setEditFormOpen}>
+        <DialogContent className="max-w-2xl bg-background border-border max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+          {editingSession && (
+            <TrainingSessionForm
+              selectedDate={editingSession.date}
+              initialData={getEditFormInitialData(editingSession)}
+              onSubmit={handleEditFormSubmit}
+              onCancel={() => {
+                setEditFormOpen(false);
+                setEditingSession(null);
+              }}
+              isEditing={true}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </DndContext>
