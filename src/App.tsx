@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Landing from "./pages/Landing";
 import ProgramLatihan from "./pages/ProgramLatihan";
 import TesFisik from "./pages/TesFisik";
 import Readiness from "./pages/Readiness";
@@ -41,9 +42,17 @@ const App = () => {
   }, []);
 
   if (loading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
+  // Not logged in - show landing page and auth routes
   if (!session) {
     return (
       <QueryClientProvider client={queryClient}>
@@ -52,7 +61,9 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/*" element={<Auth />} />
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="*" element={<Landing />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
@@ -60,6 +71,7 @@ const App = () => {
     );
   }
 
+  // Logged in - show app routes
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

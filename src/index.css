@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -19,6 +21,7 @@ All colors MUST be HSL.
 
     --primary: 0 84% 54%;
     --primary-foreground: 0 0% 100%;
+    --primary-glow: 0 84% 64%;
 
     --secondary: 217 33% 22%;
     --secondary-foreground: 210 40% 98%;
@@ -47,6 +50,15 @@ All colors MUST be HSL.
     --chart-5: 0 72% 51%;
 
     --radius: 0.5rem;
+
+    /* Premium gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(222.2 47% 8%) 0%, hsl(222.2 47% 14%) 50%, hsl(0 84% 15%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(217 33% 20%) 0%, hsl(217 33% 15%) 100%);
+    --gradient-glow: radial-gradient(ellipse 50% 50% at 50% 50%, hsl(0 84% 54% / 0.15) 0%, transparent 70%);
+    
+    /* Premium shadows */
+    --shadow-premium: 0 25px 50px -12px hsl(0 84% 20% / 0.25);
+    --shadow-glow: 0 0 60px hsl(0 84% 54% / 0.3);
   }
 }
 
@@ -56,6 +68,52 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer components {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary-foreground to-primary;
+  }
+  
+  .glass-card {
+    @apply backdrop-blur-xl bg-card/80 border border-border/50;
+  }
+  
+  .glow-effect {
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.3);
+  }
+  
+  .hero-gradient {
+    background: var(--gradient-hero);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 4s ease-in-out infinite;
+  }
+}
+
+@layer utilities {
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.8;
+    }
   }
 }
