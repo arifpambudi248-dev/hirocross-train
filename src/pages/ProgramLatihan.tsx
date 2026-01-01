@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
 import { format, subDays, startOfWeek, endOfWeek, addWeeks, addDays, eachDayOfInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair, Pencil } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair, Pencil, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { Droppable } from "@/components/Droppable";
@@ -31,6 +31,7 @@ import { ExerciseForm, Exercise, ExercisePhase, PhaseNotes } from "@/components/
 import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
 import { exportSessionDetailToPDF } from "@/lib/exportUtils";
 import { TrainingSessionForm, SessionFormData, MainExercise, ExerciseType } from "@/components/TrainingSessionForm";
+import { BulkSessionForm } from "@/components/BulkSessionForm";
 
 type SessionExercise = {
   id: string;
@@ -120,6 +121,9 @@ export default function ProgramLatihan() {
   // Edit form dialog
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<TrainingSession | null>(null);
+  
+  // Bulk session dialog
+  const [bulkFormOpen, setBulkFormOpen] = useState(false);
   
   // Show volume chart
   const [showVolumeChart, setShowVolumeChart] = useState(false);
@@ -613,6 +617,84 @@ export default function ProgramLatihan() {
     }
   };
 
+  const handleBulkFormSubmit = async (formData: SessionFormData, selectedAthleteIds: string[], selectedDate: string) => {
+    if (!userId || selectedAthleteIds.length === 0) return;
+
+    try {
+      const loadAuto = computeSessionLoad(formData.rpe, formData.durationMinutes);
+      const loadFinal = loadAuto;
+
+      const sessionNames: Record<string, string> = {
+        rest: "Rest Day",
+        strength: "Latihan Strength",
+        cardio: "Latihan Cardio",
+        skill: "Latihan Skill",
+        speed: "Latihan Speed",
+        technique: "Latihan Teknik",
+        tactics: "Latihan Taktik",
+        mixed: "Latihan Campuran",
+      };
+
+      // Create sessions for all selected athletes
+      for (const athleteId of selectedAthleteIds) {
+        const athlete = athletes.find(a => a.id === athleteId);
+        if (!athlete) continue;
+
+        // Insert training session
+        const { data: sessionData, error: sessionError } = await supabase.from("training_sessions").insert({
+          user_id: athleteId,
+          athlete_name: athlete.athlete_name,
+          date: selectedDate,
+          session_name: sessionNames[formData.sessionType] || "Latihan",
+          rpe: formData.rpe,
+          duration_minutes: formData.durationMinutes,
+          load_auto: loadAuto,
+          load_manual: null,
+          load_final: loadFinal,
+          notes: formData.notes || null,
+          is_assigned: true,
+          assigned_by: userId,
+          warmup_notes: formData.warmupNotes || null,
+          cooldown_notes: formData.cooldownNotes || null,
+          recovery_notes: formData.recoveryNotes || null,
+        }).select().single();
+
+        if (sessionError) throw sessionError;
+
+        // Insert main exercises if any
+        if (formData.mainExercises.length > 0 && sessionData) {
+          const exercisesToInsert = formData.mainExercises.map(ex => ({
+            session_id: sessionData.id,
+            exercise_name: ex.exercise_name,
+            exercise_type: ex.exercise_type,
+            exercise_phase: 'main',
+            sets: ex.sets || null,
+            reps: ex.reps || null,
+            weight_kg: ex.exercise_type === 'strength' ? ex.weight_or_distance : null,
+            distance_meters: (ex.exercise_type === 'endurance' || ex.exercise_type === 'speed') ? ex.weight_or_distance : null,
+            repetitions: (ex.exercise_type === 'skill' || ex.exercise_type === 'technique' || ex.exercise_type === 'tactics') ? ex.weight_or_distance : null,
+            total_volume: ex.exercise_type === 'strength' 
+              ? (ex.sets || 0) * (ex.reps || 0) * (ex.weight_or_distance || 0)
+              : ex.weight_or_distance || 0,
+            notes: null,
+          }));
+
+          const { error: exercisesError } = await supabase
+            .from("session_exercises")
+            .insert(exercisesToInsert);
+
+          if (exercisesError) throw exercisesError;
+        }
+      }
+
+      toast.success(`Program latihan berhasil dibuat untuk ${selectedAthleteIds.length} atlet`);
+      setBulkFormOpen(false);
+      fetchSessions(selectedAthleteId);
+    } catch (error: any) {
+      handleError(error, getFriendlyErrorMessage(error));
+    }
+  };
+
   const getEditFormInitialData = (session: TrainingSession): Partial<SessionFormData> => {
     return {
       sessionType: session.session_name?.toLowerCase().includes('strength') ? 'strength' :
@@ -916,6 +998,31 @@ export default function ProgramLatihan() {
             </div>
 
             <div className="flex gap-2">
+              {/* Bulk Session Button - Only for coaches */}
+              {isCoach && athletes.length > 1 && (
+                <Dialog open={bulkFormOpen} onOpenChange={setBulkFormOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Users className="w-4 h-4 mr-2" />
+                      Multi-Atlet
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg bg-slate-900 border-slate-800 max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+                    <DialogHeader>
+                      <DialogTitle>Buat Program untuk Beberapa Atlet</DialogTitle>
+                      <DialogDescription>
+                        Pilih atlet yang akan mendapatkan program latihan yang sama
+                      </DialogDescription>
+                    </DialogHeader>
+                    <BulkSessionForm
+                      athletes={athletes}
+                      onSubmit={handleBulkFormSubmit}
+                      onCancel={() => setBulkFormOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              )}
+              
               <Button
                 variant={showVolumeChart ? "default" : "outline"}
                 onClick={() => setShowVolumeChart(!showVolumeChart)}
