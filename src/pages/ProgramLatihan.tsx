@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
-import { format, subDays, startOfWeek, endOfWeek, addWeeks, addDays, eachDayOfInterval } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, getDay, startOfWeek, endOfWeek } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair, Pencil, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -93,7 +93,7 @@ export default function ProgramLatihan() {
   const [athletes, setAthletes] = useState<any[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
   const [athleteName, setAthleteName] = useState<string>("");
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
   const [activeSession, setActiveSession] = useState<TrainingSession | null>(null);
 
   // Form state
@@ -875,9 +875,16 @@ export default function ProgramLatihan() {
     return colors[phase] || colors.main;
   };
 
-  const getWeekDays = () => {
-    const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start: currentWeekStart, end: weekEnd });
+  const getMonthDays = () => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    
+    // Get the start of the first week (may include days from previous month)
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    // Get the end of the last week (may include days from next month)
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   };
 
   const getSessionsForDay = (day: Date) => {
@@ -885,45 +892,46 @@ export default function ProgramLatihan() {
     return sessions.filter(s => s.date === dayStr);
   };
 
-  const getWeeklyMetrics = () => {
-    const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
-    const weekSessions = sessions.filter(s => {
+  const getMonthlyMetrics = () => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const monthSessions = sessions.filter(s => {
       const sessionDate = new Date(s.date);
-      return sessionDate >= currentWeekStart && sessionDate <= weekEnd;
+      return sessionDate >= monthStart && sessionDate <= monthEnd;
     });
 
-    const totalLoad = weekSessions.reduce((sum, s) => sum + s.load_final, 0);
-    const totalDuration = weekSessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
-    const avgRPE = weekSessions.length > 0 
-      ? Math.round(weekSessions.reduce((sum, s) => sum + (s.rpe || 0), 0) / weekSessions.length * 10) / 10
+    const totalLoad = monthSessions.reduce((sum, s) => sum + s.load_final, 0);
+    const totalDuration = monthSessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+    const avgRPE = monthSessions.length > 0 
+      ? Math.round(monthSessions.reduce((sum, s) => sum + (s.rpe || 0), 0) / monthSessions.length * 10) / 10
       : 0;
 
     // Comprehensive volume metrics
-    const totalStrengthVolume = weekSessions.reduce((sum, s) => sum + (s.strength_volume || 0), 0);
-    const totalCardioDistance = weekSessions.reduce((sum, s) => sum + (s.cardio_distance || 0), 0);
-    const totalSkillReps = weekSessions.reduce((sum, s) => sum + (s.skill_reps || 0), 0);
+    const totalStrengthVolume = monthSessions.reduce((sum, s) => sum + (s.strength_volume || 0), 0);
+    const totalCardioDistance = monthSessions.reduce((sum, s) => sum + (s.cardio_distance || 0), 0);
+    const totalSkillReps = monthSessions.reduce((sum, s) => sum + (s.skill_reps || 0), 0);
 
     return { 
       totalLoad, 
       totalDuration, 
       avgRPE, 
-      sessionCount: weekSessions.length,
+      sessionCount: monthSessions.length,
       totalStrengthVolume,
       totalCardioDistance,
       totalSkillReps
     };
   };
 
-  const goToPreviousWeek = () => {
-    setCurrentWeekStart(prev => subDays(prev, 7));
+  const goToPreviousMonth = () => {
+    setCurrentMonth(prev => subMonths(prev, 1));
   };
 
-  const goToNextWeek = () => {
-    setCurrentWeekStart(prev => addDays(prev, 7));
+  const goToNextMonth = () => {
+    setCurrentMonth(prev => addMonths(prev, 1));
   };
 
-  const goToCurrentWeek = () => {
-    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const goToCurrentMonth = () => {
+    setCurrentMonth(startOfMonth(new Date()));
   };
 
   const getRPEColor = (rpe: number) => {
@@ -934,8 +942,9 @@ export default function ProgramLatihan() {
   };
 
   const currentLoadAuto = computeSessionLoad(rpe, duration);
-  const weeklyMetrics = getWeeklyMetrics();
-  const weekDays = getWeekDays();
+  const monthlyMetrics = getMonthlyMetrics();
+  const monthDays = getMonthDays();
+  const weekDayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -965,19 +974,19 @@ export default function ProgramLatihan() {
                 </Select>
               )}
               
-              <Select value={format(currentWeekStart, "yyyy-MM")} onValueChange={(val) => {
+              <Select value={format(currentMonth, "yyyy-MM")} onValueChange={(val) => {
                 const [year, month] = val.split('-');
-                setCurrentWeekStart(startOfWeek(new Date(parseInt(year), parseInt(month) - 1, 1), { weekStartsOn: 1 }));
+                setCurrentMonth(startOfMonth(new Date(parseInt(year), parseInt(month) - 1, 1)));
               }}>
                 <SelectTrigger className="w-40 bg-slate-900 border-slate-800">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from({ length: 12 }, (_, i) => {
-                    const date = addWeeks(new Date(), -6 + i);
+                    const date = addMonths(new Date(), -6 + i);
                     return (
                       <SelectItem key={i} value={format(date, "yyyy-MM")}>
-                        {format(date, "MMM yyyy", { locale: localeId })}
+                        {format(date, "MMMM yyyy", { locale: localeId })}
                       </SelectItem>
                     );
                   })}
@@ -985,13 +994,13 @@ export default function ProgramLatihan() {
               </Select>
               
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={goToPreviousWeek} className="h-8 w-8">
+                <Button variant="ghost" size="icon" onClick={goToPreviousMonth} className="h-8 w-8">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={goToCurrentWeek} className="h-8">
-                  Hari Ini
+                <Button variant="ghost" size="sm" onClick={goToCurrentMonth} className="h-8">
+                  Bulan Ini
                 </Button>
-                <Button variant="ghost" size="icon" onClick={goToNextWeek} className="h-8 w-8">
+                <Button variant="ghost" size="icon" onClick={goToNextMonth} className="h-8 w-8">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -1233,31 +1242,31 @@ export default function ProgramLatihan() {
             </div>
           </div>
 
-          {/* Weekly Summary */}
+          {/* Monthly Summary */}
           <Card className="mb-6 bg-slate-900 border-slate-800">
             <CardContent className="p-6">
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-slate-400">Total</span>
-                    <span className="text-lg font-bold text-white">{format(currentWeekStart, "dd MMM", { locale: localeId })}</span>
+                    <span className="text-lg font-bold text-white">{format(currentMonth, "MMMM yyyy", { locale: localeId })}</span>
                   </div>
-                  <div className="text-sm text-slate-400">Load <span className="text-xl font-bold text-primary">{weeklyMetrics.totalLoad}</span></div>
+                  <div className="text-sm text-slate-400">Load <span className="text-xl font-bold text-primary">{monthlyMetrics.totalLoad}</span></div>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="text-sm text-slate-400">Durasi</div>
-                  <div className="text-xl font-bold text-white">{Math.floor(weeklyMetrics.totalDuration / 60)}j {weeklyMetrics.totalDuration % 60}m</div>
+                  <div className="text-xl font-bold text-white">{Math.floor(monthlyMetrics.totalDuration / 60)}j {monthlyMetrics.totalDuration % 60}m</div>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="text-sm text-slate-400">Avg RPE</div>
-                  <div className="text-xl font-bold text-white">{weeklyMetrics.avgRPE}</div>
+                  <div className="text-xl font-bold text-white">{monthlyMetrics.avgRPE}</div>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="text-sm text-slate-400">Sesi</div>
-                  <div className="text-xl font-bold text-white">{weeklyMetrics.sessionCount}</div>
+                  <div className="text-xl font-bold text-white">{monthlyMetrics.sessionCount}</div>
                 </div>
 
                 {/* Comprehensive Volume Metrics */}
@@ -1267,9 +1276,9 @@ export default function ProgramLatihan() {
                     <span>Strength</span>
                   </div>
                   <div className="text-xl font-bold text-blue-400">
-                    {weeklyMetrics.totalStrengthVolume >= 1000 
-                      ? `${(weeklyMetrics.totalStrengthVolume / 1000).toFixed(1)}k` 
-                      : weeklyMetrics.totalStrengthVolume} kg
+                    {monthlyMetrics.totalStrengthVolume >= 1000 
+                      ? `${(monthlyMetrics.totalStrengthVolume / 1000).toFixed(1)}k` 
+                      : monthlyMetrics.totalStrengthVolume} kg
                   </div>
                 </div>
 
@@ -1279,9 +1288,9 @@ export default function ProgramLatihan() {
                     <span>Cardio</span>
                   </div>
                   <div className="text-xl font-bold text-green-400">
-                    {weeklyMetrics.totalCardioDistance >= 1000 
-                      ? `${(weeklyMetrics.totalCardioDistance / 1000).toFixed(1)} km` 
-                      : `${weeklyMetrics.totalCardioDistance} m`}
+                    {monthlyMetrics.totalCardioDistance >= 1000 
+                      ? `${(monthlyMetrics.totalCardioDistance / 1000).toFixed(1)} km` 
+                      : `${monthlyMetrics.totalCardioDistance} m`}
                   </div>
                 </div>
 
@@ -1291,177 +1300,139 @@ export default function ProgramLatihan() {
                     <span>Skill</span>
                   </div>
                   <div className="text-xl font-bold text-orange-400">
-                    {weeklyMetrics.totalSkillReps} rep
+                    {monthlyMetrics.totalSkillReps} rep
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Weekly Volume Chart */}
+          {/* Monthly Volume Chart */}
           {showVolumeChart && (
             <div className="mb-6">
               <WeeklyVolumeChart sessions={sessions} />
             </div>
           )}
 
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-            {weekDays.map((day, idx) => {
-              const daySessions = getSessionsForDay(day);
-              const isToday = format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
-              const dayId = format(day, "yyyy-MM-dd");
-              
-              return (
-                <Droppable key={idx} id={dayId}>
-                  <div className="space-y-2">
-                    <div className={`text-center p-2 rounded-t-lg ${isToday ? 'bg-primary/20' : 'bg-slate-900'} border-b border-slate-800`}>
-                      <div className="text-xs text-slate-400">
-                        {format(day, "EEE", { locale: localeId })}
+          {/* Monthly Calendar Grid */}
+          <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+            {/* Week Day Headers */}
+            <div className="grid grid-cols-7 border-b border-slate-800">
+              {weekDayNames.map((dayName, idx) => (
+                <div key={idx} className="p-2 text-center text-xs font-semibold text-slate-400 bg-slate-900/50">
+                  {dayName}
+                </div>
+              ))}
+            </div>
+            
+            {/* Calendar Days Grid */}
+            <div className="grid grid-cols-7">
+              {monthDays.map((day, idx) => {
+                const daySessions = getSessionsForDay(day);
+                const isToday = format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+                const dayId = format(day, "yyyy-MM-dd");
+                const isCurrentMonth = format(day, "MM") === format(currentMonth, "MM");
+                
+                return (
+                  <Droppable key={idx} id={dayId}>
+                    <div className={`min-h-[120px] border-b border-r border-slate-800 ${!isCurrentMonth ? 'bg-slate-950/50' : ''}`}>
+                      {/* Day Header */}
+                      <div className={`p-2 flex items-center justify-between ${isToday ? 'bg-primary/10' : ''}`}>
+                        <span className={`text-sm font-semibold ${isToday ? 'text-primary bg-primary/20 px-2 py-0.5 rounded-full' : isCurrentMonth ? 'text-white' : 'text-slate-600'}`}>
+                          {format(day, "d")}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-slate-600 hover:text-primary hover:bg-primary/10"
+                          onClick={() => handleOpenNewForm(dayId)}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Button>
                       </div>
-                      <div className={`text-sm font-semibold ${isToday ? 'text-primary' : 'text-white'}`}>
-                        {format(day, "dd MMM", { locale: localeId })}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2 min-h-[200px]">
-                      {/* Add Session Button */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full h-8 text-xs text-slate-500 hover:text-primary hover:bg-primary/10 border border-dashed border-slate-700 hover:border-primary/50"
-                        onClick={() => handleOpenNewForm(dayId)}
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        Tambah Sesi
-                      </Button>
                       
-                      {daySessions.length === 0 ? (
-                        <div className="text-center text-slate-600 text-xs py-4">
-                          Tidak ada sesi
-                        </div>
-                      ) : (
-                        daySessions.map((session) => (
+                      {/* Sessions */}
+                      <div className="px-1 pb-1 space-y-1 max-h-[150px] overflow-y-auto">
+                        {daySessions.map((session) => (
                           <Draggable key={session.id} id={session.id}>
-                            <Card className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors group relative cursor-grab active:cursor-grabbing">
-                              <CardContent className="p-3 space-y-2">
-                                {/* Drag Handle */}
-                                <div className="absolute top-2 left-2 text-slate-600 group-hover:text-slate-400">
-                                  <GripVertical className="w-4 h-4" />
-                                </div>
-
-                                {/* Duration Badge */}
-                                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold text-white ${getRPEColor(session.rpe || 5)} ml-6`}>
-                                  <Activity className="w-3 h-3" />
-                                  {session.duration_minutes}m
-                                </div>
-                                
-                                {/* Session Name */}
-                                <div className="text-sm font-medium text-white">
+                            <div 
+                              className={`group relative p-1.5 rounded text-xs cursor-grab active:cursor-grabbing ${getRPEColor(session.rpe || 5)} bg-opacity-20 border border-slate-700 hover:border-slate-600`}
+                              onClick={() => handleViewSession(session)}
+                            >
+                              <div className="flex items-center gap-1">
+                                <GripVertical className="w-3 h-3 text-slate-500 opacity-0 group-hover:opacity-100" />
+                                <Activity className="w-3 h-3 text-slate-400" />
+                                <span className="font-medium text-white truncate flex-1">
                                   {session.session_name || "Latihan"}
-                                </div>
-                                
-                                {/* Metrics */}
-                                <div className="space-y-1 text-xs">
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">RPE</span>
-                                    <span className="font-semibold text-white">{session.rpe}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">Load</span>
-                                    <span className="font-semibold text-primary">{session.load_final}</span>
-                                  </div>
-                                </div>
+                                </span>
+                                <span className="text-slate-400">{session.duration_minutes}m</span>
+                              </div>
+                              
+                              {/* Quick metrics */}
+                              <div className="flex items-center gap-2 mt-1 pl-4">
+                                <span className="text-slate-400">RPE {session.rpe}</span>
+                                <span className="text-primary font-semibold">{session.load_final} AU</span>
+                              </div>
 
-                                {/* Exercise Summary Icons */}
-                                {session.exercises && session.exercises.length > 0 && (
-                                  <div className="flex items-center gap-1 pt-1 border-t border-slate-800">
-                                    {(() => {
-                                      const summary = getExerciseSummary(session);
-                                      const completionStatus = getSessionCompletionStatus(session);
-                                      return (
-                                        <>
-                                          {/* Completion indicator */}
-                                          {completionStatus && (
-                                            <div 
-                                              className={`flex items-center gap-0.5 text-xs ${completionStatus.isComplete ? 'text-green-400' : 'text-slate-500'}`} 
-                                              title={`${completionStatus.completed}/${completionStatus.total} selesai`}
-                                            >
-                                              {completionStatus.isComplete ? (
-                                                <CheckCircle className="w-3 h-3" />
-                                              ) : (
-                                                <span className="text-[10px]">{completionStatus.completed}/{completionStatus.total}</span>
-                                              )}
-                                            </div>
-                                          )}
-                                          {summary && summary.strengthTotal > 0 && (
-                                            <div className="flex items-center gap-0.5 text-xs text-blue-400" title={`${summary.strengthTotal.toLocaleString()} kg`}>
-                                              <Dumbbell className="w-3 h-3" />
-                                              <span>{summary.strengthTotal >= 1000 ? `${(summary.strengthTotal/1000).toFixed(0)}k` : summary.strengthTotal}</span>
-                                            </div>
-                                          )}
-                                          {summary && summary.cardioTotal > 0 && (
-                                            <div className="flex items-center gap-0.5 text-xs text-green-400" title={`${(summary.cardioTotal/1000).toFixed(1)} km`}>
-                                              <Footprints className="w-3 h-3" />
-                                              <span>{(summary.cardioTotal/1000).toFixed(1)}k</span>
-                                            </div>
-                                          )}
-                                          {summary && summary.skillTotal > 0 && (
-                                            <div className="flex items-center gap-0.5 text-xs text-orange-400" title={`${summary.skillTotal} repetisi`}>
-                                              <Target className="w-3 h-3" />
-                                              <span>{summary.skillTotal}</span>
-                                            </div>
-                                          )}
-                                        </>
-                                      );
-                                    })()}
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-5 w-5 ml-auto"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleViewSession(session);
-                                      }}
-                                    >
-                                      <Eye className="w-3 h-3 text-slate-400" />
-                                    </Button>
-                                  </div>
-                                )}
-                                
-                                {/* Intensity Bar */}
-                                <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
-                                  <div 
-                                    className={`h-full ${getRPEColor(session.rpe || 5)}`}
-                                    style={{ width: `${((session.rpe || 0) / 10) * 100}%` }}
-                                  />
+                              {/* Exercise indicators */}
+                              {session.exercises && session.exercises.length > 0 && (
+                                <div className="flex items-center gap-1 mt-1 pl-4">
+                                  {(() => {
+                                    const summary = getExerciseSummary(session);
+                                    const completionStatus = getSessionCompletionStatus(session);
+                                    return (
+                                      <>
+                                        {completionStatus && (
+                                          <div className={`flex items-center gap-0.5 ${completionStatus.isComplete ? 'text-green-400' : 'text-slate-500'}`}>
+                                            {completionStatus.isComplete ? (
+                                              <CheckCircle className="w-3 h-3" />
+                                            ) : (
+                                              <span className="text-[10px]">{completionStatus.completed}/{completionStatus.total}</span>
+                                            )}
+                                          </div>
+                                        )}
+                                        {summary && summary.strengthTotal > 0 && (
+                                          <div className="flex items-center gap-0.5 text-blue-400">
+                                            <Dumbbell className="w-3 h-3" />
+                                          </div>
+                                        )}
+                                        {summary && summary.cardioTotal > 0 && (
+                                          <div className="flex items-center gap-0.5 text-green-400">
+                                            <Footprints className="w-3 h-3" />
+                                          </div>
+                                        )}
+                                        {summary && summary.skillTotal > 0 && (
+                                          <div className="flex items-center gap-0.5 text-orange-400">
+                                            <Target className="w-3 h-3" />
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
-
-                                {/* Delete Button */}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDelete(session.id)}
-                                  className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <Trash2 className="w-3 h-3 text-red-400" />
-                                </Button>
-                                
-                                {session.notes && (
-                                  <div className="text-xs text-slate-500 truncate" title={session.notes}>
-                                    {session.notes}
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
+                              )}
+                              
+                              {/* Delete button on hover */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(session.id);
+                                }}
+                                className="absolute top-0.5 right-0.5 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-400" />
+                              </Button>
+                            </div>
                           </Draggable>
-                        ))
-                      )}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </Droppable>
-              );
-            })}
+                  </Droppable>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
