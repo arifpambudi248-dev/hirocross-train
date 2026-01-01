@@ -30,6 +30,7 @@ import { z } from "zod";
 import { ExerciseForm, Exercise, ExerciseType, ExercisePhase, PhaseNotes } from "@/components/ExerciseForm";
 import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
 import { exportSessionDetailToPDF } from "@/lib/exportUtils";
+import { TrainingSessionForm, SessionFormData, MainExercise } from "@/components/TrainingSessionForm";
 
 type SessionExercise = {
   id: string;
@@ -111,6 +112,10 @@ export default function ProgramLatihan() {
   // View session dialog
   const [viewSessionOpen, setViewSessionOpen] = useState(false);
   const [viewingSession, setViewingSession] = useState<TrainingSession | null>(null);
+  
+  // New form dialog
+  const [newFormOpen, setNewFormOpen] = useState(false);
+  const [selectedFormDate, setSelectedFormDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   
   // Show volume chart
   const [showVolumeChart, setShowVolumeChart] = useState(false);
@@ -454,6 +459,83 @@ export default function ProgramLatihan() {
   const handleViewSession = (session: TrainingSession) => {
     setViewingSession(session);
     setViewSessionOpen(true);
+  };
+
+  const handleOpenNewForm = (dateStr: string) => {
+    setSelectedFormDate(dateStr);
+    setNewFormOpen(true);
+  };
+
+  const handleNewFormSubmit = async (formData: SessionFormData) => {
+    if (!userId) return;
+
+    try {
+      const loadAuto = computeSessionLoad(formData.rpe, formData.durationMinutes);
+      const loadFinal = loadAuto;
+
+      // Determine session name from session type
+      const sessionNames: Record<string, string> = {
+        rest: "Rest Day",
+        strength: "Latihan Strength",
+        cardio: "Latihan Cardio",
+        skill: "Latihan Skill",
+        speed: "Latihan Speed",
+        technique: "Latihan Teknik",
+        mixed: "Latihan Campuran",
+      };
+
+      // Insert training session
+      const { data: sessionData, error: sessionError } = await supabase.from("training_sessions").insert({
+        user_id: selectedAthleteId,
+        athlete_name: athleteName,
+        date: formData.date,
+        session_name: sessionNames[formData.sessionType] || "Latihan",
+        rpe: formData.rpe,
+        duration_minutes: formData.durationMinutes,
+        load_auto: loadAuto,
+        load_manual: null,
+        load_final: loadFinal,
+        notes: formData.notes || null,
+        is_assigned: isCoach && selectedAthleteId !== userId,
+        assigned_by: isCoach && selectedAthleteId !== userId ? userId : null,
+        warmup_notes: formData.warmupNotes || null,
+        cooldown_notes: formData.cooldownNotes || null,
+        recovery_notes: formData.recoveryNotes || null,
+      }).select().single();
+
+      if (sessionError) throw sessionError;
+
+      // Insert main exercises if any
+      if (formData.mainExercises.length > 0 && sessionData) {
+        const exercisesToInsert = formData.mainExercises.map(ex => ({
+          session_id: sessionData.id,
+          exercise_name: ex.exercise_name,
+          exercise_type: ex.exercise_type,
+          exercise_phase: 'main',
+          sets: ex.sets || null,
+          reps: ex.reps || null,
+          weight_kg: ex.exercise_type === 'strength' ? ex.weight_or_distance : null,
+          distance_meters: (ex.exercise_type === 'cardio' || ex.exercise_type === 'speed') ? ex.weight_or_distance : null,
+          repetitions: (ex.exercise_type === 'skill' || ex.exercise_type === 'technique') ? ex.weight_or_distance : null,
+          total_volume: ex.exercise_type === 'strength' 
+            ? (ex.sets || 0) * (ex.reps || 0) * (ex.weight_or_distance || 0)
+            : ex.weight_or_distance || 0,
+          notes: null,
+        }));
+
+        const { error: exercisesError } = await supabase
+          .from("session_exercises")
+          .insert(exercisesToInsert);
+
+        if (exercisesError) throw exercisesError;
+      }
+
+      toast.success("Sesi latihan berhasil ditambahkan");
+      setNewFormOpen(false);
+      fetchSessions(selectedAthleteId);
+    } catch (error: any) {
+      handleError(error, getFriendlyErrorMessage(error));
+    }
   };
 
   const handleToggleExerciseComplete = async (exerciseId: string, currentStatus: boolean) => {
@@ -966,6 +1048,17 @@ export default function ProgramLatihan() {
                     </div>
                     
                     <div className="space-y-2 min-h-[200px]">
+                      {/* Add Session Button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-8 text-xs text-slate-500 hover:text-primary hover:bg-primary/10 border border-dashed border-slate-700 hover:border-primary/50"
+                        onClick={() => handleOpenNewForm(dayId)}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Tambah Sesi
+                      </Button>
+                      
                       {daySessions.length === 0 ? (
                         <div className="text-center text-slate-600 text-xs py-4">
                           Tidak ada sesi
@@ -1366,6 +1459,17 @@ export default function ProgramLatihan() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* New Training Session Form Dialog */}
+      <Dialog open={newFormOpen} onOpenChange={setNewFormOpen}>
+        <DialogContent className="max-w-2xl bg-background border-border max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+          <TrainingSessionForm
+            selectedDate={selectedFormDate}
+            onSubmit={handleNewFormSubmit}
+            onCancel={() => setNewFormOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </DndContext>
