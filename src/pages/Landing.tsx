@@ -19,6 +19,8 @@ import { Link } from "react-router-dom";
 import dashboardPreview from "@/assets/dashboard-preview.png";
 import trainingPreview from "@/assets/training-preview.png";
 import analyticsPreview from "@/assets/analytics-preview.png";
+import annualPlanPreview from "@/assets/annual-plan-preview.png";
+import tesFisikPreview from "@/assets/tes-fisik-preview.png";
 import logo from "@/assets/hirocross-logo.png";
 
 const features = [
@@ -237,52 +239,87 @@ export default function Landing() {
             </p>
           </div>
           
-          <div className="grid lg:grid-cols-3 gap-8 items-center">
-            {/* Left - Training Preview */}
-            <div className="relative animate-slide-in-right" style={{ animationDelay: "0.2s" }}>
-              <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-xl mx-auto max-w-[300px]">
+          {/* Main featured screenshot */}
+          <div className="mb-16">
+            <div className="relative max-w-5xl mx-auto">
+              <div className="absolute -inset-4 bg-primary/15 rounded-3xl blur-2xl" />
+              <div className="relative rounded-2xl overflow-hidden border-2 border-primary/30 shadow-2xl">
                 <img 
-                  src={trainingPreview} 
-                  alt="Training Program" 
+                  src={dashboardPreview} 
+                  alt="Dashboard Pelatih" 
                   className="w-full h-auto"
                 />
+              </div>
+              <div className="mt-6 text-center">
+                <h3 className="text-2xl font-semibold text-foreground">Dashboard Pelatih</h3>
+                <p className="text-muted-foreground">Monitoring dan analisis performa tim secara real-time</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* 4 screenshots grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Program Latihan */}
+            <div className="group relative animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              <div className="relative rounded-xl overflow-hidden border border-border/50 shadow-lg transition-all duration-300 group-hover:border-primary/50 group-hover:-translate-y-2 group-hover:shadow-xl">
+                <img 
+                  src={trainingPreview} 
+                  alt="Program Latihan" 
+                  className="w-full h-auto"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="mt-4 text-center">
                 <h3 className="text-lg font-semibold text-foreground">Program Latihan</h3>
-                <p className="text-sm text-muted-foreground">Buat dan kelola program latihan harian</p>
+                <p className="text-sm text-muted-foreground">Jadwal latihan mingguan terstruktur</p>
               </div>
             </div>
             
-            {/* Center - Analytics Preview (larger) */}
-            <div className="relative animate-fade-in-up lg:scale-110">
-              <div className="relative">
-                <div className="absolute -inset-4 bg-primary/10 rounded-2xl blur-xl" />
-                <div className="relative rounded-2xl overflow-hidden border border-primary/30 shadow-2xl">
-                  <img 
-                    src={analyticsPreview} 
-                    alt="Analytics Dashboard" 
-                    className="w-full h-auto"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 text-center">
-                <h3 className="text-lg font-semibold text-foreground">Analisis Performa</h3>
-                <p className="text-sm text-muted-foreground">Visualisasi data komprehensif</p>
-              </div>
-            </div>
-            
-            {/* Right - Dashboard small */}
-            <div className="relative animate-slide-in-right" style={{ animationDelay: "0.4s" }}>
-              <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-xl">
+            {/* Annual Plan */}
+            <div className="group relative animate-fade-in" style={{ animationDelay: "0.2s" }}>
+              <div className="relative rounded-xl overflow-hidden border border-border/50 shadow-lg transition-all duration-300 group-hover:border-primary/50 group-hover:-translate-y-2 group-hover:shadow-xl">
                 <img 
-                  src={dashboardPreview} 
-                  alt="Dashboard" 
+                  src={annualPlanPreview} 
+                  alt="Periodisasi Tahunan" 
                   className="w-full h-auto"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="mt-4 text-center">
-                <h3 className="text-lg font-semibold text-foreground">Dashboard Lengkap</h3>
-                <p className="text-sm text-muted-foreground">Semua data dalam satu tampilan</p>
+                <h3 className="text-lg font-semibold text-foreground">Periodisasi Tahunan</h3>
+                <p className="text-sm text-muted-foreground">Gantt chart & training load mingguan</p>
+              </div>
+            </div>
+            
+            {/* Tes Fisik */}
+            <div className="group relative animate-fade-in" style={{ animationDelay: "0.3s" }}>
+              <div className="relative rounded-xl overflow-hidden border border-border/50 shadow-lg transition-all duration-300 group-hover:border-primary/50 group-hover:-translate-y-2 group-hover:shadow-xl">
+                <img 
+                  src={tesFisikPreview} 
+                  alt="Tes Kondisi Fisik" 
+                  className="w-full h-auto"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div className="mt-4 text-center">
+                <h3 className="text-lg font-semibold text-foreground">Tes Kondisi Fisik</h3>
+                <p className="text-sm text-muted-foreground">Profil performa multi-dimensi</p>
+              </div>
+            </div>
+            
+            {/* Laporan Analisis */}
+            <div className="group relative animate-fade-in" style={{ animationDelay: "0.4s" }}>
+              <div className="relative rounded-xl overflow-hidden border border-border/50 shadow-lg transition-all duration-300 group-hover:border-primary/50 group-hover:-translate-y-2 group-hover:shadow-xl">
+                <img 
+                  src={analyticsPreview} 
+                  alt="Laporan Komprehensif" 
+                  className="w-full h-auto"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div className="mt-4 text-center">
+                <h3 className="text-lg font-semibold text-foreground">Laporan Komprehensif</h3>
+                <p className="text-sm text-muted-foreground">Analisis performa & prediksi VO2max</p>
               </div>
             </div>
           </div>
