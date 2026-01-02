@@ -222,10 +222,10 @@ export default function Notifications() {
         .select("user_id")
         .eq("role", "coach");
 
-      console.log("Coach roles:", coachRoles, "Error:", rolesError);
+      if (import.meta.env.DEV) console.log("Coach roles:", coachRoles, "Error:", rolesError);
 
       if (!coachRoles || coachRoles.length === 0) {
-        console.log("No coach roles found");
+        if (import.meta.env.DEV) console.log("No coach roles found");
         setCoaches([]);
         setIsSearching(false);
         return;

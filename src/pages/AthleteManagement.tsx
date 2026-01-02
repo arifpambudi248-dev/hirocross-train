@@ -177,7 +177,7 @@ export default function AthleteManagement() {
         .select("user_id")
         .eq("role", "athlete");
 
-      console.log("All athlete roles:", allRoles, "Error:", rolesError);
+      if (import.meta.env.DEV) console.log("All athlete roles:", allRoles, "Error:", rolesError);
 
       if (allRoles && allRoles.length > 0) {
         const athleteUserIds = allRoles.map(r => r.user_id);
@@ -186,7 +186,7 @@ export default function AthleteManagement() {
           .select("id, athlete_name, avatar_url")
           .in("id", athleteUserIds);
 
-        console.log("All athlete profiles:", allProfiles, "Error:", profilesError);
+        if (import.meta.env.DEV) console.log("All athlete profiles:", allProfiles, "Error:", profilesError);
 
         // Get all assignments/invitations for this coach
         const { data: coachAssignments } = await supabase
@@ -194,7 +194,7 @@ export default function AthleteManagement() {
           .select("athlete_id, status")
           .eq("coach_id", user.id);
 
-        console.log("Coach assignments:", coachAssignments);
+        if (import.meta.env.DEV) console.log("Coach assignments:", coachAssignments);
 
         const assignmentMap = new Map<string, string>();
         coachAssignments?.forEach(a => assignmentMap.set(a.athlete_id, a.status));
@@ -212,7 +212,7 @@ export default function AthleteManagement() {
                 : 'available') as 'available' | 'pending' | 'assigned'
             }));
           
-          console.log("Athletes with status:", athletesWithStatus);
+          if (import.meta.env.DEV) console.log("Athletes with status:", athletesWithStatus);
           setAllAthletesWithStatus(athletesWithStatus);
           
           // Keep available only for backward compatibility
@@ -220,7 +220,7 @@ export default function AthleteManagement() {
           setAllUsers(availableAthletes);
         }
       } else {
-        console.log("No athlete roles found or error occurred");
+        if (import.meta.env.DEV) console.log("No athlete roles found or error occurred");
         setAllAthletesWithStatus([]);
         setAllUsers([]);
       }
