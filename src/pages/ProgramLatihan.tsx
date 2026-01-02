@@ -127,6 +127,9 @@ export default function ProgramLatihan() {
   
   // Show volume chart
   const [showVolumeChart, setShowVolumeChart] = useState(false);
+  
+  // Exercise type filter
+  const [exerciseTypeFilter, setExerciseTypeFilter] = useState<string>("all");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -889,7 +892,24 @@ export default function ProgramLatihan() {
 
   const getSessionsForDay = (day: Date) => {
     const dayStr = format(day, "yyyy-MM-dd");
-    return sessions.filter(s => s.date === dayStr);
+    const daySessions = sessions.filter(s => s.date === dayStr);
+    
+    // Apply exercise type filter
+    if (exerciseTypeFilter === "all") {
+      return daySessions;
+    }
+    
+    return daySessions.filter(session => {
+      if (!session.exercises || session.exercises.length === 0) return false;
+      return session.exercises.some(ex => {
+        if (exerciseTypeFilter === "strength") return ex.exercise_type === "strength";
+        if (exerciseTypeFilter === "endurance") return ex.exercise_type === "cardio" || ex.exercise_type === "endurance";
+        if (exerciseTypeFilter === "sprint") return ex.exercise_type === "speed";
+        if (exerciseTypeFilter === "teknik") return ex.exercise_type === "technique";
+        if (exerciseTypeFilter === "taktik") return ex.exercise_type === "tactics";
+        return false;
+      });
+    });
   };
 
   const getMonthlyMetrics = () => {
@@ -1332,7 +1352,7 @@ export default function ProgramLatihan() {
                     <span>Teknik</span>
                   </div>
                   <div className="text-xl font-bold text-pink-400">
-                    {monthlyMetrics.totalTeknikReps} kali
+                    {monthlyMetrics.totalTeknikReps} repetisi
                   </div>
                 </div>
 
@@ -1342,7 +1362,7 @@ export default function ProgramLatihan() {
                     <span>Taktik</span>
                   </div>
                   <div className="text-xl font-bold text-purple-400">
-                    {monthlyMetrics.totalTaktikReps} kali
+                    {monthlyMetrics.totalTaktikReps} repetisi
                   </div>
                 </div>
               </div>
@@ -1356,8 +1376,68 @@ export default function ProgramLatihan() {
             </div>
           )}
 
-          {/* Monthly Calendar Grid */}
+          {/* Filter and Calendar Grid */}
           <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+            {/* Filter Bar */}
+            <div className="p-3 border-b border-slate-800 flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-slate-400">Filter:</span>
+              <div className="flex gap-1 flex-wrap">
+                <Button
+                  variant={exerciseTypeFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setExerciseTypeFilter("all")}
+                  className="h-7 text-xs"
+                >
+                  Semua
+                </Button>
+                <Button
+                  variant={exerciseTypeFilter === "strength" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setExerciseTypeFilter("strength")}
+                  className={`h-7 text-xs ${exerciseTypeFilter === "strength" ? "bg-blue-600 hover:bg-blue-700" : "text-blue-400 border-blue-400/50 hover:bg-blue-400/10"}`}
+                >
+                  <Dumbbell className="w-3 h-3 mr-1" />
+                  Strength
+                </Button>
+                <Button
+                  variant={exerciseTypeFilter === "endurance" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setExerciseTypeFilter("endurance")}
+                  className={`h-7 text-xs ${exerciseTypeFilter === "endurance" ? "bg-green-600 hover:bg-green-700" : "text-green-400 border-green-400/50 hover:bg-green-400/10"}`}
+                >
+                  <Footprints className="w-3 h-3 mr-1" />
+                  Endurance
+                </Button>
+                <Button
+                  variant={exerciseTypeFilter === "sprint" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setExerciseTypeFilter("sprint")}
+                  className={`h-7 text-xs ${exerciseTypeFilter === "sprint" ? "bg-yellow-600 hover:bg-yellow-700" : "text-yellow-400 border-yellow-400/50 hover:bg-yellow-400/10"}`}
+                >
+                  <Zap className="w-3 h-3 mr-1" />
+                  Sprint
+                </Button>
+                <Button
+                  variant={exerciseTypeFilter === "teknik" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setExerciseTypeFilter("teknik")}
+                  className={`h-7 text-xs ${exerciseTypeFilter === "teknik" ? "bg-pink-600 hover:bg-pink-700" : "text-pink-400 border-pink-400/50 hover:bg-pink-400/10"}`}
+                >
+                  <Crosshair className="w-3 h-3 mr-1" />
+                  Teknik
+                </Button>
+                <Button
+                  variant={exerciseTypeFilter === "taktik" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setExerciseTypeFilter("taktik")}
+                  className={`h-7 text-xs ${exerciseTypeFilter === "taktik" ? "bg-purple-600 hover:bg-purple-700" : "text-purple-400 border-purple-400/50 hover:bg-purple-400/10"}`}
+                >
+                  <Target className="w-3 h-3 mr-1" />
+                  Taktik
+                </Button>
+              </div>
+            </div>
+            
             {/* Week Day Headers */}
             <div className="grid grid-cols-7 border-b border-slate-800">
               {weekDayNames.map((dayName, idx) => (
