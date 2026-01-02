@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
-import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users, Bell } from "lucide-react";
+import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users, Bell, CreditCard } from "lucide-react";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -97,6 +97,7 @@ export const Navigation = () => {
   const athleteNavItems = [
     { to: "/profile", icon: User, label: "Profil" },
     { to: "/notifications", icon: Bell, label: "Notifikasi" },
+    { to: "/subscription", icon: CreditCard, label: "Langganan" },
   ];
 
   const navItems = isCoach 

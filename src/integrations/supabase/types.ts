@@ -319,6 +319,36 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          duration_months: number
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          duration_months: number
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
       training_sessions: {
         Row: {
           assigned_by: string | null
@@ -445,6 +475,62 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          end_date: string | null
+          id: string
+          payment_notes: string | null
+          payment_proof_url: string | null
+          plan_id: string
+          rejection_reason: string | null
+          start_date: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          payment_notes?: string | null
+          payment_proof_url?: string | null
+          plan_id: string
+          rejection_reason?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          payment_notes?: string | null
+          payment_proof_url?: string | null
+          plan_id?: string
+          rejection_reason?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -457,6 +543,7 @@ export type Database = {
           id: string
         }[]
       }
+      has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -466,7 +553,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "coach" | "athlete"
+      app_role: "coach" | "athlete" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -594,7 +681,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["coach", "athlete"],
+      app_role: ["coach", "athlete", "admin"],
     },
   },
 } as const
