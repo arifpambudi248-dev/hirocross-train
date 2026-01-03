@@ -10,7 +10,7 @@ import { id as localeId } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, ReferenceLine } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, ReferenceLine, ReferenceArea } from "recharts";
 import { Pencil, Save, FolderOpen, Plus, FileDown, Trash2, Trophy, Calendar } from "lucide-react";
 import { exportAnnualPlanToPDF, type AnnualPlanExportData } from "@/lib/exportUtils";
 import {
@@ -1416,8 +1416,40 @@ export default function AnnualPlan() {
             <CardContent>
               <div className="space-y-6">
                 {/* Chart */}
-                <ResponsiveContainer width="100%" height={350}>
-                  <ComposedChart data={generatedWeeklyData}>
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart data={generatedWeeklyData} margin={{ top: 40, right: 20, left: 10, bottom: 10 }}>
+                    {/* Phase zone backgrounds */}
+                    {phases.length > 0 && periodizationType === "traditional" && (() => {
+                      const phaseZones: { x1: number; x2: number; fill: string; name: string }[] = [];
+                      phases.forEach((phase) => {
+                        const phaseStart = new Date(phase.startDate);
+                        const phaseEnd = new Date(phase.endDate);
+                        const startD = new Date(startDate);
+                        const x1 = Math.max(1, Math.ceil(differenceInDays(phaseStart, startD) / 7) + 1);
+                        const x2 = Math.ceil(differenceInDays(phaseEnd, startD) / 7) + 1;
+                        
+                        let fill = "rgba(239, 68, 68, 0.15)"; // GPP - Red
+                        if (phase.name.includes("Khusus") || phase.name.includes("SPP")) {
+                          fill = "rgba(34, 197, 94, 0.15)"; // SPP - Green
+                        } else if (phase.name.includes("Pra")) {
+                          fill = "rgba(249, 115, 22, 0.15)"; // Pre-Comp - Orange
+                        } else if (phase.name.includes("Kompetisi") && !phase.name.includes("Pra")) {
+                          fill = "rgba(168, 85, 247, 0.15)"; // Competition - Purple
+                        }
+                        
+                        phaseZones.push({ x1, x2, fill, name: phase.name });
+                      });
+                      
+                      return phaseZones.map((zone, idx) => (
+                        <ReferenceArea
+                          key={`zone-${idx}`}
+                          x1={zone.x1}
+                          x2={zone.x2}
+                          fill={zone.fill}
+                          fillOpacity={1}
+                        />
+                      ));
+                    })()}
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis 
                       dataKey="week_number" 
@@ -1440,7 +1472,7 @@ export default function AnnualPlan() {
                       formatter={(value: number, name: string) => [`${value}%`, name]}
                       labelFormatter={(label) => `Minggu ${label}`}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ paddingTop: '10px' }} />
                     {/* Competition markers */}
                     {competitions.map((comp, idx) => {
                       const compDate = new Date(comp.competition_date);
@@ -1453,9 +1485,10 @@ export default function AnnualPlan() {
                             x={weekNum} 
                             stroke={comp.priority === 1 ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
                             strokeDasharray="5 5"
+                            ifOverflow="extendDomain"
                             label={{ 
                               value: comp.competition_name, 
-                              position: 'top',
+                              position: 'insideTopRight',
                               fill: 'hsl(var(--foreground))',
                               fontSize: 10
                             }}
@@ -1474,9 +1507,10 @@ export default function AnnualPlan() {
                           x={weekNum} 
                           stroke="hsl(var(--destructive))"
                           strokeWidth={2}
+                          ifOverflow="extendDomain"
                           label={{ 
                             value: '🏆 Kompetisi Utama', 
-                            position: 'top',
+                            position: 'insideTopRight',
                             fill: 'hsl(var(--destructive))',
                             fontSize: 11,
                             fontWeight: 'bold'
@@ -1550,7 +1584,7 @@ export default function AnnualPlan() {
                 )}
 
                 {/* Legend */}
-                <div className="flex items-center justify-center gap-6 text-sm">
+                <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-[#FFC107] rounded"></div>
                     <span>Volume</span>
@@ -1563,6 +1597,27 @@ export default function AnnualPlan() {
                     <div className="w-4 h-0.5 bg-destructive"></div>
                     <span>Kompetisi Utama</span>
                   </div>
+                  {periodizationType === "traditional" && (
+                    <>
+                      <div className="h-4 w-px bg-border mx-2"></div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(239, 68, 68, 0.4)' }}></div>
+                        <span>Persiapan Umum</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(34, 197, 94, 0.4)' }}></div>
+                        <span>Persiapan Khusus</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(249, 115, 22, 0.4)' }}></div>
+                        <span>Pra Kompetisi</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(168, 85, 247, 0.4)' }}></div>
+                        <span>Kompetisi</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>
