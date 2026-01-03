@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { differenceInDays, addDays, format, parseISO, isWithinInterval, startOfWeek, endOfWeek, eachWeekOfInterval } from "date-fns";
+import { differenceInDays, addDays, format, parseISO, isWithinInterval, startOfWeek, eachWeekOfInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from "recharts";
-import { Pencil, Save, FolderOpen, Plus, FileDown } from "lucide-react";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, ReferenceLine } from "recharts";
+import { Pencil, Save, FolderOpen, Plus, FileDown, Trash2, Trophy, Calendar } from "lucide-react";
 import { exportAnnualPlanToPDF, type AnnualPlanExportData } from "@/lib/exportUtils";
 import {
   Dialog,
@@ -42,6 +42,23 @@ type EditablePercentages = {
   spp: number;
   pre: number;
   comp: number;
+};
+
+type Competition = {
+  id?: string;
+  competition_name: string;
+  competition_date: string;
+  priority: number;
+  notes?: string;
+};
+
+type WeeklyData = {
+  id?: string;
+  week_number: number;
+  week_start_date: string;
+  planned_volume: number;
+  planned_intensity: number;
+  notes?: string;
 };
 
 export default function AnnualPlan() {
@@ -85,6 +102,20 @@ export default function AnnualPlan() {
     deload: { intensity: 50, volume: 50 },
     taper: { intensity: 40, volume: 40 },
   });
+  
+  // Multiple competitions state
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [showCompetitionDialog, setShowCompetitionDialog] = useState(false);
+  const [newCompetition, setNewCompetition] = useState<Competition>({
+    competition_name: "",
+    competition_date: "",
+    priority: 1,
+    notes: "",
+  });
+  
+  // Weekly volume/intensity editing
+  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
+  const [isEditingWeeklyData, setIsEditingWeeklyData] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -96,12 +127,18 @@ export default function AnnualPlan() {
     }
   }, [userId, selectedAthleteId]);
 
+  useEffect(() => {
+    if (currentPlanId) {
+      loadCompetitions();
+      loadWeeklyData();
+    }
+  }, [currentPlanId]);
+
   const loadUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setUserId(user.id);
       
-      // Check if user is coach
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
@@ -111,7 +148,6 @@ export default function AnnualPlan() {
       const userIsCoach = roleData?.role === 'coach';
       setIsCoach(userIsCoach);
 
-      // If coach, load only assigned athletes with accepted status
       if (userIsCoach) {
         const { data: assignments } = await supabase
           .from("coach_athletes")
@@ -138,7 +174,6 @@ export default function AnnualPlan() {
           toast.info("Belum ada atlet yang di-assign. Silakan tambahkan di halaman Kelola Atlet.");
         }
       } else {
-        // If athlete, set their own ID
         setSelectedAthleteId(user.id);
       }
     }
@@ -150,14 +185,11 @@ export default function AnnualPlan() {
     let query = supabase.from("annual_plans").select("*");
     
     if (isCoach) {
-      // Coach sees all plans they created
       query = query.eq("user_id", userId);
-      // If a specific athlete is selected, filter by athlete_id
       if (selectedAthleteId) {
         query = query.eq("athlete_id", selectedAthleteId);
       }
     } else {
-      // Athletes see only plans created for them
       query = query.eq("athlete_id", userId);
     }
     
@@ -167,6 +199,210 @@ export default function AnnualPlan() {
       toast.error("Gagal memuat rencana tersimpan: " + error.message);
     } else {
       setSavedPlans(data || []);
+    }
+  };
+
+  const loadCompetitions = async () => {
+    if (!currentPlanId) return;
+    
+    const { data, error } = await supabase
+      .from("plan_competitions")
+      .select("*")
+      .eq("plan_id", currentPlanId)
+      .order("competition_date", { ascending: true });
+
+    if (!error && data) {
+      setCompetitions(data.map(c => ({
+        id: c.id,
+        competition_name: c.competition_name,
+        competition_date: c.competition_date,
+        priority: c.priority,
+        notes: c.notes,
+      })));
+    }
+  };
+
+  const loadWeeklyData = async () => {
+    if (!currentPlanId) return;
+    
+    const { data, error } = await supabase
+      .from("weekly_plan_data")
+      .select("*")
+      .eq("plan_id", currentPlanId)
+      .order("week_number", { ascending: true });
+
+    if (!error && data) {
+      setWeeklyData(data.map(w => ({
+        id: w.id,
+        week_number: w.week_number,
+        week_start_date: w.week_start_date,
+        planned_volume: w.planned_volume,
+        planned_intensity: w.planned_intensity,
+        notes: w.notes,
+      })));
+    }
+  };
+
+  const addCompetition = async () => {
+    if (!currentPlanId || !newCompetition.competition_name || !newCompetition.competition_date) {
+      toast.error("Harap lengkapi nama dan tanggal kompetisi");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("plan_competitions")
+      .insert([{
+        plan_id: currentPlanId,
+        competition_name: newCompetition.competition_name,
+        competition_date: newCompetition.competition_date,
+        priority: newCompetition.priority,
+        notes: newCompetition.notes,
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      toast.error("Gagal menambahkan kompetisi: " + error.message);
+    } else {
+      setCompetitions(prev => [...prev, {
+        id: data.id,
+        competition_name: data.competition_name,
+        competition_date: data.competition_date,
+        priority: data.priority,
+        notes: data.notes,
+      }].sort((a, b) => new Date(a.competition_date).getTime() - new Date(b.competition_date).getTime()));
+      
+      setNewCompetition({ competition_name: "", competition_date: "", priority: 1, notes: "" });
+      setShowCompetitionDialog(false);
+      toast.success("Kompetisi berhasil ditambahkan");
+    }
+  };
+
+  const deleteCompetition = async (id: string) => {
+    const { error } = await supabase
+      .from("plan_competitions")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Gagal menghapus kompetisi: " + error.message);
+    } else {
+      setCompetitions(prev => prev.filter(c => c.id !== id));
+      toast.success("Kompetisi berhasil dihapus");
+    }
+  };
+
+  // Generate weekly data based on plan dates
+  const generatedWeeklyData = useMemo(() => {
+    if (!startDate || !competitionDate) return [];
+    
+    const start = new Date(startDate);
+    const end = new Date(competitionDate);
+    const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
+    
+    return weeks.map((weekStart, index) => {
+      const existing = weeklyData.find(w => w.week_number === index + 1);
+      
+      // Calculate default values based on periodization phase
+      let defaultVolume = 70;
+      let defaultIntensity = 50;
+      const weekProgress = index / weeks.length;
+      
+      if (periodizationType === "traditional") {
+        // Traditional: Volume decreases, intensity increases over time
+        defaultVolume = Math.round(90 - (weekProgress * 60));
+        defaultIntensity = Math.round(40 + (weekProgress * 50));
+      } else if (periodizationType === "block") {
+        const cycleLength = blockWeeks.accumulation + blockWeeks.transmutation + blockWeeks.realization;
+        const posInCycle = index % cycleLength;
+        if (posInCycle < blockWeeks.accumulation) {
+          defaultVolume = blockParameters.accumulation.volume;
+          defaultIntensity = blockParameters.accumulation.intensity;
+        } else if (posInCycle < blockWeeks.accumulation + blockWeeks.transmutation) {
+          defaultVolume = blockParameters.transmutation.volume;
+          defaultIntensity = blockParameters.transmutation.intensity;
+        } else {
+          defaultVolume = blockParameters.realization.volume;
+          defaultIntensity = blockParameters.realization.intensity;
+        }
+      } else if (periodizationType === "undulating") {
+        const pattern = ["light", "moderate", "heavy", "deload"] as const;
+        const patternIndex = index % 4;
+        const weekType = pattern[patternIndex];
+        defaultVolume = undulatingParameters[weekType].volume;
+        defaultIntensity = undulatingParameters[weekType].intensity;
+      }
+      
+      return {
+        week_number: index + 1,
+        week_start_date: format(weekStart, "yyyy-MM-dd"),
+        planned_volume: existing?.planned_volume ?? defaultVolume,
+        planned_intensity: existing?.planned_intensity ?? defaultIntensity,
+        notes: existing?.notes || "",
+        id: existing?.id,
+      };
+    });
+  }, [startDate, competitionDate, weeklyData, periodizationType, blockWeeks, blockParameters, undulatingParameters]);
+
+  const handleWeeklyDataChange = (weekNumber: number, field: 'planned_volume' | 'planned_intensity', value: number) => {
+    const updatedData = [...generatedWeeklyData];
+    const weekIndex = updatedData.findIndex(w => w.week_number === weekNumber);
+    if (weekIndex >= 0) {
+      updatedData[weekIndex] = { ...updatedData[weekIndex], [field]: value };
+      // Store in local state for immediate UI feedback
+      setWeeklyData(prev => {
+        const existing = prev.findIndex(w => w.week_number === weekNumber);
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = { ...updated[existing], [field]: value };
+          return updated;
+        } else {
+          return [...prev, { 
+            week_number: weekNumber, 
+            week_start_date: updatedData[weekIndex].week_start_date,
+            planned_volume: field === 'planned_volume' ? value : updatedData[weekIndex].planned_volume,
+            planned_intensity: field === 'planned_intensity' ? value : updatedData[weekIndex].planned_intensity,
+          }];
+        }
+      });
+    }
+  };
+
+  const saveWeeklyData = async () => {
+    if (!currentPlanId) {
+      toast.error("Simpan rencana terlebih dahulu");
+      return;
+    }
+
+    try {
+      // Upsert all weekly data
+      for (const week of generatedWeeklyData) {
+        if (week.id) {
+          await supabase
+            .from("weekly_plan_data")
+            .update({
+              planned_volume: week.planned_volume,
+              planned_intensity: week.planned_intensity,
+            })
+            .eq("id", week.id);
+        } else {
+          await supabase
+            .from("weekly_plan_data")
+            .insert({
+              plan_id: currentPlanId,
+              week_number: week.week_number,
+              week_start_date: week.week_start_date,
+              planned_volume: week.planned_volume,
+              planned_intensity: week.planned_intensity,
+            });
+        }
+      }
+      
+      setIsEditingWeeklyData(false);
+      await loadWeeklyData();
+      toast.success("Data mingguan berhasil disimpan");
+    } catch (error: any) {
+      toast.error("Gagal menyimpan: " + error.message);
     }
   };
 
@@ -205,13 +441,16 @@ export default function AnnualPlan() {
         setShowSaveDialog(false);
       }
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("annual_plans")
-        .insert([planData]);
+        .insert([planData])
+        .select()
+        .single();
 
       if (error) {
         toast.error("Gagal simpan: " + error.message);
       } else {
+        setCurrentPlanId(data.id);
         toast.success("Rencana berhasil disimpan");
         loadSavedPlans();
         setShowSaveDialog(false);
@@ -231,7 +470,6 @@ export default function AnnualPlan() {
       setSelectedAthleteId(selectedPlan.athlete_id);
       setShowLoadDialog(false);
       
-      // Generate plan directly with loaded data (not relying on state)
       generatePlanWithData(
         selectedPlan.start_date,
         selectedPlan.competition_date,
@@ -247,6 +485,8 @@ export default function AnnualPlan() {
     setStartDate("");
     setCompetitionDate("");
     setPhases([]);
+    setCompetitions([]);
+    setWeeklyData([]);
     setEditablePercentages({
       gpp: 40,
       spp: 30,
@@ -271,7 +511,6 @@ export default function AnnualPlan() {
     }
 
     const totalDays = differenceInDays(competition, start);
-    const totalWeeks = Math.floor(totalDays / 7);
     
     const blockCycleDays = (blockWeeks.accumulation + blockWeeks.transmutation + blockWeeks.realization) * 7;
     const numCompleteCycles = Math.floor(totalDays / blockCycleDays);
@@ -285,9 +524,7 @@ export default function AnnualPlan() {
     let currentDate = start;
     let blockNumber = 1;
 
-    // Create complete block cycles
     for (let cycle = 0; cycle < numCompleteCycles; cycle++) {
-      // Accumulation Block
       const accumDays = blockWeeks.accumulation * 7;
       const accumEnd = addDays(currentDate, accumDays - 1);
       newPhases.push({
@@ -300,7 +537,6 @@ export default function AnnualPlan() {
       });
       currentDate = addDays(accumEnd, 1);
 
-      // Transmutation Block
       const transDays = blockWeeks.transmutation * 7;
       const transEnd = addDays(currentDate, transDays - 1);
       newPhases.push({
@@ -313,7 +549,6 @@ export default function AnnualPlan() {
       });
       currentDate = addDays(transEnd, 1);
 
-      // Realization Block
       const realDays = blockWeeks.realization * 7;
       const realEnd = addDays(currentDate, realDays - 1);
       newPhases.push({
@@ -328,7 +563,6 @@ export default function AnnualPlan() {
       blockNumber++;
     }
 
-    // Handle remaining days as final realization
     const remainingDays = differenceInDays(competition, currentDate) + 1;
     if (remainingDays > 0) {
       newPhases.push({
@@ -470,7 +704,6 @@ export default function AnnualPlan() {
     const newPhases: Phase[] = [];
     let currentDate = start;
 
-    // Undulating pattern: alternates intensity levels weekly using configurable parameters
     const undulatingPattern = [
       { name: "Light Week", color: "bg-green-500", intensity: undulatingParameters.light.intensity, volume: undulatingParameters.light.volume },
       { name: "Moderate Week", color: "bg-yellow-500", intensity: undulatingParameters.moderate.intensity, volume: undulatingParameters.moderate.volume },
@@ -485,7 +718,6 @@ export default function AnnualPlan() {
       const pattern = undulatingPattern[patternIndex];
       const weekEnd = addDays(currentDate, 6);
       
-      // Adjust for final weeks - taper down
       const weeksToGo = Math.floor(differenceInDays(competition, currentDate) / 7);
       let weekName = `Week ${weekNumber} - ${pattern.name}`;
       let weekColor = pattern.color;
@@ -511,7 +743,6 @@ export default function AnnualPlan() {
       weekNumber++;
     }
 
-    // Handle remaining days
     const remainingDays = differenceInDays(competition, currentDate) + 1;
     if (remainingDays > 0) {
       newPhases.push({
@@ -560,13 +791,11 @@ export default function AnnualPlan() {
       return;
     }
 
-    // Hitung durasi tiap fase berdasarkan persentase (gunakan editable percentages)
     const gppDays = Math.round(totalDays * (editablePercentages.gpp / 100));
     const sppDays = Math.round(totalDays * (editablePercentages.spp / 100));
     const preDays = Math.round(totalDays * (editablePercentages.pre / 100));
-    const compDays = totalDays - gppDays - sppDays - preDays; // Sisa hari untuk kompetisi
+    const compDays = totalDays - gppDays - sppDays - preDays;
 
-    // Hitung tanggal mulai dan akhir tiap fase
     const gppStart = start;
     const gppEnd = addDays(gppStart, gppDays - 1);
 
@@ -649,7 +878,6 @@ export default function AnnualPlan() {
       const phaseStart = parseISO(phase.startDate);
       const phaseEnd = parseISO(phase.endDate);
 
-      // Calculate actual load from training sessions
       const actualLoad = trainingSessions
         .filter((session) => {
           const sessionDate = parseISO(session.date);
@@ -657,7 +885,6 @@ export default function AnnualPlan() {
         })
         .reduce((sum, session) => sum + (session.load_final || 0), 0);
 
-      // Calculate planned load with auto-adjust
       const phaseKey = phase.name;
       let plannedLoad = 0;
       
@@ -670,7 +897,6 @@ export default function AnnualPlan() {
         else if (phase.name.includes("Pra")) plannedLoadPerDay = 300;
         else plannedLoadPerDay = 200;
 
-        // Auto-adjust based on previous phase performance
         if (autoAdjust && phaseIndex > 0 && trainingSessions.length > 0) {
           const previousPhase = phases[phaseIndex - 1];
           const prevStart = parseISO(previousPhase.startDate);
@@ -687,11 +913,10 @@ export default function AnnualPlan() {
 
           if (prevActual > 0 && prevPlanned > 0) {
             const ratio = prevActual / prevPlanned;
-            // Adjust load based on performance
             if (ratio < 0.8) {
-              plannedLoadPerDay = plannedLoadPerDay * 0.9; // Reduce by 10%
+              plannedLoadPerDay = plannedLoadPerDay * 0.9;
             } else if (ratio > 1.2) {
-              plannedLoadPerDay = plannedLoadPerDay * 1.1; // Increase by 10%
+              plannedLoadPerDay = plannedLoadPerDay * 1.1;
             }
           }
         }
@@ -727,7 +952,6 @@ export default function AnnualPlan() {
     
     setIsEditingPercentages(false);
     toast.success("Persentase fase berhasil diperbarui");
-    // Regenerate plan with new percentages
     if (startDate && competitionDate) {
       generatePlan();
     }
@@ -929,7 +1153,7 @@ export default function AnnualPlan() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="competitionDate">Tanggal Pertandingan</Label>
+                <Label htmlFor="competitionDate">Tanggal Kompetisi Utama</Label>
                 <Input
                   id="competitionDate"
                   type="date"
@@ -978,6 +1202,7 @@ export default function AnnualPlan() {
                         value={blockWeeks.accumulation}
                         onChange={(e) => setBlockWeeks(prev => ({ ...prev, accumulation: Number(e.target.value) }))}
                         className="h-8"
+                        disabled={!isCoach}
                       />
                       <span className="text-xs text-muted-foreground">minggu</span>
                     </div>
@@ -994,6 +1219,7 @@ export default function AnnualPlan() {
                         value={blockWeeks.transmutation}
                         onChange={(e) => setBlockWeeks(prev => ({ ...prev, transmutation: Number(e.target.value) }))}
                         className="h-8"
+                        disabled={!isCoach}
                       />
                       <span className="text-xs text-muted-foreground">minggu</span>
                     </div>
@@ -1010,6 +1236,7 @@ export default function AnnualPlan() {
                         value={blockWeeks.realization}
                         onChange={(e) => setBlockWeeks(prev => ({ ...prev, realization: Number(e.target.value) }))}
                         className="h-8"
+                        disabled={!isCoach}
                       />
                       <span className="text-xs text-muted-foreground">minggu</span>
                     </div>
@@ -1020,210 +1247,327 @@ export default function AnnualPlan() {
                 </p>
               </div>
             )}
-
-            {/* Undulating Periodization Configuration */}
-            {periodizationType === "undulating" && (
-              <div className="border-t pt-4 mt-4">
-                <Label className="text-sm font-medium mb-3 block">Konfigurasi Undulating (Intensitas & Volume %)</Label>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded"></div>
-                      Light Week
-                    </Label>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.light.intensity}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            light: { ...prev.light, intensity: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Volume</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.light.volume}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            light: { ...prev.light, volume: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                      Moderate Week
-                    </Label>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.moderate.intensity}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            moderate: { ...prev.moderate, intensity: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Volume</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.moderate.volume}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            moderate: { ...prev.moderate, volume: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      <div className="w-3 h-3 bg-red-500 rounded"></div>
-                      Heavy Week
-                    </Label>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.heavy.intensity}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            heavy: { ...prev.heavy, intensity: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Volume</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.heavy.volume}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            heavy: { ...prev.heavy, volume: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                      Deload Week
-                    </Label>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.deload.intensity}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            deload: { ...prev.deload, intensity: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Volume</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.deload.volume}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            deload: { ...prev.deload, volume: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs flex items-center gap-2">
-                      <div className="w-3 h-3 bg-primary rounded"></div>
-                      Taper Week
-                    </Label>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Intensitas</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.taper.intensity}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            taper: { ...prev.taper, intensity: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground w-14">Volume</span>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="100"
-                          value={undulatingParameters.taper.volume}
-                          onChange={(e) => setUndulatingParameters(prev => ({
-                            ...prev,
-                            taper: { ...prev.taper, volume: Number(e.target.value) }
-                          }))}
-                          className="h-7 text-xs"
-                          disabled={!isCoach}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-3">
-                  Pola: Light → Moderate → Heavy → Deload (berulang). Minggu terakhir otomatis menjadi Taper.
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
+
+        {/* Multiple Competitions Card */}
+        {currentPlanId && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5" />
+                Daftar Kompetisi
+              </CardTitle>
+              {isCoach && (
+                <Dialog open={showCompetitionDialog} onOpenChange={setShowCompetitionDialog}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Tambah Kompetisi
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Tambah Kompetisi</DialogTitle>
+                      <DialogDescription>
+                        Tambahkan kompetisi lain dalam periode ini
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Nama Kompetisi</Label>
+                        <Input
+                          value={newCompetition.competition_name}
+                          onChange={(e) => setNewCompetition(prev => ({ ...prev, competition_name: e.target.value }))}
+                          placeholder="Contoh: Kejuaraan Nasional"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tanggal Kompetisi</Label>
+                        <Input
+                          type="date"
+                          value={newCompetition.competition_date}
+                          onChange={(e) => setNewCompetition(prev => ({ ...prev, competition_date: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Prioritas</Label>
+                        <Select 
+                          value={String(newCompetition.priority)} 
+                          onValueChange={(val) => setNewCompetition(prev => ({ ...prev, priority: Number(val) }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">Utama (A)</SelectItem>
+                            <SelectItem value="2">Sekunder (B)</SelectItem>
+                            <SelectItem value="3">Tersier (C)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Catatan (opsional)</Label>
+                        <Input
+                          value={newCompetition.notes || ""}
+                          onChange={(e) => setNewCompetition(prev => ({ ...prev, notes: e.target.value }))}
+                          placeholder="Catatan tambahan..."
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowCompetitionDialog(false)}>
+                        Batal
+                      </Button>
+                      <Button onClick={addCompetition}>Tambah</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </CardHeader>
+            <CardContent>
+              {competitions.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Belum ada kompetisi tambahan. Kompetisi utama: {formatDate(competitionDate)}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {/* Main competition */}
+                  <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-3">
+                      <Trophy className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="font-medium">Kompetisi Utama</p>
+                        <p className="text-sm text-muted-foreground">{formatDate(competitionDate)}</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-1 bg-primary text-primary-foreground text-xs rounded">Utama</span>
+                  </div>
+                  
+                  {/* Additional competitions */}
+                  {competitions.map((comp) => (
+                    <div key={comp.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">{comp.competition_name}</p>
+                          <p className="text-sm text-muted-foreground">{formatDate(comp.competition_date)}</p>
+                          {comp.notes && <p className="text-xs text-muted-foreground">{comp.notes}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs rounded ${
+                          comp.priority === 1 ? 'bg-primary text-primary-foreground' :
+                          comp.priority === 2 ? 'bg-secondary text-secondary-foreground' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {comp.priority === 1 ? 'A' : comp.priority === 2 ? 'B' : 'C'}
+                        </span>
+                        {isCoach && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => comp.id && deleteCompetition(comp.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Weekly Volume/Intensity Chart with Editing */}
+        {phases.length > 0 && generatedWeeklyData.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Grafik Volume & Intensitas Mingguan</CardTitle>
+              {isCoach && currentPlanId && (
+                <Button
+                  variant={isEditingWeeklyData ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    if (isEditingWeeklyData) {
+                      saveWeeklyData();
+                    } else {
+                      setIsEditingWeeklyData(true);
+                    }
+                  }}
+                >
+                  {isEditingWeeklyData ? (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Simpan
+                    </>
+                  ) : (
+                    <>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit Volume/Intensitas
+                    </>
+                  )}
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Chart */}
+                <ResponsiveContainer width="100%" height={350}>
+                  <ComposedChart data={generatedWeeklyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="week_number" 
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      tickFormatter={(val) => `M${val}`}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      domain={[0, 100]}
+                      label={{ value: '%', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value: number, name: string) => [`${value}%`, name]}
+                      labelFormatter={(label) => `Minggu ${label}`}
+                    />
+                    <Legend />
+                    {/* Competition markers */}
+                    {competitions.map((comp, idx) => {
+                      const compDate = new Date(comp.competition_date);
+                      const startD = new Date(startDate);
+                      const weekNum = Math.ceil(differenceInDays(compDate, startD) / 7);
+                      if (weekNum > 0 && weekNum <= generatedWeeklyData.length) {
+                        return (
+                          <ReferenceLine 
+                            key={idx}
+                            x={weekNum} 
+                            stroke={comp.priority === 1 ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
+                            strokeDasharray="5 5"
+                            label={{ 
+                              value: comp.competition_name, 
+                              position: 'top',
+                              fill: 'hsl(var(--foreground))',
+                              fontSize: 10
+                            }}
+                          />
+                        );
+                      }
+                      return null;
+                    })}
+                    {/* Main competition marker */}
+                    {(() => {
+                      const compDate = new Date(competitionDate);
+                      const startD = new Date(startDate);
+                      const weekNum = Math.ceil(differenceInDays(compDate, startD) / 7);
+                      return (
+                        <ReferenceLine 
+                          x={weekNum} 
+                          stroke="hsl(var(--destructive))"
+                          strokeWidth={2}
+                          label={{ 
+                            value: '🏆 Kompetisi Utama', 
+                            position: 'top',
+                            fill: 'hsl(var(--destructive))',
+                            fontSize: 11,
+                            fontWeight: 'bold'
+                          }}
+                        />
+                      );
+                    })()}
+                    <Bar 
+                      dataKey="planned_volume" 
+                      fill="#FFC107" 
+                      name="Volume (%)"
+                      opacity={0.8}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="planned_intensity" 
+                      stroke="#F44336" 
+                      strokeWidth={3}
+                      name="Intensitas (%)"
+                      dot={{ fill: '#F44336', r: 4 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+
+                {/* Editable Table */}
+                {isEditingWeeklyData && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto max-h-96">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted sticky top-0">
+                          <tr>
+                            <th className="text-left p-2 font-medium">Minggu</th>
+                            <th className="text-left p-2 font-medium">Tanggal</th>
+                            <th className="text-center p-2 font-medium">Volume (%)</th>
+                            <th className="text-center p-2 font-medium">Intensitas (%)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {generatedWeeklyData.map((week) => (
+                            <tr key={week.week_number} className="border-t">
+                              <td className="p-2 font-medium">M{week.week_number}</td>
+                              <td className="p-2 text-muted-foreground">
+                                {format(new Date(week.week_start_date), "d MMM", { locale: localeId })}
+                              </td>
+                              <td className="p-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={week.planned_volume}
+                                  onChange={(e) => handleWeeklyDataChange(week.week_number, 'planned_volume', Number(e.target.value))}
+                                  className="h-8 w-20 text-center mx-auto"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={week.planned_intensity}
+                                  onChange={(e) => handleWeeklyDataChange(week.week_number, 'planned_intensity', Number(e.target.value))}
+                                  className="h-8 w-20 text-center mx-auto"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Legend */}
+                <div className="flex items-center justify-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-[#FFC107] rounded"></div>
+                    <span>Volume</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-[#F44336] rounded"></div>
+                    <span>Intensitas</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-0.5 bg-destructive"></div>
+                    <span>Kompetisi Utama</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {phases.length > 0 && (
           <>
@@ -1232,19 +1576,21 @@ export default function AnnualPlan() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Konfigurasi Persentase Fase</CardTitle>
-                <Button
-                  variant={isEditingPercentages ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    if (isEditingPercentages) {
-                      handleSavePercentages();
-                    } else {
-                      setIsEditingPercentages(true);
-                    }
-                  }}
-                >
-                  {isEditingPercentages ? "Simpan" : <><Pencil className="w-4 h-4 mr-2" />Edit Persentase</>}
-                </Button>
+                {isCoach && (
+                  <Button
+                    variant={isEditingPercentages ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (isEditingPercentages) {
+                        handleSavePercentages();
+                      } else {
+                        setIsEditingPercentages(true);
+                      }
+                    }}
+                  >
+                    {isEditingPercentages ? "Simpan" : <><Pencil className="w-4 h-4 mr-2" />Edit Persentase</>}
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1336,6 +1682,22 @@ export default function AnnualPlan() {
                         ))}
                       </div>
                     </div>
+                    {/* Competition markers on timeline */}
+                    {competitions.map((comp, idx) => {
+                      const totalDays = differenceInDays(new Date(competitionDate), new Date(startDate));
+                      const compDays = differenceInDays(new Date(comp.competition_date), new Date(startDate));
+                      const position = (compDays / totalDays) * 100;
+                      return (
+                        <div
+                          key={idx}
+                          className="absolute top-0 w-0.5 h-4 bg-foreground"
+                          style={{ left: `${position}%` }}
+                          title={comp.competition_name}
+                        >
+                          <Trophy className="absolute -top-5 -left-2 h-4 w-4 text-muted-foreground" />
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Phase bars */}
@@ -1367,7 +1729,7 @@ export default function AnnualPlan() {
                                 title={`${formatDate(phase.startDate)} - ${formatDate(phase.endDate)}`}
                               >
                                 <span className="truncate">
-                                  {phase.durationDays} hari ({phase.percentage}%)
+                                  {phase.durationDays}d ({phase.percentage.toFixed(1)}%)
                                 </span>
                               </div>
                             </div>
@@ -1380,914 +1742,107 @@ export default function AnnualPlan() {
               </CardContent>
             </Card>
 
-            {/* Block Load Distribution Visualization */}
-            {periodizationType === "block" && (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Distribusi Training Load per Blok</CardTitle>
-                  <Button
-                    variant={isEditingBlockParams ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      if (isEditingBlockParams) {
-                        setIsEditingBlockParams(false);
-                        toast.success("Parameter blok berhasil diperbarui");
-                      } else {
-                        setIsEditingBlockParams(true);
-                      }
-                    }}
-                  >
-                    {isEditingBlockParams ? "Simpan" : <><Pencil className="w-4 h-4 mr-2" />Edit Parameter</>}
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {/* Block Characteristics */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Accumulation Block */}
-                      <Card className="bg-red-500/10 border-red-500/20">
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 bg-red-500 rounded"></div>
-                            <h4 className="font-semibold">Accumulation Block</h4>
-                          </div>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Volume</span>
-                              {isEditingBlockParams ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={blockParameters.accumulation.volume}
-                                    onChange={(e) => setBlockParameters(prev => ({
-                                      ...prev,
-                                      accumulation: { ...prev.accumulation, volume: Number(e.target.value) }
-                                    }))}
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                  <span className="text-xs">%</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-yellow-500" style={{ width: `${blockParameters.accumulation.volume}%` }}></div>
-                                  </div>
-                                  <span className="font-semibold">{blockParameters.accumulation.volume}%</span>
-                                </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Perbandingan Planned vs Actual Load</CardTitle>
+                <div className="flex items-center gap-4">
+                  {isCoach && (
+                    <Button
+                      variant={isEditingLoads ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        if (isEditingLoads) {
+                          handleSaveLoads();
+                        } else {
+                          setIsEditingLoads(true);
+                          const initialLoads: { [key: string]: number } = {};
+                          phasesWithLoad.forEach((phase) => {
+                            initialLoads[phase.name] = phase.plannedLoad;
+                          });
+                          setEditableLoads(initialLoads);
+                        }
+                      }}
+                    >
+                      {isEditingLoads ? "Simpan Load" : <><Pencil className="w-4 h-4 mr-2" />Edit Planned Load</>}
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="show-actual" className="text-sm">
+                      Tampilkan Actual Load
+                    </Label>
+                    <Switch
+                      id="show-actual"
+                      checked={showActualLoad}
+                      onCheckedChange={setShowActualLoad}
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {phasesWithLoad.map((phase, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded ${phase.color}`}></div>
+                          <span className="font-medium text-sm">{phase.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {isEditingLoads && (
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs text-muted-foreground">Planned Load:</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="100"
+                                value={editableLoads[phase.name] || phase.plannedLoad}
+                                onChange={(e) => handleLoadChange(phase.name, e.target.value)}
+                                className="w-32 h-8"
+                              />
+                              <span className="text-xs text-muted-foreground">AU</span>
+                            </div>
+                          )}
+                          {!isEditingLoads && (
+                            <div className="text-sm text-muted-foreground">
+                              Planned: {phase.plannedLoad.toLocaleString()} AU
+                              {showActualLoad && (
+                                <span className="ml-2">
+                                  | Actual: {phase.actualLoad.toLocaleString()} AU (
+                                  {phase.plannedLoad > 0
+                                    ? Math.round((phase.actualLoad / phase.plannedLoad) * 100)
+                                    : 0}
+                                  %)
+                                </span>
                               )}
                             </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Intensity</span>
-                              {isEditingBlockParams ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={blockParameters.accumulation.intensity}
-                                    onChange={(e) => setBlockParameters(prev => ({
-                                      ...prev,
-                                      accumulation: { ...prev.accumulation, intensity: Number(e.target.value) }
-                                    }))}
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                  <span className="text-xs">%</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-red-500" style={{ width: `${blockParameters.accumulation.intensity}%` }}></div>
-                                  </div>
-                                  <span className="font-semibold">{blockParameters.accumulation.intensity}%</span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Peaking</span>
-                              {isEditingBlockParams ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={blockParameters.accumulation.peaking}
-                                    onChange={(e) => setBlockParameters(prev => ({
-                                      ...prev,
-                                      accumulation: { ...prev.accumulation, peaking: Number(e.target.value) }
-                                    }))}
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                  <span className="text-xs">%</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary" style={{ width: `${blockParameters.accumulation.peaking}%` }}></div>
-                                  </div>
-                                  <span className="font-semibold">{blockParameters.accumulation.peaking}%</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Fokus: Volume tinggi, membangun fondasi dan kapasitas kerja
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      {/* Transmutation Block */}
-                      <Card className="bg-green-500/10 border-green-500/20">
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 bg-green-500 rounded"></div>
-                            <h4 className="font-semibold">Transmutation Block</h4>
-                          </div>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Volume</span>
-                              {isEditingBlockParams ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={blockParameters.transmutation.volume}
-                                    onChange={(e) => setBlockParameters(prev => ({
-                                      ...prev,
-                                      transmutation: { ...prev.transmutation, volume: Number(e.target.value) }
-                                    }))}
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                  <span className="text-xs">%</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-yellow-500" style={{ width: `${blockParameters.transmutation.volume}%` }}></div>
-                                  </div>
-                                  <span className="font-semibold">{blockParameters.transmutation.volume}%</span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Intensity</span>
-                              {isEditingBlockParams ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={blockParameters.transmutation.intensity}
-                                    onChange={(e) => setBlockParameters(prev => ({
-                                      ...prev,
-                                      transmutation: { ...prev.transmutation, intensity: Number(e.target.value) }
-                                    }))}
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                  <span className="text-xs">%</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-red-500" style={{ width: `${blockParameters.transmutation.intensity}%` }}></div>
-                                  </div>
-                                  <span className="font-semibold">{blockParameters.transmutation.intensity}%</span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Peaking</span>
-                              {isEditingBlockParams ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={blockParameters.transmutation.peaking}
-                                    onChange={(e) => setBlockParameters(prev => ({
-                                      ...prev,
-                                      transmutation: { ...prev.transmutation, peaking: Number(e.target.value) }
-                                    }))}
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                  <span className="text-xs">%</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary" style={{ width: `${blockParameters.transmutation.peaking}%` }}></div>
-                                  </div>
-                                  <span className="font-semibold">{blockParameters.transmutation.peaking}%</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Fokus: Transformasi volume ke intensitas spesifik olahraga
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      {/* Realization Block */}
-                      <Card className="bg-primary/10 border-primary/20">
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 bg-primary rounded"></div>
-                            <h4 className="font-semibold">Realization Block</h4>
-                          </div>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Volume</span>
-                              {isEditingBlockParams ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={blockParameters.realization.volume}
-                                    onChange={(e) => setBlockParameters(prev => ({
-                                      ...prev,
-                                      realization: { ...prev.realization, volume: Number(e.target.value) }
-                                    }))}
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                  <span className="text-xs">%</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-yellow-500" style={{ width: `${blockParameters.realization.volume}%` }}></div>
-                                  </div>
-                                  <span className="font-semibold">{blockParameters.realization.volume}%</span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Intensity</span>
-                              {isEditingBlockParams ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={blockParameters.realization.intensity}
-                                    onChange={(e) => setBlockParameters(prev => ({
-                                      ...prev,
-                                      realization: { ...prev.realization, intensity: Number(e.target.value) }
-                                    }))}
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                  <span className="text-xs">%</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-red-500" style={{ width: `${blockParameters.realization.intensity}%` }}></div>
-                                  </div>
-                                  <span className="font-semibold">{blockParameters.realization.intensity}%</span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">Peaking</span>
-                              {isEditingBlockParams ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={blockParameters.realization.peaking}
-                                    onChange={(e) => setBlockParameters(prev => ({
-                                      ...prev,
-                                      realization: { ...prev.realization, peaking: Number(e.target.value) }
-                                    }))}
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                  <span className="text-xs">%</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary" style={{ width: `${blockParameters.realization.peaking}%` }}></div>
-                                  </div>
-                                  <span className="font-semibold">{blockParameters.realization.peaking}%</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Fokus: Performa puncak, tapering, dan kompetisi
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Comparative Bar Chart */}
-                    <div className="mt-6">
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart
-                          data={[
-                            {
-                              block: 'Accumulation',
-                              Volume: blockParameters.accumulation.volume,
-                              Intensity: blockParameters.accumulation.intensity,
-                              Peaking: blockParameters.accumulation.peaking,
-                            },
-                            {
-                              block: 'Transmutation',
-                              Volume: blockParameters.transmutation.volume,
-                              Intensity: blockParameters.transmutation.intensity,
-                              Peaking: blockParameters.transmutation.peaking,
-                            },
-                            {
-                              block: 'Realization',
-                              Volume: blockParameters.realization.volume,
-                              Intensity: blockParameters.realization.intensity,
-                              Peaking: blockParameters.realization.peaking,
-                            },
-                          ]}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis 
-                            dataKey="block" 
-                            stroke="hsl(var(--muted-foreground))"
-                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          />
-                          <YAxis 
-                            stroke="hsl(var(--muted-foreground))"
-                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                            label={{ value: 'Persentase (%)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
-                          />
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: 'hsl(var(--card))', 
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px'
+                          )}
+                        </div>
+                      </div>
+                      <div className="relative h-8 bg-muted rounded-lg overflow-hidden">
+                        <div
+                          className="absolute h-full bg-muted-foreground/30 rounded-lg"
+                          style={{
+                            width: "100%",
+                          }}
+                        />
+                        {showActualLoad && (
+                          <div
+                            className={`absolute h-full ${phase.color} rounded-lg transition-all`}
+                            style={{
+                              width: `${phase.plannedLoad > 0 ? Math.min((phase.actualLoad / phase.plannedLoad) * 100, 100) : 0}%`,
                             }}
                           />
-                          <Legend />
-                          <Bar dataKey="Volume" fill="#FFC107" />
-                          <Bar dataKey="Intensity" fill="#F44336" />
-                          <Bar dataKey="Peaking" fill="#06B6D4" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Legend and Explanation */}
-                    <div className="bg-muted/50 p-4 rounded-lg text-sm space-y-2">
-                      <h5 className="font-semibold mb-2">Prinsip Block Periodization:</h5>
-                      <ul className="space-y-1 text-muted-foreground">
-                        <li>• <span className="text-yellow-600 font-medium">Volume</span>: Total kuantitas latihan (repetisi, set, durasi)</li>
-                        <li>• <span className="text-red-600 font-medium">Intensity</span>: Beban relatif terhadap maksimal (%1RM, kecepatan, RPE)</li>
-                        <li>• <span className="text-primary font-medium">Peaking</span>: Tingkat kesiapan untuk performa kompetisi</li>
-                      </ul>
-                      <p className="text-xs text-muted-foreground mt-3">
-                        Setiap blok memiliki fokus berbeda yang saling melengkapi untuk mencapai performa optimal pada waktu kompetisi.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Undulating Periodization Visualization */}
-            {periodizationType === "undulating" && phases.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Visualisasi Pola Undulating</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {/* Line chart showing undulating pattern */}
-                    <ResponsiveContainer width="100%" height={300}>
-                      <ComposedChart
-                        data={phases.map((phase, index) => {
-                          let weekType = 'normal';
-                          let intensity = 50;
-                          let volume = 50;
-                          
-                          if (phase.name.includes('Light')) {
-                            weekType = 'light';
-                            intensity = undulatingParameters.light.intensity;
-                            volume = undulatingParameters.light.volume;
-                          } else if (phase.name.includes('Moderate')) {
-                            weekType = 'moderate';
-                            intensity = undulatingParameters.moderate.intensity;
-                            volume = undulatingParameters.moderate.volume;
-                          } else if (phase.name.includes('Heavy')) {
-                            weekType = 'heavy';
-                            intensity = undulatingParameters.heavy.intensity;
-                            volume = undulatingParameters.heavy.volume;
-                          } else if (phase.name.includes('Deload')) {
-                            weekType = 'deload';
-                            intensity = undulatingParameters.deload.intensity;
-                            volume = undulatingParameters.deload.volume;
-                          } else if (phase.name.includes('Taper') || phase.name.includes('Pre-Competition')) {
-                            weekType = 'taper';
-                            intensity = undulatingParameters.taper.intensity;
-                            volume = undulatingParameters.taper.volume;
-                          } else if (phase.name.includes('Competition')) {
-                            weekType = 'competition';
-                            intensity = 30;
-                            volume = 20;
-                          }
-                          
-                          return {
-                            week: `W${index + 1}`,
-                            fullName: phase.name,
-                            Intensitas: intensity,
-                            Volume: volume,
-                            type: weekType,
-                          };
-                        })}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis 
-                          dataKey="week" 
-                          stroke="hsl(var(--muted-foreground))"
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                        />
-                        <YAxis 
-                          stroke="hsl(var(--muted-foreground))"
-                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          label={{ value: '%', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
-                          domain={[0, 100]}
-                        />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px'
-                          }}
-                          labelFormatter={(label, payload) => {
-                            if (payload && payload[0]) {
-                              return payload[0].payload.fullName;
-                            }
-                            return label;
-                          }}
-                        />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="Intensitas" 
-                          stroke="#F44336" 
-                          strokeWidth={3}
-                          dot={{ fill: '#F44336', r: 5 }}
-                          activeDot={{ r: 8 }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="Volume" 
-                          stroke="#FFC107" 
-                          strokeWidth={3}
-                          dot={{ fill: '#FFC107', r: 5 }}
-                          activeDot={{ r: 8 }}
-                        />
-                      </ComposedChart>
-                    </ResponsiveContainer>
-
-                    {/* Weekly type indicators */}
-                    <div className="flex flex-wrap gap-2">
-                      {phases.map((phase, index) => {
-                        let bgColor = 'bg-muted';
-                        if (phase.name.includes('Light')) bgColor = 'bg-green-500';
-                        else if (phase.name.includes('Moderate')) bgColor = 'bg-yellow-500';
-                        else if (phase.name.includes('Heavy')) bgColor = 'bg-red-500';
-                        else if (phase.name.includes('Deload')) bgColor = 'bg-blue-500';
-                        else if (phase.name.includes('Taper') || phase.name.includes('Pre-Competition')) bgColor = 'bg-primary';
-                        else if (phase.name.includes('Competition')) bgColor = 'bg-chart-4';
-                        
-                        return (
-                          <div 
-                            key={index}
-                            className={`${bgColor} px-2 py-1 rounded text-xs text-white font-medium`}
-                            title={`${phase.startDate} - ${phase.endDate}`}
-                          >
-                            W{index + 1}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Legend */}
-                    <div className="bg-muted/50 p-4 rounded-lg text-sm space-y-2">
-                      <h5 className="font-semibold mb-2">Pola Undulating Periodization:</h5>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-green-500 rounded"></div>
-                          <span className="text-muted-foreground">Light Week</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                          <span className="text-muted-foreground">Moderate Week</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-red-500 rounded"></div>
-                          <span className="text-muted-foreground">Heavy Week</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                          <span className="text-muted-foreground">Deload Week</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-primary rounded"></div>
-                          <span className="text-muted-foreground">Taper Week</span>
+                        )}
+                        <div className="absolute inset-0 flex items-center px-3 text-xs font-medium">
+                          <span className="text-foreground">
+                            {showActualLoad
+                              ? `${phase.actualLoad.toLocaleString()} / ${phase.plannedLoad.toLocaleString()} AU`
+                              : `${phase.plannedLoad.toLocaleString()} AU`}
+                          </span>
                         </div>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-3">
-                        Undulating periodization menggunakan variasi intensitas dan volume mingguan dalam pola berulang untuk mencegah plateau dan memaksimalkan adaptasi latihan.
-                      </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {phasesWithLoad.length > 0 && (
-              <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Grafik Training Load Mingguan</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {(() => {
-                      // Generate weekly data
-                      const weeklyData = [];
-                      if (startDate && competitionDate) {
-                        const weeks = eachWeekOfInterval({
-                          start: new Date(startDate),
-                          end: new Date(competitionDate)
-                        }, { weekStartsOn: 1 });
-
-                        weeks.forEach((weekStart, index) => {
-                          const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-                          
-                          // Calculate training load for this week
-                          const weekSessions = trainingSessions.filter(session => {
-                            const sessionDate = new Date(session.date);
-                            return isWithinInterval(sessionDate, { start: weekStart, end: weekEnd });
-                          });
-                          
-                          const trainingLoad = weekSessions.reduce((sum, s) => sum + (s.load_final || 0), 0);
-                          
-                          // Calculate volume, intensity, peaking based on phase
-                          let volume = 0;
-                          let intensity = 0;
-                          let peaking = 0;
-                          
-                          const currentPhase = phases.find(p => 
-                            isWithinInterval(weekStart, { 
-                              start: new Date(p.startDate), 
-                              end: new Date(p.endDate) 
-                            })
-                          );
-                          
-                          if (currentPhase) {
-                            // Block periodization patterns - use custom parameters
-                            if (currentPhase.name.includes("Accumulation")) {
-                              volume = blockParameters.accumulation.volume + (Math.random() * 10 - 5);
-                              intensity = blockParameters.accumulation.intensity + (Math.random() * 10 - 5);
-                              peaking = blockParameters.accumulation.peaking + (Math.random() * 10 - 5);
-                            } else if (currentPhase.name.includes("Transmutation")) {
-                              volume = blockParameters.transmutation.volume + (Math.random() * 10 - 5);
-                              intensity = blockParameters.transmutation.intensity + (Math.random() * 10 - 5);
-                              peaking = blockParameters.transmutation.peaking + (Math.random() * 10 - 5);
-                            } else if (currentPhase.name.includes("Realization")) {
-                              volume = blockParameters.realization.volume + (Math.random() * 10 - 5);
-                              intensity = blockParameters.realization.intensity + (Math.random() * 10 - 5);
-                              peaking = blockParameters.realization.peaking + (Math.random() * 10 - 5);
-                            }
-                            // Traditional periodization patterns
-                            else if (currentPhase.name.includes("GPP")) {
-                              volume = 85 + Math.random() * 15;
-                              intensity = 40 + Math.random() * 20;
-                              peaking = 35 + Math.random() * 15;
-                            } else if (currentPhase.name.includes("SPP")) {
-                              volume = 65 + Math.random() * 15;
-                              intensity = 60 + Math.random() * 20;
-                              peaking = 45 + Math.random() * 15;
-                            } else if (currentPhase.name.includes("Pra")) {
-                              volume = 30 + Math.random() * 10;
-                              intensity = 80 + Math.random() * 20;
-                              peaking = 85 + Math.random() * 15;
-                            } else {
-                              volume = 10 + Math.random() * 10;
-                              intensity = 30 + Math.random() * 20;
-                              peaking = 95 + Math.random() * 5;
-                            }
-                          }
-                          
-                          weeklyData.push({
-                            week: index + 1,
-                            trainingLoad,
-                            volume: Math.round(volume),
-                            intensity: Math.round(intensity),
-                            peaking: Math.round(peaking)
-                          });
-                        });
-                      }
-                      
-                      return (
-                        <ResponsiveContainer width="100%" height={400}>
-                          <ComposedChart data={weeklyData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis 
-                              dataKey="week" 
-                              stroke="hsl(var(--muted-foreground))"
-                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                              label={{ value: 'Minggu', position: 'insideBottom', offset: -5, fill: 'hsl(var(--muted-foreground))' }}
-                            />
-                            <YAxis 
-                              yAxisId="left"
-                              stroke="hsl(var(--muted-foreground))"
-                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                              label={{ value: 'Training Load (AU)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
-                            />
-                            <YAxis 
-                              yAxisId="right"
-                              orientation="right"
-                              stroke="hsl(var(--muted-foreground))"
-                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                              label={{ value: 'Volume/Intensity/Peaking (%)', angle: 90, position: 'insideRight', fill: 'hsl(var(--muted-foreground))' }}
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'hsl(var(--card))', 
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: '8px'
-                              }}
-                            />
-                            <Legend />
-                            <Bar 
-                              yAxisId="left"
-                              dataKey="trainingLoad" 
-                              fill="hsl(var(--chart-3))" 
-                              name="Training Load"
-                              opacity={0.8}
-                            />
-                            <Line 
-                              yAxisId="right"
-                              type="monotone" 
-                              dataKey="volume" 
-                              stroke="#FFC107" 
-                              strokeWidth={2}
-                              strokeDasharray="5 5"
-                              name="Volume"
-                              dot={{ fill: '#FFC107', r: 3 }}
-                            />
-                            <Line 
-                              yAxisId="right"
-                              type="monotone" 
-                              dataKey="intensity" 
-                              stroke="#F44336" 
-                              strokeWidth={2}
-                              strokeDasharray="5 5"
-                              name="Intensity"
-                              dot={{ fill: '#F44336', r: 3 }}
-                            />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      );
-                    })()}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Perbandingan Planned vs Actual Load</CardTitle>
-                    <div className="flex items-center gap-4">
-                      <Button
-                        variant={isEditingLoads ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          if (isEditingLoads) {
-                            handleSaveLoads();
-                          } else {
-                            setIsEditingLoads(true);
-                            // Initialize editable loads with current planned loads
-                            const initialLoads: { [key: string]: number } = {};
-                            phasesWithLoad.forEach((phase) => {
-                              initialLoads[phase.name] = phase.plannedLoad;
-                            });
-                            setEditableLoads(initialLoads);
-                          }
-                        }}
-                      >
-                        {isEditingLoads ? "Simpan Load" : <><Pencil className="w-4 h-4 mr-2" />Edit Planned Load</>}
-                      </Button>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="show-actual" className="text-sm">
-                          Tampilkan Actual Load
-                        </Label>
-                        <Switch
-                          id="show-actual"
-                          checked={showActualLoad}
-                          onCheckedChange={setShowActualLoad}
-                        />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {phasesWithLoad.map((phase, index) => (
-                        <div key={index} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-3 h-3 rounded ${phase.color}`}></div>
-                              <span className="font-medium text-sm">{phase.name}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              {isEditingLoads && (
-                                <div className="flex items-center gap-2">
-                                  <Label className="text-xs text-muted-foreground">Planned Load:</Label>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="100"
-                                    value={editableLoads[phase.name] || phase.plannedLoad}
-                                    onChange={(e) => handleLoadChange(phase.name, e.target.value)}
-                                    className="w-32 h-8"
-                                  />
-                                  <span className="text-xs text-muted-foreground">AU</span>
-                                </div>
-                              )}
-                              {!isEditingLoads && (
-                                <div className="text-sm text-muted-foreground">
-                                  Planned: {phase.plannedLoad.toLocaleString()} AU
-                                  {showActualLoad && (
-                                    <span className="ml-2">
-                                      | Actual: {phase.actualLoad.toLocaleString()} AU (
-                                      {phase.plannedLoad > 0
-                                        ? Math.round((phase.actualLoad / phase.plannedLoad) * 100)
-                                        : 0}
-                                      %)
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="relative h-8 bg-muted rounded-lg overflow-hidden">
-                            {/* Planned load bar */}
-                            <div
-                              className="absolute h-full bg-muted-foreground/30 rounded-lg"
-                              style={{
-                                width: "100%",
-                              }}
-                            />
-                            {/* Actual load bar */}
-                            {showActualLoad && (
-                              <div
-                                className={`absolute h-full ${phase.color} rounded-lg transition-all`}
-                                style={{
-                                  width: `${phase.plannedLoad > 0 ? Math.min((phase.actualLoad / phase.plannedLoad) * 100, 100) : 0}%`,
-                                }}
-                              />
-                            )}
-                            <div className="absolute inset-0 flex items-center px-3 text-xs font-medium">
-                              <span className="text-foreground">
-                                {showActualLoad
-                                  ? `${phase.actualLoad.toLocaleString()} / ${phase.plannedLoad.toLocaleString()} AU`
-                                  : `${phase.plannedLoad.toLocaleString()} AU`}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Detail Fase Periodisasi</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-3 px-4">Fase</th>
-                        <th className="text-left py-3 px-4">Tanggal Mulai</th>
-                        <th className="text-left py-3 px-4">Tanggal Akhir</th>
-                        <th className="text-right py-3 px-4">Durasi (hari)</th>
-                        <th className="text-right py-3 px-4">Persentase</th>
-                        <th className="text-left py-3 px-4">Fokus Latihan</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-border">
-                        <td className="py-3 px-4 font-medium">
-                          <span className="inline-block w-3 h-3 rounded bg-chart-1 mr-2"></span>
-                          Persiapan Umum (GPP)
-                        </td>
-                        <td className="py-3 px-4">{formatDate(phases[0].startDate)}</td>
-                        <td className="py-3 px-4">{formatDate(phases[0].endDate)}</td>
-                        <td className="py-3 px-4 text-right">{phases[0].durationDays}</td>
-                        <td className="py-3 px-4 text-right">{phases[0].percentage}%</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          Volume tinggi, intensitas rendah, latihan dasar umum
-                        </td>
-                      </tr>
-                      <tr className="border-b border-border">
-                        <td className="py-3 px-4 font-medium">
-                          <span className="inline-block w-3 h-3 rounded bg-chart-2 mr-2"></span>
-                          Persiapan Khusus (SPP)
-                        </td>
-                        <td className="py-3 px-4">{formatDate(phases[1].startDate)}</td>
-                        <td className="py-3 px-4">{formatDate(phases[1].endDate)}</td>
-                        <td className="py-3 px-4 text-right">{phases[1].durationDays}</td>
-                        <td className="py-3 px-4 text-right">{phases[1].percentage}%</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          Volume sedang, intensitas meningkat, latihan spesifik cabang olahraga
-                        </td>
-                      </tr>
-                      <tr className="border-b border-border">
-                        <td className="py-3 px-4 font-medium">
-                          <span className="inline-block w-3 h-3 rounded bg-chart-3 mr-2"></span>
-                          Pra Kompetisi
-                        </td>
-                        <td className="py-3 px-4">{formatDate(phases[2].startDate)}</td>
-                        <td className="py-3 px-4">{formatDate(phases[2].endDate)}</td>
-                        <td className="py-3 px-4 text-right">{phases[2].durationDays}</td>
-                        <td className="py-3 px-4 text-right">{phases[2].percentage}%</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          Volume menurun, intensitas tinggi, simulasi kompetisi
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 px-4 font-medium">
-                          <span className="inline-block w-3 h-3 rounded bg-chart-4 mr-2"></span>
-                          Kompetisi
-                        </td>
-                        <td className="py-3 px-4">{formatDate(phases[3].startDate)}</td>
-                        <td className="py-3 px-4">{formatDate(phases[3].endDate)}</td>
-                        <td className="py-3 px-4 text-right">{phases[3].durationDays}</td>
-                        <td className="py-3 px-4 text-right">{phases[3].percentage}%</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          Volume minimal, intensitas maksimal, tapering & peaking
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Rekomendasi Load per Fase</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-lg border border-border bg-card">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-3 h-3 rounded bg-chart-1"></div>
-                      <h4 className="font-semibold text-sm">GPP</h4>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <p className="text-muted-foreground">Volume: <span className="text-foreground font-medium">Tinggi</span></p>
-                      <p className="text-muted-foreground">Intensitas: <span className="text-foreground font-medium">Rendah-Sedang</span></p>
-                      <p className="text-muted-foreground">RPE Target: <span className="text-foreground font-medium">4-6</span></p>
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg border border-border bg-card">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-3 h-3 rounded bg-chart-2"></div>
-                      <h4 className="font-semibold text-sm">SPP</h4>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <p className="text-muted-foreground">Volume: <span className="text-foreground font-medium">Sedang</span></p>
-                      <p className="text-muted-foreground">Intensitas: <span className="text-foreground font-medium">Sedang-Tinggi</span></p>
-                      <p className="text-muted-foreground">RPE Target: <span className="text-foreground font-medium">6-8</span></p>
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg border border-border bg-card">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-3 h-3 rounded bg-chart-3"></div>
-                      <h4 className="font-semibold text-sm">Pra Kompetisi</h4>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <p className="text-muted-foreground">Volume: <span className="text-foreground font-medium">Rendah</span></p>
-                      <p className="text-muted-foreground">Intensitas: <span className="text-foreground font-medium">Tinggi</span></p>
-                      <p className="text-muted-foreground">RPE Target: <span className="text-foreground font-medium">7-9</span></p>
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg border border-border bg-card">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-3 h-3 rounded bg-chart-4"></div>
-                      <h4 className="font-semibold text-sm">Kompetisi</h4>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <p className="text-muted-foreground">Volume: <span className="text-foreground font-medium">Minimal</span></p>
-                      <p className="text-muted-foreground">Intensitas: <span className="text-foreground font-medium">Maksimal</span></p>
-                      <p className="text-muted-foreground">RPE Target: <span className="text-foreground font-medium">8-10</span></p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

@@ -170,6 +170,44 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_competitions: {
+        Row: {
+          competition_date: string
+          competition_name: string
+          created_at: string
+          id: string
+          notes: string | null
+          plan_id: string
+          priority: number | null
+        }
+        Insert: {
+          competition_date: string
+          competition_name: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          plan_id: string
+          priority?: number | null
+        }
+        Update: {
+          competition_date?: string
+          competition_name?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          plan_id?: string
+          priority?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_competitions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "annual_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           age: number | null
@@ -527,6 +565,50 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_plan_data: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          plan_id: string
+          planned_intensity: number | null
+          planned_volume: number | null
+          updated_at: string
+          week_number: number
+          week_start_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          plan_id: string
+          planned_intensity?: number | null
+          planned_volume?: number | null
+          updated_at?: string
+          week_number: number
+          week_start_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          plan_id?: string
+          planned_intensity?: number | null
+          planned_volume?: number | null
+          updated_at?: string
+          week_number?: number
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_plan_data_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "annual_plans"
             referencedColumns: ["id"]
           },
         ]
