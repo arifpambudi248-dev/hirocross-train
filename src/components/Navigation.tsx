@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import logo from "@/assets/hirocross-logo.png";
+import { ThemeToggle } from "./ThemeToggle";
 import {
   Sheet,
   SheetContent,
@@ -92,6 +93,7 @@ export const Navigation = () => {
   const coachNavItems = [
     { to: "/athlete-management", icon: Users, label: "Kelola Atlet" },
     { to: "/athlete-comparison", icon: TrendingUp, label: "Perbandingan Atlet" },
+    { to: "/notifications", icon: Bell, label: "Notifikasi" },
   ];
 
   const athleteNavItems = [
@@ -146,10 +148,12 @@ export const Navigation = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {athleteName && (
-              <span className="text-sm text-muted-foreground font-medium">{athleteName}</span>
+              <span className="text-sm text-muted-foreground font-medium hidden sm:block">{athleteName}</span>
             )}
+
+            <ThemeToggle />
 
             <Button
               variant="ghost"
@@ -158,7 +162,7 @@ export const Navigation = () => {
               className="flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>

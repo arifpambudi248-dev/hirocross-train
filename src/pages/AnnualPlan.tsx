@@ -87,7 +87,7 @@ export default function AnnualPlan() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [autoAdjust, setAutoAdjust] = useState(false);
-  const [periodizationType, setPeriodizationType] = useState<"traditional" | "block" | "undulating">("traditional");
+  const [periodizationType, setPeriodizationType] = useState<"linear" | "block" | "undulating">("linear");
   const [blockWeeks, setBlockWeeks] = useState({ accumulation: 3, transmutation: 2, realization: 1 });
   const [isEditingBlockParams, setIsEditingBlockParams] = useState(false);
   const [blockParameters, setBlockParameters] = useState({
@@ -308,7 +308,7 @@ export default function AnnualPlan() {
       let defaultIntensity = 50;
       const weekProgress = index / weeks.length;
       
-      if (periodizationType === "traditional") {
+      if (periodizationType === "linear") {
         // Traditional: Volume decreases, intensity increases over time
         defaultVolume = Math.round(90 - (weekProgress * 60));
         defaultIntensity = Math.round(40 + (weekProgress * 50));
@@ -771,6 +771,8 @@ export default function AnnualPlan() {
       return;
     }
 
+    // Linear periodization (was traditional)
+
     if (!startDate || !competitionDate) {
       toast.error("Harap isi tanggal mulai dan tanggal pertandingan");
       return;
@@ -1033,7 +1035,7 @@ export default function AnnualPlan() {
                         planName: planName || 'Annual Plan',
                         startDate,
                         competitionDate,
-                        periodizationType: periodizationType === 'traditional' ? 'Traditional' : periodizationType === 'block' ? 'Block Periodization' : 'Undulating',
+                        periodizationType: periodizationType === 'linear' ? 'Linear' : periodizationType === 'block' ? 'Block Periodization' : 'Undulating',
                         phases: phases.map(p => ({
                           name: p.name,
                           startDate: p.startDate,
@@ -1129,14 +1131,14 @@ export default function AnnualPlan() {
                 <Label htmlFor="periodType">Tipe Periodisasi</Label>
                 <Select 
                   value={periodizationType} 
-                  onValueChange={(val: "traditional" | "block" | "undulating") => setPeriodizationType(val)}
+                  onValueChange={(val: "linear" | "block" | "undulating") => setPeriodizationType(val)}
                   disabled={!isCoach}
                 >
                   <SelectTrigger className="bg-background border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border z-50">
-                    <SelectItem value="traditional">Traditional</SelectItem>
+                    <SelectItem value="linear">Linear</SelectItem>
                     <SelectItem value="block">Block Periodization</SelectItem>
                     <SelectItem value="undulating">Undulating</SelectItem>
                   </SelectContent>
@@ -1419,7 +1421,7 @@ export default function AnnualPlan() {
                 <ResponsiveContainer width="100%" height={400}>
                   <ComposedChart data={generatedWeeklyData} margin={{ top: 40, right: 20, left: 10, bottom: 10 }}>
                     {/* Phase zone backgrounds */}
-                    {phases.length > 0 && periodizationType === "traditional" && (() => {
+                    {phases.length > 0 && periodizationType === "linear" && (() => {
                       const phaseZones: { x1: number; x2: number; fill: string; name: string }[] = [];
                       phases.forEach((phase) => {
                         const phaseStart = new Date(phase.startDate);
@@ -1597,7 +1599,7 @@ export default function AnnualPlan() {
                     <div className="w-4 h-0.5 bg-destructive"></div>
                     <span>Kompetisi Utama</span>
                   </div>
-                  {periodizationType === "traditional" && (
+            {periodizationType === "linear" && (
                     <>
                       <div className="h-4 w-px bg-border mx-2"></div>
                       <div className="flex items-center gap-2">
@@ -1627,7 +1629,7 @@ export default function AnnualPlan() {
         {phases.length > 0 && (
           <>
             {/* Editable Percentages Card - Only show for traditional periodization */}
-            {periodizationType === "traditional" && (
+            {periodizationType === "linear" && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Konfigurasi Persentase Fase</CardTitle>

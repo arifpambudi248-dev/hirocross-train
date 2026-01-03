@@ -8,8 +8,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Bell, Check, X, UserPlus, Search, Loader2, Users, Send } from "lucide-react";
+import { Bell, Check, X, UserPlus, Search, Loader2, Users, Send, Trophy, Calendar, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { differenceInDays, format } from "date-fns";
+import { id as localeId } from "date-fns/locale";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Invitation {
   id: string;
@@ -28,10 +31,20 @@ interface Coach {
   avatar_url: string | null;
 }
 
+interface UpcomingCompetition {
+  id: string;
+  competition_name: string;
+  competition_date: string;
+  plan_name: string;
+  days_until: number;
+  priority: number;
+}
+
 export default function Notifications() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [myRequests, setMyRequests] = useState<Invitation[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [upcomingCompetitions, setUpcomingCompetitions] = useState<UpcomingCompetition[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
@@ -63,15 +76,166 @@ export default function Notifications() {
 
       if (roleData?.role === "athlete") {
         setIsAthlete(true);
-        await loadInvitations(user.id);
-        await loadMyRequests(user.id);
+        await Promise.all([
+          loadInvitations(user.id),
+          loadMyRequests(user.id),
+          loadUpcomingCompetitions(user.id)
+        ]);
+      } else if (roleData?.role === "coach") {
+        // Coaches can also see their competitions
+        await loadUpcomingCompetitionsForCoach(user.id);
+        setIsAthlete(false);
+        setIsLoading(false);
       } else {
-        toast.error("Halaman ini hanya untuk atlet");
+        toast.error("Halaman ini hanya untuk atlet dan pelatih");
         window.location.href = "/";
       }
     } catch (error) {
       console.error("Error:", error);
       setIsLoading(false);
+    }
+  };
+
+  const loadUpcomingCompetitions = async (uid: string) => {
+    try {
+      const today = new Date();
+      const twoWeeksLater = new Date();
+      twoWeeksLater.setDate(today.getDate() + 14);
+
+      // Get annual plans for this athlete
+      const { data: plans } = await supabase
+        .from("annual_plans")
+        .select("id, plan_name, competition_date")
+        .eq("athlete_id", uid);
+
+      if (!plans) return;
+
+      const upcoming: UpcomingCompetition[] = [];
+
+      // Check main competition dates
+      for (const plan of plans) {
+        const compDate = new Date(plan.competition_date);
+        const daysUntil = differenceInDays(compDate, today);
+        
+        if (daysUntil >= 0 && daysUntil <= 14) {
+          upcoming.push({
+            id: plan.id,
+            competition_name: "Kompetisi Utama",
+            competition_date: plan.competition_date,
+            plan_name: plan.plan_name,
+            days_until: daysUntil,
+            priority: 1
+          });
+        }
+      }
+
+      // Get additional competitions from plan_competitions table
+      for (const plan of plans) {
+        const { data: competitions } = await supabase
+          .from("plan_competitions")
+          .select("*")
+          .eq("plan_id", plan.id);
+
+        if (competitions) {
+          for (const comp of competitions) {
+            const compDate = new Date(comp.competition_date);
+            const daysUntil = differenceInDays(compDate, today);
+            
+            if (daysUntil >= 0 && daysUntil <= 14) {
+              upcoming.push({
+                id: comp.id,
+                competition_name: comp.competition_name,
+                competition_date: comp.competition_date,
+                plan_name: plan.plan_name,
+                days_until: daysUntil,
+                priority: comp.priority || 2
+              });
+            }
+          }
+        }
+      }
+
+      // Sort by days until
+      upcoming.sort((a, b) => a.days_until - b.days_until);
+      setUpcomingCompetitions(upcoming);
+    } catch (error) {
+      console.error("Error loading competitions:", error);
+    }
+  };
+
+  const loadUpcomingCompetitionsForCoach = async (uid: string) => {
+    try {
+      const today = new Date();
+      const twoWeeksLater = new Date();
+      twoWeeksLater.setDate(today.getDate() + 14);
+
+      // Get annual plans created by this coach
+      const { data: plans } = await supabase
+        .from("annual_plans")
+        .select("id, plan_name, competition_date, athlete_id")
+        .eq("user_id", uid);
+
+      if (!plans) return;
+
+      // Get athlete names
+      const athleteIds = [...new Set(plans.map(p => p.athlete_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, athlete_name")
+        .in("id", athleteIds);
+
+      const upcoming: UpcomingCompetition[] = [];
+
+      // Check main competition dates
+      for (const plan of plans) {
+        const compDate = new Date(plan.competition_date);
+        const daysUntil = differenceInDays(compDate, today);
+        const athleteName = profiles?.find(p => p.id === plan.athlete_id)?.athlete_name || "Unknown";
+        
+        if (daysUntil >= 0 && daysUntil <= 14) {
+          upcoming.push({
+            id: plan.id,
+            competition_name: `Kompetisi Utama - ${athleteName}`,
+            competition_date: plan.competition_date,
+            plan_name: plan.plan_name,
+            days_until: daysUntil,
+            priority: 1
+          });
+        }
+      }
+
+      // Get additional competitions
+      for (const plan of plans) {
+        const { data: competitions } = await supabase
+          .from("plan_competitions")
+          .select("*")
+          .eq("plan_id", plan.id);
+
+        if (competitions) {
+          const athleteName = profiles?.find(p => p.id === plan.athlete_id)?.athlete_name || "Unknown";
+          
+          for (const comp of competitions) {
+            const compDate = new Date(comp.competition_date);
+            const daysUntil = differenceInDays(compDate, today);
+            
+            if (daysUntil >= 0 && daysUntil <= 14) {
+              upcoming.push({
+                id: comp.id,
+                competition_name: `${comp.competition_name} - ${athleteName}`,
+                competition_date: comp.competition_date,
+                plan_name: plan.plan_name,
+                days_until: daysUntil,
+                priority: comp.priority || 2
+              });
+            }
+          }
+        }
+      }
+
+      upcoming.sort((a, b) => a.days_until - b.days_until);
+      setUpcomingCompetitions(upcoming);
+    } catch (error) {
+      console.error("Error loading competitions:", error);
     }
   };
 
@@ -303,14 +467,86 @@ export default function Notifications() {
     );
   }
 
-  if (!isAthlete) {
-    return null;
-  }
+  // Show for both athletes and coaches now
+  const showCoachView = !isAthlete && upcomingCompetitions.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <div className="container mx-auto px-4 py-8">
+        {/* Competition Reminders Alert */}
+        {upcomingCompetitions.length > 0 && (
+          <Alert className="mb-6 border-warning bg-warning/10">
+            <Trophy className="h-5 w-5 text-warning" />
+            <AlertTitle className="text-warning">Kompetisi dalam 2 Minggu!</AlertTitle>
+            <AlertDescription>
+              <div className="mt-2 space-y-2">
+                {upcomingCompetitions.map((comp) => (
+                  <div 
+                    key={comp.id} 
+                    className="flex items-center justify-between p-3 bg-background/50 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${
+                        comp.days_until <= 3 ? 'bg-destructive/20 text-destructive' : 
+                        comp.days_until <= 7 ? 'bg-warning/20 text-warning' : 
+                        'bg-primary/20 text-primary'
+                      }`}>
+                        <Calendar className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{comp.competition_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(comp.competition_date), "EEEE, d MMMM yyyy", { locale: localeId })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Plan: {comp.plan_name}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge 
+                        variant={comp.days_until <= 3 ? "destructive" : comp.days_until <= 7 ? "secondary" : "default"}
+                        className="text-sm"
+                      >
+                        {comp.days_until === 0 ? "Hari Ini!" : 
+                         comp.days_until === 1 ? "Besok!" : 
+                         `${comp.days_until} hari lagi`}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Prioritas: {comp.priority === 1 ? "A" : comp.priority === 2 ? "B" : "C"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Coach view - only show competitions */}
+        {showCoachView && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                Reminder Kompetisi Atlet
+              </CardTitle>
+              <CardDescription>
+                Kompetisi atlet Anda dalam 2 minggu ke depan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center py-4">
+                Lihat daftar kompetisi di atas
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Athlete view - full notifications */}
+        {isAthlete && (
+          <>
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
@@ -564,6 +800,8 @@ export default function Notifications() {
             </Card>
           </TabsContent>
         </Tabs>
+        </>
+        )}
       </div>
     </div>
   );
