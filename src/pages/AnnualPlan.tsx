@@ -140,6 +140,9 @@ export default function AnnualPlan() {
   
   // Weekly tests state
   const [weeklyTests, setWeeklyTests] = useState<WeeklyTest[]>([]);
+  
+  // Meso weeks configuration
+  const [mesoWeeks, setMesoWeeks] = useState(4);
 
   useEffect(() => {
     loadUser();
@@ -358,6 +361,37 @@ export default function AnnualPlan() {
         label,
       }]);
     }
+  };
+
+  const handleBulkTrainingFocusChange = async (weekNumbers: number[], focusType: string, label: string) => {
+    if (!currentPlanId) {
+      toast.error("Simpan rencana terlebih dahulu");
+      return;
+    }
+
+    for (const weekNumber of weekNumbers) {
+      const existing = trainingFocus.find(f => f.week_number === weekNumber && f.focus_type === focusType);
+
+      if (existing) {
+        await supabase
+          .from("weekly_training_focus")
+          .update({ intensity_level: 1, label })
+          .eq("id", existing.id);
+      } else {
+        await supabase
+          .from("weekly_training_focus")
+          .insert({
+            plan_id: currentPlanId,
+            week_number: weekNumber,
+            focus_type: focusType,
+            intensity_level: 1,
+            label,
+          });
+      }
+    }
+
+    await loadTrainingFocus();
+    toast.success(`Fokus latihan berhasil diset untuk ${weekNumbers.length} minggu`);
   };
 
   const handleTrainingFocusRemove = async (weekNumber: number, focusType: string) => {
@@ -1638,9 +1672,12 @@ export default function AnnualPlan() {
                 onWeeklyDataChange={handleWeeklyDataChange}
                 onTrainingFocusChange={handleTrainingFocusChange}
                 onTrainingFocusRemove={handleTrainingFocusRemove}
+                onBulkTrainingFocusChange={handleBulkTrainingFocusChange}
                 onTestAdd={handleTestAdd}
                 onTestRemove={handleTestRemove}
                 onCompetitionAdd={handleCompetitionAddFromCalendar}
+                onMesoWeeksChange={setMesoWeeks}
+                mesoWeeks={mesoWeeks}
                 isEditing={isEditingWeeklyData}
                 isCoach={isCoach}
               />
