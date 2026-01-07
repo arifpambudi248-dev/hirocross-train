@@ -613,6 +613,88 @@ export type Database = {
           },
         ]
       }
+      weekly_tests: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          plan_id: string
+          test_date: string | null
+          test_name: string
+          updated_at: string
+          week_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          plan_id: string
+          test_date?: string | null
+          test_name: string
+          updated_at?: string
+          week_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          plan_id?: string
+          test_date?: string | null
+          test_name?: string
+          updated_at?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_tests_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "annual_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_training_focus: {
+        Row: {
+          created_at: string
+          focus_type: string
+          id: string
+          intensity_level: number | null
+          notes: string | null
+          plan_id: string
+          updated_at: string
+          week_number: number
+        }
+        Insert: {
+          created_at?: string
+          focus_type: string
+          id?: string
+          intensity_level?: number | null
+          notes?: string | null
+          plan_id: string
+          updated_at?: string
+          week_number: number
+        }
+        Update: {
+          created_at?: string
+          focus_type?: string
+          id?: string
+          intensity_level?: number | null
+          notes?: string | null
+          plan_id?: string
+          updated_at?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_training_focus_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "annual_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

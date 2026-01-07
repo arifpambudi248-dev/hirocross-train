@@ -61,6 +61,22 @@ type WeeklyData = {
   notes?: string;
 };
 
+type TrainingFocus = {
+  id?: string;
+  week_number: number;
+  focus_type: string;
+  intensity_level: number;
+  notes?: string;
+};
+
+type WeeklyTest = {
+  id?: string;
+  week_number: number;
+  test_name: string;
+  test_date?: string;
+  notes?: string;
+};
+
 export default function AnnualPlan() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
@@ -116,6 +132,12 @@ export default function AnnualPlan() {
   // Weekly volume/intensity editing
   const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
   const [isEditingWeeklyData, setIsEditingWeeklyData] = useState(false);
+  
+  // Training focus state
+  const [trainingFocus, setTrainingFocus] = useState<TrainingFocus[]>([]);
+  
+  // Weekly tests state
+  const [weeklyTests, setWeeklyTests] = useState<WeeklyTest[]>([]);
 
   useEffect(() => {
     loadUser();
@@ -131,6 +153,8 @@ export default function AnnualPlan() {
     if (currentPlanId) {
       loadCompetitions();
       loadWeeklyData();
+      loadTrainingFocus();
+      loadWeeklyTests();
     }
   }, [currentPlanId]);
 
@@ -241,6 +265,187 @@ export default function AnnualPlan() {
         notes: w.notes,
       })));
     }
+  };
+
+  const loadTrainingFocus = async () => {
+    if (!currentPlanId) return;
+    
+    const { data, error } = await supabase
+      .from("weekly_training_focus")
+      .select("*")
+      .eq("plan_id", currentPlanId)
+      .order("week_number", { ascending: true });
+
+    if (!error && data) {
+      setTrainingFocus(data.map(f => ({
+        id: f.id,
+        week_number: f.week_number,
+        focus_type: f.focus_type,
+        intensity_level: f.intensity_level,
+        notes: f.notes,
+      })));
+    }
+  };
+
+  const loadWeeklyTests = async () => {
+    if (!currentPlanId) return;
+    
+    const { data, error } = await supabase
+      .from("weekly_tests")
+      .select("*")
+      .eq("plan_id", currentPlanId)
+      .order("week_number", { ascending: true });
+
+    if (!error && data) {
+      setWeeklyTests(data.map(t => ({
+        id: t.id,
+        week_number: t.week_number,
+        test_name: t.test_name,
+        test_date: t.test_date,
+        notes: t.notes,
+      })));
+    }
+  };
+
+  const handleTrainingFocusChange = async (weekNumber: number, focusType: string, intensityLevel: number) => {
+    if (!currentPlanId) {
+      toast.error("Simpan rencana terlebih dahulu");
+      return;
+    }
+
+    const existing = trainingFocus.find(f => f.week_number === weekNumber && f.focus_type === focusType);
+
+    if (existing) {
+      const { error } = await supabase
+        .from("weekly_training_focus")
+        .update({ intensity_level: intensityLevel })
+        .eq("id", existing.id);
+
+      if (error) {
+        toast.error("Gagal update fokus: " + error.message);
+        return;
+      }
+
+      setTrainingFocus(prev => prev.map(f => 
+        f.id === existing.id ? { ...f, intensity_level: intensityLevel } : f
+      ));
+    } else {
+      const { data, error } = await supabase
+        .from("weekly_training_focus")
+        .insert({
+          plan_id: currentPlanId,
+          week_number: weekNumber,
+          focus_type: focusType,
+          intensity_level: intensityLevel,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Gagal menambah fokus: " + error.message);
+        return;
+      }
+
+      setTrainingFocus(prev => [...prev, {
+        id: data.id,
+        week_number: weekNumber,
+        focus_type: focusType,
+        intensity_level: intensityLevel,
+      }]);
+    }
+  };
+
+  const handleTrainingFocusRemove = async (weekNumber: number, focusType: string) => {
+    const existing = trainingFocus.find(f => f.week_number === weekNumber && f.focus_type === focusType);
+    if (!existing?.id) return;
+
+    const { error } = await supabase
+      .from("weekly_training_focus")
+      .delete()
+      .eq("id", existing.id);
+
+    if (error) {
+      toast.error("Gagal menghapus fokus: " + error.message);
+      return;
+    }
+
+    setTrainingFocus(prev => prev.filter(f => f.id !== existing.id));
+  };
+
+  const handleTestAdd = async (weekNumber: number, testName: string) => {
+    if (!currentPlanId) {
+      toast.error("Simpan rencana terlebih dahulu");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("weekly_tests")
+      .insert({
+        plan_id: currentPlanId,
+        week_number: weekNumber,
+        test_name: testName,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error("Gagal menambah tes: " + error.message);
+      return;
+    }
+
+    setWeeklyTests(prev => [...prev, {
+      id: data.id,
+      week_number: weekNumber,
+      test_name: testName,
+    }]);
+    toast.success("Tes berhasil ditambahkan");
+  };
+
+  const handleTestRemove = async (weekNumber: number, testId: string) => {
+    const { error } = await supabase
+      .from("weekly_tests")
+      .delete()
+      .eq("id", testId);
+
+    if (error) {
+      toast.error("Gagal menghapus tes: " + error.message);
+      return;
+    }
+
+    setWeeklyTests(prev => prev.filter(t => t.id !== testId));
+    toast.success("Tes berhasil dihapus");
+  };
+
+  const handleCompetitionAddFromCalendar = async (weekNumber: number, competitionName: string, date: string) => {
+    if (!currentPlanId) {
+      toast.error("Simpan rencana terlebih dahulu");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("plan_competitions")
+      .insert({
+        plan_id: currentPlanId,
+        competition_name: competitionName,
+        competition_date: date,
+        priority: 2,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error("Gagal menambah kompetisi: " + error.message);
+      return;
+    }
+
+    setCompetitions(prev => [...prev, {
+      id: data.id,
+      competition_name: competitionName,
+      competition_date: date,
+      priority: 2,
+    }].sort((a, b) => new Date(a.competition_date).getTime() - new Date(b.competition_date).getTime()));
+    
+    toast.success("Kompetisi berhasil ditambahkan");
   };
 
   const addCompetition = async () => {
@@ -1422,9 +1627,17 @@ export default function AnnualPlan() {
                 phases={phases}
                 competitions={competitions}
                 weeklyData={generatedWeeklyData}
+                trainingFocus={trainingFocus}
+                weeklyTests={weeklyTests}
                 periodizationType={periodizationType}
                 onWeeklyDataChange={handleWeeklyDataChange}
+                onTrainingFocusChange={handleTrainingFocusChange}
+                onTrainingFocusRemove={handleTrainingFocusRemove}
+                onTestAdd={handleTestAdd}
+                onTestRemove={handleTestRemove}
+                onCompetitionAdd={handleCompetitionAddFromCalendar}
                 isEditing={isEditingWeeklyData}
+                isCoach={isCoach}
               />
 
               {/* Editable Table */}
