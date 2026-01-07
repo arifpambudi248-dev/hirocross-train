@@ -1,12 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { format, addDays, parseISO, differenceInDays, isWithinInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Trophy, FlaskConical, X, Check, Plus } from "lucide-react";
+import { Trophy, FlaskConical, X, Check, Plus, Minus, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 type Phase = {
@@ -62,19 +63,22 @@ interface PeriodizationCalendarProps {
   onWeeklyDataChange?: (weekNumber: number, field: 'planned_volume' | 'planned_intensity', value: number) => void;
   onTrainingFocusChange?: (weekNumber: number, focusType: string, intensityLevel: number, label?: string) => void;
   onTrainingFocusRemove?: (weekNumber: number, focusType: string) => void;
+  onBulkTrainingFocusChange?: (weekNumbers: number[], focusType: string, label: string) => void;
   onTestAdd?: (weekNumber: number, testName: string) => void;
   onTestRemove?: (weekNumber: number, testId: string) => void;
   onCompetitionAdd?: (weekNumber: number, competitionName: string, date: string) => void;
+  onMesoWeeksChange?: (weeksPerMeso: number) => void;
+  mesoWeeks?: number;
   isEditing?: boolean;
   isCoach?: boolean;
 }
 
 const FOCUS_TYPES = [
-  { key: "kekuatan", label: "Kekuatan", color: "bg-red-400 dark:bg-red-600" },
-  { key: "kecepatan", label: "Kecepatan", color: "bg-yellow-400 dark:bg-yellow-600" },
-  { key: "daya_tahan", label: "Daya Tahan", color: "bg-blue-400 dark:bg-blue-600" },
-  { key: "fleksibilitas", label: "Fleksibilitas", color: "bg-green-400 dark:bg-green-600" },
-  { key: "mental", label: "Mental", color: "bg-purple-400 dark:bg-purple-600" },
+  { key: "kekuatan", label: "Kekuatan", color: "bg-red-400 dark:bg-red-600", textColor: "text-red-700 dark:text-red-300" },
+  { key: "kecepatan", label: "Kecepatan", color: "bg-yellow-400 dark:bg-yellow-600", textColor: "text-yellow-700 dark:text-yellow-300" },
+  { key: "daya_tahan", label: "Daya Tahan", color: "bg-blue-400 dark:bg-blue-600", textColor: "text-blue-700 dark:text-blue-300" },
+  { key: "fleksibilitas", label: "Fleksibilitas", color: "bg-green-400 dark:bg-green-600", textColor: "text-green-700 dark:text-green-300" },
+  { key: "mental", label: "Mental", color: "bg-purple-400 dark:bg-purple-600", textColor: "text-purple-700 dark:text-purple-300" },
 ];
 
 export function PeriodizationCalendar({
@@ -89,9 +93,12 @@ export function PeriodizationCalendar({
   onWeeklyDataChange,
   onTrainingFocusChange,
   onTrainingFocusRemove,
+  onBulkTrainingFocusChange,
   onTestAdd,
   onTestRemove,
   onCompetitionAdd,
+  onMesoWeeksChange,
+  mesoWeeks = 4,
   isEditing = false,
   isCoach = false,
 }: PeriodizationCalendarProps) {
@@ -99,7 +106,11 @@ export function PeriodizationCalendar({
   const [newCompName, setNewCompName] = useState("");
   const [newCompDate, setNewCompDate] = useState("");
   const [activePopover, setActivePopover] = useState<string | null>(null);
-  const [editingFocus, setEditingFocus] = useState<{ week: number; type: string; label: string } | null>(null);
+  
+  // Multi-select for training focus
+  const [selectedWeeks, setSelectedWeeks] = useState<{ [focusType: string]: number[] }>({});
+  const [bulkLabel, setBulkLabel] = useState("");
+  const [showBulkDialog, setShowBulkDialog] = useState<string | null>(null);
 
   const calendarData = useMemo(() => {
     if (!startDate || !competitionDate) return null;
@@ -223,37 +234,39 @@ export function PeriodizationCalendar({
 
     const periodeData = calculatePeriodeSpans(weeks);
     const faseData = calculateFaseSpans(weeks);
-    const mesocycleData = calculateMesocycles(weeks);
+    const mesocycleData = calculateMesocycles(weeks, mesoWeeks);
 
-    return { months, weeks, periodeData, faseData, mesocycleData };
-  }, [startDate, competitionDate, phases, competitions, weeklyData, trainingFocus, weeklyTests]);
+    return { months, weeks, periodeData, faseData, mesocycleData, totalWeeks };
+  }, [startDate, competitionDate, phases, competitions, weeklyData, trainingFocus, weeklyTests, mesoWeeks]);
 
-  const handleFocusClick = (weekNumber: number, focusType: string, currentLevel: number, currentLabel?: string) => {
+  const toggleWeekSelection = useCallback((focusType: string, weekNumber: number) => {
     if (!isEditing || !isCoach) return;
     
-    setEditingFocus({ week: weekNumber, type: focusType, label: currentLabel || "" });
-    setActivePopover(`focus-${weekNumber}-${focusType}`);
-  };
+    setSelectedWeeks(prev => {
+      const current = prev[focusType] || [];
+      if (current.includes(weekNumber)) {
+        return { ...prev, [focusType]: current.filter(w => w !== weekNumber) };
+      } else {
+        return { ...prev, [focusType]: [...current, weekNumber].sort((a, b) => a - b) };
+      }
+    });
+  }, [isEditing, isCoach]);
 
-  const handleSaveFocus = () => {
-    if (!editingFocus || !onTrainingFocusChange) return;
+  const handleBulkSave = (focusType: string) => {
+    const weeks = selectedWeeks[focusType] || [];
+    if (weeks.length === 0 || !bulkLabel.trim()) return;
     
-    const level = editingFocus.label ? 1 : 0;
-    if (level === 0 && onTrainingFocusRemove) {
-      onTrainingFocusRemove(editingFocus.week, editingFocus.type);
-    } else if (editingFocus.label) {
-      onTrainingFocusChange(editingFocus.week, editingFocus.type, 1, editingFocus.label);
+    if (onBulkTrainingFocusChange) {
+      onBulkTrainingFocusChange(weeks, focusType, bulkLabel.trim());
+    } else if (onTrainingFocusChange) {
+      weeks.forEach(week => {
+        onTrainingFocusChange(week, focusType, 1, bulkLabel.trim());
+      });
     }
     
-    setEditingFocus(null);
-    setActivePopover(null);
-  };
-
-  const handleRemoveFocus = () => {
-    if (!editingFocus || !onTrainingFocusRemove) return;
-    onTrainingFocusRemove(editingFocus.week, editingFocus.type);
-    setEditingFocus(null);
-    setActivePopover(null);
+    setSelectedWeeks(prev => ({ ...prev, [focusType]: [] }));
+    setBulkLabel("");
+    setShowBulkDialog(null);
   };
 
   const handleAddTest = (weekNumber: number) => {
@@ -275,22 +288,69 @@ export function PeriodizationCalendar({
     return <div className="text-muted-foreground text-center py-8">Belum ada data kalender</div>;
   }
 
-  const { months, weeks, periodeData, faseData, mesocycleData } = calendarData;
+  const { months, weeks, periodeData, faseData, mesocycleData, totalWeeks } = calendarData;
+  
+  // Check if meso configuration is appropriate
+  const totalMesoWeeks = mesocycleData.reduce((sum, m) => sum + m.span, 0);
+  const hasMesoWarning = mesoWeeks > 6 || (totalWeeks > 0 && totalWeeks % mesoWeeks !== 0);
 
   return (
-    <div className="space-y-2">
-      <h3 className="text-lg font-semibold">KALENDER PERIODISASI</h3>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">KALENDER PERIODISASI</h3>
+        
+        {/* Meso Configuration */}
+        {isEditing && isCoach && (
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">Minggu/Meso:</Label>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-7 w-7"
+                onClick={() => onMesoWeeksChange && mesoWeeks > 2 && onMesoWeeksChange(mesoWeeks - 1)}
+                disabled={mesoWeeks <= 2}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <span className="w-8 text-center font-medium">{mesoWeeks}</span>
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-7 w-7"
+                onClick={() => onMesoWeeksChange && onMesoWeeksChange(mesoWeeks + 1)}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Meso Warning */}
+      {hasMesoWarning && isEditing && (
+        <Alert variant="destructive" className="py-2">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            {mesoWeeks > 6 
+              ? "Mesocycle lebih dari 6 minggu tidak disarankan. Pertimbangkan untuk mengurangi."
+              : `Total ${totalWeeks} minggu tidak habis dibagi ${mesoWeeks}. Mesocycle terakhir akan memiliki ${totalWeeks % mesoWeeks} minggu.`
+            }
+          </AlertDescription>
+        </Alert>
+      )}
+
       <ScrollArea className="w-full whitespace-nowrap rounded-lg border">
         <div className="min-w-max">
           <table className="w-full border-collapse text-xs">
             <tbody>
               {/* Row 1: BULAN */}
               <tr>
-                <td className="bg-orange-500 dark:bg-orange-600 text-white font-bold p-2 border border-orange-600 dark:border-orange-700 sticky left-0 z-10 min-w-[100px]">
+                <td className="bg-orange-500 dark:bg-orange-600 text-white font-bold p-2 border border-orange-600 dark:border-orange-700 sticky left-0 z-20 min-w-[100px]">
                   BULAN
                 </td>
                 {months.map((month, idx) => (
-                  <td key={idx} colSpan={month.weeks.length} className="bg-orange-500 dark:bg-orange-600 text-white font-bold p-2 border border-orange-600 dark:border-orange-700 text-center">
+                  <td key={idx} colSpan={month.weeks.length} className="bg-orange-500 dark:bg-orange-600 text-white font-bold p-2 border border-orange-600 dark:border-orange-700 text-center whitespace-nowrap">
                     {month.name}
                   </td>
                 ))}
@@ -298,11 +358,11 @@ export function PeriodizationCalendar({
 
               {/* Row 2: MINGGU */}
               <tr>
-                <td className="bg-orange-400 dark:bg-orange-500 text-white font-bold p-2 border border-orange-500 dark:border-orange-600 sticky left-0 z-10">
+                <td className="bg-orange-400 dark:bg-orange-500 text-white font-bold p-2 border border-orange-500 dark:border-orange-600 sticky left-0 z-20">
                   MINGGU
                 </td>
                 {weeks.map((week) => (
-                  <td key={week.weekNumber} className="bg-orange-400 dark:bg-orange-500 text-white font-medium p-2 border border-orange-500 dark:border-orange-600 text-center min-w-[50px]">
+                  <td key={week.weekNumber} className="bg-orange-400 dark:bg-orange-500 text-white font-medium p-2 border border-orange-500 dark:border-orange-600 text-center min-w-[45px]">
                     {week.weekNumber}
                   </td>
                 ))}
@@ -310,7 +370,7 @@ export function PeriodizationCalendar({
 
               {/* Row 3: TANGGAL */}
               <tr>
-                <td className="bg-orange-300 dark:bg-orange-400 text-orange-900 dark:text-white font-bold p-2 border border-orange-400 dark:border-orange-500 sticky left-0 z-10">
+                <td className="bg-orange-300 dark:bg-orange-400 text-orange-900 dark:text-white font-bold p-2 border border-orange-400 dark:border-orange-500 sticky left-0 z-20">
                   TANGGAL
                 </td>
                 {weeks.map((week) => (
@@ -322,11 +382,11 @@ export function PeriodizationCalendar({
 
               {/* Row 4: PERIODE */}
               <tr>
-                <td className="bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 font-bold p-2 border border-amber-300 dark:border-amber-600 sticky left-0 z-10">
+                <td className="bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 font-bold p-2 border border-amber-300 dark:border-amber-600 sticky left-0 z-20">
                   PERIODE
                 </td>
                 {periodeData.map((periode, idx) => (
-                  <td key={idx} colSpan={periode.span} className={`${periode.color} text-white font-bold p-2 border border-slate-400 dark:border-slate-600 text-center`}>
+                  <td key={idx} colSpan={periode.span} className={`${periode.color} text-white font-bold p-2 border border-slate-400 dark:border-slate-600 text-center whitespace-nowrap`}>
                     {periode.name}
                   </td>
                 ))}
@@ -334,11 +394,11 @@ export function PeriodizationCalendar({
 
               {/* Row 5: FASE */}
               <tr>
-                <td className="bg-amber-100 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-bold p-2 border border-amber-200 dark:border-amber-700 sticky left-0 z-10">
+                <td className="bg-amber-100 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-bold p-2 border border-amber-200 dark:border-amber-700 sticky left-0 z-20">
                   FASE
                 </td>
                 {faseData.map((fase, idx) => (
-                  <td key={idx} colSpan={fase.span} className={`${fase.color} text-white font-bold p-2 border border-slate-400 dark:border-slate-600 text-center`}>
+                  <td key={idx} colSpan={fase.span} className={`${fase.color} text-white font-bold p-2 border border-slate-400 dark:border-slate-600 text-center whitespace-nowrap`}>
                     {fase.name}
                   </td>
                 ))}
@@ -346,7 +406,7 @@ export function PeriodizationCalendar({
 
               {/* Row 6: TES & KOMP */}
               <tr>
-                <td className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold p-2 border border-slate-300 dark:border-slate-600 sticky left-0 z-10">
+                <td className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold p-2 border border-slate-300 dark:border-slate-600 sticky left-0 z-20">
                   TES & KOMP
                 </td>
                 {weeks.map((week) => (
@@ -411,100 +471,134 @@ export function PeriodizationCalendar({
 
               {/* Row 7: MESOCYCLE */}
               <tr>
-                <td className="bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold p-2 border border-slate-400 dark:border-slate-500 sticky left-0 z-10">
+                <td className="bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold p-2 border border-slate-400 dark:border-slate-500 sticky left-0 z-20">
                   MESOCYCLE
                 </td>
                 {mesocycleData.map((meso, idx) => (
-                  <td key={idx} colSpan={meso.span} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium p-2 border border-slate-300 dark:border-slate-600 text-center">
+                  <td key={idx} colSpan={meso.span} className={cn(
+                    "font-medium p-2 border border-slate-300 dark:border-slate-600 text-center whitespace-nowrap",
+                    meso.span < mesoWeeks && idx === mesocycleData.length - 1 
+                      ? "bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200" 
+                      : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                  )}>
                     {meso.name}
+                    {meso.span < mesoWeeks && idx === mesocycleData.length - 1 && (
+                      <span className="text-[9px] block">({meso.span}w)</span>
+                    )}
                   </td>
                 ))}
               </tr>
 
-              {/* Training focus rows with editable labels */}
-              {FOCUS_TYPES.map((focusType) => (
-                <tr key={focusType.key}>
-                  <td className="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200 font-medium p-2 border border-amber-200 dark:border-amber-800 sticky left-0 z-10 italic">
-                    {focusType.label}
-                  </td>
-                  {weeks.map((week) => {
-                    const focusData = week.focus[focusType.key];
-                    const hasLabel = focusData?.label;
-                    
-                    return (
-                      <td
-                        key={week.weekNumber}
-                        className={cn(
-                          "p-1 border border-slate-200 dark:border-slate-700 text-center",
-                          isEditing && isCoach ? "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" : "",
-                          hasLabel ? focusType.color + " bg-opacity-30" : "bg-white dark:bg-slate-900"
-                        )}
-                      >
-                        <Popover
-                          open={activePopover === `focus-${week.weekNumber}-${focusType.key}`}
-                          onOpenChange={(open) => {
-                            if (open && isEditing && isCoach) {
-                              handleFocusClick(week.weekNumber, focusType.key, focusData?.level || 0, focusData?.label);
-                            } else {
-                              setActivePopover(null);
-                              setEditingFocus(null);
-                            }
-                          }}
-                        >
-                          <PopoverTrigger asChild>
-                            <button
-                              className={cn(
-                                "w-full h-full min-h-[20px] text-[9px] leading-tight",
-                                hasLabel ? "text-foreground font-medium" : "text-muted-foreground"
-                              )}
-                              disabled={!isEditing || !isCoach}
-                            >
-                              {hasLabel ? focusData.label : "-"}
-                            </button>
-                          </PopoverTrigger>
-                          {isEditing && isCoach && (
+              {/* Training focus rows with multi-select */}
+              {FOCUS_TYPES.map((focusType) => {
+                const selectedForType = selectedWeeks[focusType.key] || [];
+                const hasSelection = selectedForType.length > 0;
+                
+                return (
+                  <tr key={focusType.key}>
+                    <td className={cn(
+                      "font-medium p-2 border sticky left-0 z-20 italic",
+                      focusType.color.replace("bg-", "bg-").replace("-400", "-100").replace("-600", "-900"),
+                      focusType.textColor
+                    )}>
+                      <div className="flex items-center justify-between gap-1">
+                        <span>{focusType.label}</span>
+                        {isEditing && isCoach && hasSelection && (
+                          <Popover open={showBulkDialog === focusType.key} onOpenChange={(open) => setShowBulkDialog(open ? focusType.key : null)}>
+                            <PopoverTrigger asChild>
+                              <Button size="sm" variant="secondary" className="h-5 px-1 text-[9px]">
+                                Set ({selectedForType.length})
+                              </Button>
+                            </PopoverTrigger>
                             <PopoverContent className="w-56 p-3" align="start">
                               <div className="space-y-3">
-                                <div className="font-medium text-sm">{focusType.label} - Minggu {week.weekNumber}</div>
+                                <div className="font-medium text-sm">
+                                  {focusType.label} - Minggu {selectedForType.join(", ")}
+                                </div>
                                 <div className="space-y-2">
                                   <Label className="text-xs">Label Tujuan</Label>
                                   <Input
                                     placeholder="Contoh: Adaptasi Anatomi"
-                                    value={editingFocus?.label || ""}
-                                    onChange={(e) => setEditingFocus(prev => prev ? { ...prev, label: e.target.value } : null)}
+                                    value={bulkLabel}
+                                    onChange={(e) => setBulkLabel(e.target.value)}
                                     className="h-8 text-xs"
                                   />
                                 </div>
                                 <div className="flex gap-2">
-                                  <Button size="sm" className="flex-1" onClick={handleSaveFocus}>
+                                  <Button size="sm" className="flex-1" onClick={() => handleBulkSave(focusType.key)}>
                                     <Check className="h-3 w-3 mr-1" /> Simpan
                                   </Button>
-                                  {hasLabel && (
-                                    <Button size="sm" variant="destructive" onClick={handleRemoveFocus}>
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  )}
+                                  <Button size="sm" variant="outline" onClick={() => {
+                                    setSelectedWeeks(prev => ({ ...prev, [focusType.key]: [] }));
+                                    setShowBulkDialog(null);
+                                  }}>
+                                    Batal
+                                  </Button>
                                 </div>
                               </div>
                             </PopoverContent>
+                          </Popover>
+                        )}
+                      </div>
+                    </td>
+                    {weeks.map((week) => {
+                      const focusData = week.focus[focusType.key];
+                      const hasLabel = focusData?.label;
+                      const isSelected = selectedForType.includes(week.weekNumber);
+                      
+                      return (
+                        <td
+                          key={week.weekNumber}
+                          onClick={() => isEditing && isCoach && !hasLabel && toggleWeekSelection(focusType.key, week.weekNumber)}
+                          className={cn(
+                            "p-1 border border-slate-200 dark:border-slate-700 text-center transition-all",
+                            isEditing && isCoach && !hasLabel ? "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" : "",
+                            hasLabel ? focusType.color + " bg-opacity-40" : "bg-white dark:bg-slate-900",
+                            isSelected ? "ring-2 ring-primary ring-inset bg-primary/20" : ""
                           )}
-                        </Popover>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                        >
+                          {hasLabel ? (
+                            <div className="flex items-center justify-center gap-0.5">
+                              <span className="text-[9px] leading-tight font-medium truncate max-w-[40px]" title={focusData.label}>
+                                {focusData.label}
+                              </span>
+                              {isEditing && isCoach && onTrainingFocusRemove && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onTrainingFocusRemove(week.weekNumber, focusType.key);
+                                  }} 
+                                  className="text-red-500 hover:text-red-700 ml-0.5"
+                                >
+                                  <X className="h-2 w-2" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className={cn(
+                              "text-[9px]",
+                              isSelected ? "text-primary font-bold" : "text-muted-foreground"
+                            )}>
+                              {isSelected ? "✓" : "-"}
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
 
-              {/* Volume bars moved to bottom */}
+              {/* Volume bars */}
               <tr>
-                <td className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-bold p-2 border border-blue-200 dark:border-blue-800 sticky left-0 z-10">
+                <td className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-bold p-2 border border-blue-200 dark:border-blue-800 sticky left-0 z-20">
                   VOLUME %
                 </td>
                 {weeks.map((week) => (
                   <td key={week.weekNumber} className="bg-white dark:bg-slate-900 p-1 border border-slate-200 dark:border-slate-700">
                     <div className="h-8 flex items-end justify-center">
                       <div
-                        className="w-6 bg-blue-400 dark:bg-blue-500 rounded-t transition-all"
+                        className="w-5 bg-blue-400 dark:bg-blue-500 rounded-t transition-all"
                         style={{ height: `${(week.volume / 100) * 100}%` }}
                         title={`${week.volume}%`}
                       />
@@ -515,17 +609,17 @@ export function PeriodizationCalendar({
 
               {/* Intensity bars */}
               <tr>
-                <td className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 font-bold p-2 border border-red-200 dark:border-red-800 sticky left-0 z-10">
+                <td className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 font-bold p-2 border border-red-200 dark:border-red-800 sticky left-0 z-20">
                   INTENSITAS %
                 </td>
                 {weeks.map((week) => (
                   <td key={week.weekNumber} className="bg-white dark:bg-slate-900 p-1 border border-slate-200 dark:border-slate-700">
                     <div className="h-10 flex flex-col items-center justify-end">
-                      <span className="text-[9px] text-red-500 dark:text-red-400 font-medium mb-0.5">
+                      <span className="text-[8px] text-red-500 dark:text-red-400 font-medium mb-0.5">
                         {week.intensity}
                       </span>
                       <div
-                        className="w-6 bg-red-400 dark:bg-red-500 rounded-t transition-all"
+                        className="w-5 bg-red-400 dark:bg-red-500 rounded-t transition-all"
                         style={{ height: `${(week.intensity / 100) * 70}%` }}
                         title={`${week.intensity}%`}
                       />
@@ -541,7 +635,7 @@ export function PeriodizationCalendar({
       
       {isEditing && isCoach && (
         <p className="text-xs text-muted-foreground">
-          💡 Klik pada sel fokus latihan untuk menambah/mengubah label tujuan (contoh: "Adaptasi Anatomi"). Klik ikon + pada TES & KOMP untuk menambah tes atau kompetisi.
+          💡 Klik beberapa minggu pada baris fokus latihan untuk memilih, lalu klik tombol "Set" untuk mengisi label sekaligus. Klik ikon X untuk menghapus.
         </p>
       )}
     </div>
@@ -614,9 +708,8 @@ function calculateFaseSpans(weeks: any[]) {
   return fases;
 }
 
-function calculateMesocycles(weeks: any[]) {
+function calculateMesocycles(weeks: any[], weeksPerMeso: number) {
   const mesos: { name: string; span: number }[] = [];
-  const weeksPerMeso = 4;
   let mesoNumber = 1;
 
   for (let i = 0; i < weeks.length; i += weeksPerMeso) {
