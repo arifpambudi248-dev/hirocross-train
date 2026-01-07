@@ -1,8 +1,13 @@
-import { useMemo } from "react";
-import { format, addDays, parseISO, differenceInDays, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { useMemo, useState } from "react";
+import { format, addDays, parseISO, differenceInDays, isWithinInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Trophy, Dumbbell } from "lucide-react";
+import { Trophy, Dumbbell, FlaskConical, X, Check, Plus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 type Phase = {
   name: string;
@@ -28,16 +33,54 @@ type WeekData = {
   planned_intensity: number;
 };
 
+type TrainingFocus = {
+  id?: string;
+  week_number: number;
+  focus_type: string;
+  intensity_level: number;
+  notes?: string;
+};
+
+type WeeklyTest = {
+  id?: string;
+  week_number: number;
+  test_name: string;
+  test_date?: string;
+  notes?: string;
+};
+
 interface PeriodizationCalendarProps {
   startDate: string;
   competitionDate: string;
   phases: Phase[];
   competitions: Competition[];
   weeklyData: WeekData[];
+  trainingFocus: TrainingFocus[];
+  weeklyTests: WeeklyTest[];
   periodizationType: "linear" | "block" | "undulating";
   onWeeklyDataChange?: (weekNumber: number, field: 'planned_volume' | 'planned_intensity', value: number) => void;
+  onTrainingFocusChange?: (weekNumber: number, focusType: string, intensityLevel: number) => void;
+  onTrainingFocusRemove?: (weekNumber: number, focusType: string) => void;
+  onTestAdd?: (weekNumber: number, testName: string) => void;
+  onTestRemove?: (weekNumber: number, testId: string) => void;
+  onCompetitionAdd?: (weekNumber: number, competitionName: string, date: string) => void;
   isEditing?: boolean;
+  isCoach?: boolean;
 }
+
+const FOCUS_TYPES = [
+  { key: "kekuatan", label: "Kekuatan", color: "bg-red-400 dark:bg-red-600" },
+  { key: "kecepatan", label: "Kecepatan", color: "bg-yellow-400 dark:bg-yellow-600" },
+  { key: "daya_tahan", label: "Daya Tahan", color: "bg-blue-400 dark:bg-blue-600" },
+  { key: "fleksibilitas", label: "Fleksibilitas", color: "bg-green-400 dark:bg-green-600" },
+  { key: "mental", label: "Mental", color: "bg-purple-400 dark:bg-purple-600" },
+];
+
+const INTENSITY_LEVELS = [
+  { level: 1, label: "Rendah", size: "h-2 w-2" },
+  { level: 2, label: "Sedang", size: "h-3 w-3" },
+  { level: 3, label: "Tinggi", size: "h-4 w-4" },
+];
 
 export function PeriodizationCalendar({
   startDate,
@@ -45,10 +88,23 @@ export function PeriodizationCalendar({
   phases,
   competitions,
   weeklyData,
+  trainingFocus = [],
+  weeklyTests = [],
   periodizationType,
   onWeeklyDataChange,
+  onTrainingFocusChange,
+  onTrainingFocusRemove,
+  onTestAdd,
+  onTestRemove,
+  onCompetitionAdd,
   isEditing = false,
+  isCoach = false,
 }: PeriodizationCalendarProps) {
+  const [newTestName, setNewTestName] = useState("");
+  const [newCompName, setNewCompName] = useState("");
+  const [newCompDate, setNewCompDate] = useState("");
+  const [activePopover, setActivePopover] = useState<string | null>(null);
+
   const calendarData = useMemo(() => {
     if (!startDate || !competitionDate) return null;
 
@@ -69,7 +125,9 @@ export function PeriodizationCalendar({
       intensity: number;
       hasCompetition: boolean;
       competitionName?: string;
-      hasTest: boolean;
+      competitionId?: string;
+      tests: WeeklyTest[];
+      focus: { [key: string]: number };
     }[] = [];
 
     let currentMonth = "";
@@ -116,13 +174,14 @@ export function PeriodizationCalendar({
       }
 
       // Find weekly data
-      const weekData = weeklyData.find(w => w.week_number === i + 1);
-      const volume = weekData?.planned_volume ?? 70;
-      const intensity = weekData?.planned_intensity ?? 50;
+      const weekDataItem = weeklyData.find(w => w.week_number === i + 1);
+      const volume = weekDataItem?.planned_volume ?? 70;
+      const intensity = weekDataItem?.planned_intensity ?? 50;
 
       // Check for competition
       let hasCompetition = false;
       let competitionName: string | undefined;
+      let competitionId: string | undefined;
       
       // Check main competition
       const mainCompDate = parseISO(competitionDate);
@@ -137,9 +196,21 @@ export function PeriodizationCalendar({
         if (isWithinInterval(compDate, { start: weekStart, end: weekEnd })) {
           hasCompetition = true;
           competitionName = comp.competition_name;
+          competitionId = comp.id;
           break;
         }
       }
+
+      // Find tests for this week
+      const weekTests = weeklyTests.filter(t => t.week_number === i + 1);
+
+      // Find focus for this week
+      const weekFocus: { [key: string]: number } = {};
+      trainingFocus
+        .filter(f => f.week_number === i + 1)
+        .forEach(f => {
+          weekFocus[f.focus_type] = f.intensity_level;
+        });
 
       weeks.push({
         weekNumber: i + 1,
@@ -152,7 +223,9 @@ export function PeriodizationCalendar({
         intensity,
         hasCompetition,
         competitionName,
-        hasTest: false, // Can be extended
+        competitionId,
+        tests: weekTests,
+        focus: weekFocus,
       });
     }
 
@@ -167,7 +240,34 @@ export function PeriodizationCalendar({
     const mesocycleData = calculateMesocycles(weeks);
 
     return { months, weeks, periodeData, faseData, mesocycleData };
-  }, [startDate, competitionDate, phases, competitions, weeklyData]);
+  }, [startDate, competitionDate, phases, competitions, weeklyData, trainingFocus, weeklyTests]);
+
+  const handleFocusClick = (weekNumber: number, focusType: string, currentLevel: number) => {
+    if (!isEditing || !isCoach || !onTrainingFocusChange) return;
+    
+    const newLevel = currentLevel === 0 ? 1 : currentLevel >= 3 ? 0 : currentLevel + 1;
+    
+    if (newLevel === 0 && onTrainingFocusRemove) {
+      onTrainingFocusRemove(weekNumber, focusType);
+    } else if (newLevel > 0) {
+      onTrainingFocusChange(weekNumber, focusType, newLevel);
+    }
+  };
+
+  const handleAddTest = (weekNumber: number) => {
+    if (!newTestName.trim() || !onTestAdd) return;
+    onTestAdd(weekNumber, newTestName.trim());
+    setNewTestName("");
+    setActivePopover(null);
+  };
+
+  const handleAddCompetition = (weekNumber: number) => {
+    if (!newCompName.trim() || !newCompDate || !onCompetitionAdd) return;
+    onCompetitionAdd(weekNumber, newCompName.trim(), newCompDate);
+    setNewCompName("");
+    setNewCompDate("");
+    setActivePopover(null);
+  };
 
   if (!calendarData) {
     return <div className="text-muted-foreground text-center py-8">Belum ada data kalender</div>;
@@ -260,7 +360,7 @@ export function PeriodizationCalendar({
                 ))}
               </tr>
 
-              {/* Row 6: TES & KOMP */}
+              {/* Row 6: TES & KOMP - Editable */}
               <tr>
                 <td className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold p-2 border border-slate-300 dark:border-slate-600 sticky left-0 z-10">
                   TES & KOMP
@@ -268,15 +368,98 @@ export function PeriodizationCalendar({
                 {weeks.map((week) => (
                   <td
                     key={week.weekNumber}
-                    className="bg-slate-100 dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-700 text-center"
+                    className="bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 text-center"
                   >
-                    {week.hasCompetition ? (
-                      <div className="flex items-center justify-center" title={week.competitionName}>
-                        <Trophy className="h-3 w-3 text-amber-500" />
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
+                    <div className="flex flex-col items-center gap-0.5 min-h-[24px]">
+                      {/* Show competition */}
+                      {week.hasCompetition && (
+                        <div className="flex items-center gap-0.5" title={week.competitionName}>
+                          <Trophy className="h-3 w-3 text-amber-500" />
+                        </div>
+                      )}
+                      
+                      {/* Show tests */}
+                      {week.tests.map((test, idx) => (
+                        <div key={idx} className="flex items-center gap-0.5" title={test.test_name}>
+                          <FlaskConical className="h-3 w-3 text-blue-500" />
+                          {isEditing && isCoach && onTestRemove && (
+                            <button
+                              onClick={() => onTestRemove(week.weekNumber, test.id!)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <X className="h-2 w-2" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      
+                      {/* Add button when editing */}
+                      {isEditing && isCoach && !week.hasCompetition && (
+                        <Popover 
+                          open={activePopover === `test-${week.weekNumber}`} 
+                          onOpenChange={(open) => setActivePopover(open ? `test-${week.weekNumber}` : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            <button className="text-muted-foreground hover:text-foreground">
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-3" align="start">
+                            <div className="space-y-3">
+                              <div className="font-medium text-sm">Tambah Tes/Kompetisi</div>
+                              
+                              {/* Add Test */}
+                              <div className="space-y-2">
+                                <Label className="text-xs">Tes</Label>
+                                <div className="flex gap-2">
+                                  <Input
+                                    placeholder="Nama tes..."
+                                    value={newTestName}
+                                    onChange={(e) => setNewTestName(e.target.value)}
+                                    className="h-7 text-xs"
+                                  />
+                                  <Button 
+                                    size="sm" 
+                                    className="h-7 px-2"
+                                    onClick={() => handleAddTest(week.weekNumber)}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              {/* Add Competition */}
+                              <div className="space-y-2 border-t pt-2">
+                                <Label className="text-xs">Kompetisi</Label>
+                                <Input
+                                  placeholder="Nama kompetisi..."
+                                  value={newCompName}
+                                  onChange={(e) => setNewCompName(e.target.value)}
+                                  className="h-7 text-xs"
+                                />
+                                <Input
+                                  type="date"
+                                  value={newCompDate}
+                                  onChange={(e) => setNewCompDate(e.target.value)}
+                                  className="h-7 text-xs"
+                                />
+                                <Button 
+                                  size="sm" 
+                                  className="h-7 w-full"
+                                  onClick={() => handleAddCompetition(week.weekNumber)}
+                                >
+                                  Tambah Kompetisi
+                                </Button>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                      
+                      {!week.hasCompetition && week.tests.length === 0 && !isEditing && (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </div>
                   </td>
                 ))}
               </tr>
@@ -342,20 +525,41 @@ export function PeriodizationCalendar({
                 ))}
               </tr>
 
-              {/* Training focus rows */}
-              {["Kekuatan", "Kecepatan", "Daya Tahan", "Fleksibilitas", "Mental"].map((focus) => (
-                <tr key={focus}>
+              {/* Training focus rows - Clickable */}
+              {FOCUS_TYPES.map((focusType) => (
+                <tr key={focusType.key}>
                   <td className="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200 font-medium p-2 border border-amber-200 dark:border-amber-800 sticky left-0 z-10 italic">
-                    {focus}
+                    {focusType.label}
                   </td>
-                  {weeks.map((week) => (
-                    <td
-                      key={week.weekNumber}
-                      className="bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-700 text-center text-muted-foreground"
-                    >
-                      -
-                    </td>
-                  ))}
+                  {weeks.map((week) => {
+                    const level = week.focus[focusType.key] || 0;
+                    return (
+                      <td
+                        key={week.weekNumber}
+                        className={cn(
+                          "p-2 border border-slate-200 dark:border-slate-700 text-center",
+                          isEditing && isCoach ? "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" : "",
+                          level > 0 ? "bg-white dark:bg-slate-900" : "bg-white dark:bg-slate-900"
+                        )}
+                        onClick={() => handleFocusClick(week.weekNumber, focusType.key, level)}
+                        title={level > 0 ? `${focusType.label}: ${INTENSITY_LEVELS.find(l => l.level === level)?.label}` : "Klik untuk menambah"}
+                      >
+                        {level > 0 ? (
+                          <div className="flex items-center justify-center">
+                            <div 
+                              className={cn(
+                                "rounded-full",
+                                focusType.color,
+                                INTENSITY_LEVELS.find(l => l.level === level)?.size
+                              )}
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -363,9 +567,31 @@ export function PeriodizationCalendar({
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
-      <p className="text-xs text-muted-foreground">
-        Klik beberapa minggu pada baris Tujuan Latihan untuk memilih, lalu buat blok. Klik blok yang sudah ada untuk mengedit.
-      </p>
+      
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-4">
+        <span className="font-medium">Fokus Latihan:</span>
+        {FOCUS_TYPES.map((f) => (
+          <div key={f.key} className="flex items-center gap-1">
+            <div className={cn("h-3 w-3 rounded-full", f.color)} />
+            <span>{f.label}</span>
+          </div>
+        ))}
+        <span className="mx-2">|</span>
+        <span className="font-medium">Intensitas:</span>
+        {INTENSITY_LEVELS.map((l) => (
+          <div key={l.level} className="flex items-center gap-1">
+            <div className={cn("rounded-full bg-slate-400", l.size)} />
+            <span>{l.label}</span>
+          </div>
+        ))}
+      </div>
+      
+      {isEditing && isCoach && (
+        <p className="text-xs text-muted-foreground">
+          💡 Klik pada sel fokus latihan untuk menambah/mengubah intensitas. Klik ikon + pada TES & KOMP untuk menambah tes atau kompetisi.
+        </p>
+      )}
     </div>
   );
 }
