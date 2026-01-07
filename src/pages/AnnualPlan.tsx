@@ -10,6 +10,7 @@ import { id as localeId } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
 import { Pencil, Save, FolderOpen, Plus, FileDown, Trash2, Trophy, Calendar } from "lucide-react";
 import { exportAnnualPlanToPDF, type AnnualPlanExportData } from "@/lib/exportUtils";
 import { PeriodizationCalendar } from "@/components/PeriodizationCalendar";
@@ -66,6 +67,7 @@ type TrainingFocus = {
   week_number: number;
   focus_type: string;
   intensity_level: number;
+  label?: string;
   notes?: string;
 };
 
@@ -282,6 +284,7 @@ export default function AnnualPlan() {
         week_number: f.week_number,
         focus_type: f.focus_type,
         intensity_level: f.intensity_level,
+        label: f.label,
         notes: f.notes,
       })));
     }
@@ -307,7 +310,7 @@ export default function AnnualPlan() {
     }
   };
 
-  const handleTrainingFocusChange = async (weekNumber: number, focusType: string, intensityLevel: number) => {
+  const handleTrainingFocusChange = async (weekNumber: number, focusType: string, intensityLevel: number, label?: string) => {
     if (!currentPlanId) {
       toast.error("Simpan rencana terlebih dahulu");
       return;
@@ -318,7 +321,7 @@ export default function AnnualPlan() {
     if (existing) {
       const { error } = await supabase
         .from("weekly_training_focus")
-        .update({ intensity_level: intensityLevel })
+        .update({ intensity_level: intensityLevel, label: label || null })
         .eq("id", existing.id);
 
       if (error) {
@@ -327,7 +330,7 @@ export default function AnnualPlan() {
       }
 
       setTrainingFocus(prev => prev.map(f => 
-        f.id === existing.id ? { ...f, intensity_level: intensityLevel } : f
+        f.id === existing.id ? { ...f, intensity_level: intensityLevel, label } : f
       ));
     } else {
       const { data, error } = await supabase
@@ -337,6 +340,7 @@ export default function AnnualPlan() {
           week_number: weekNumber,
           focus_type: focusType,
           intensity_level: intensityLevel,
+          label: label || null,
         })
         .select()
         .single();
@@ -351,6 +355,7 @@ export default function AnnualPlan() {
         week_number: weekNumber,
         focus_type: focusType,
         intensity_level: intensityLevel,
+        label,
       }]);
     }
   };
@@ -1640,12 +1645,126 @@ export default function AnnualPlan() {
                 isCoach={isCoach}
               />
 
-              {/* Editable Table */}
+              {/* Volume & Intensity Chart */}
+              <div className="mt-6">
+                <h4 className="text-sm font-medium mb-4">Grafik Volume & Intensitas</h4>
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={generatedWeeklyData} margin={{ top: 20, right: 20, left: 10, bottom: 10 }}>
+                    {/* Phase zone backgrounds for linear periodization */}
+                    {periodizationType === "linear" && phases.map((phase, idx) => {
+                      const phaseStart = new Date(phase.startDate);
+                      const phaseEnd = new Date(phase.endDate);
+                      const startD = new Date(startDate);
+                      const x1 = Math.max(1, Math.ceil(differenceInDays(phaseStart, startD) / 7) + 1);
+                      const x2 = Math.ceil(differenceInDays(phaseEnd, startD) / 7) + 1;
+                      
+                      let fill = "rgba(239, 68, 68, 0.15)";
+                      if (phase.name.includes("Khusus") || phase.name.includes("SPP")) {
+                        fill = "rgba(34, 197, 94, 0.15)";
+                      } else if (phase.name.includes("Pra")) {
+                        fill = "rgba(249, 115, 22, 0.15)";
+                      } else if (phase.name.includes("Kompetisi") && !phase.name.includes("Pra")) {
+                        fill = "rgba(168, 85, 247, 0.15)";
+                      }
+                      
+                      return (
+                        <ReferenceArea key={idx} x1={x1} x2={x2} fill={fill} fillOpacity={1} />
+                      );
+                    })}
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="week_number" 
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                      tickFormatter={(val) => `M${val}`}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value: number, name: string) => [`${value}%`, name]}
+                      labelFormatter={(label) => `Minggu ${label}`}
+                    />
+                    <Legend />
+                    {/* Competition markers */}
+                    {competitions.map((comp, idx) => {
+                      const compDate = new Date(comp.competition_date);
+                      const startD = new Date(startDate);
+                      const weekNum = Math.ceil(differenceInDays(compDate, startD) / 7);
+                      if (weekNum > 0 && weekNum <= generatedWeeklyData.length) {
+                        return (
+                          <ReferenceLine 
+                            key={idx}
+                            x={weekNum} 
+                            stroke="hsl(var(--primary))"
+                            strokeDasharray="5 5"
+                          />
+                        );
+                      }
+                      return null;
+                    })}
+                    {/* Main competition marker */}
+                    {(() => {
+                      const compDate = new Date(competitionDate);
+                      const startD = new Date(startDate);
+                      const weekNum = Math.ceil(differenceInDays(compDate, startD) / 7);
+                      return (
+                        <ReferenceLine 
+                          x={weekNum} 
+                          stroke="hsl(var(--destructive))"
+                          strokeWidth={2}
+                          label={{ value: '🏆', position: 'top', fontSize: 14 }}
+                        />
+                      );
+                    })()}
+                    <Bar 
+                      dataKey="planned_volume" 
+                      fill="hsl(217, 91%, 60%)" 
+                      name="Volume (%)"
+                      opacity={0.8}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="planned_intensity" 
+                      stroke="hsl(0, 84%, 60%)" 
+                      strokeWidth={3}
+                      name="Intensitas (%)"
+                      dot={{ fill: 'hsl(0, 84%, 60%)', r: 3 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+                
+                {/* Legend */}
+                <div className="flex flex-wrap items-center justify-center gap-4 text-xs mt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                    <span>Volume</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-500 rounded"></div>
+                    <span>Intensitas</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-0.5 bg-destructive"></div>
+                    <span>Kompetisi</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Editable Table - Moved to bottom */}
               {isEditingWeeklyData && (
                 <div className="border rounded-lg overflow-hidden mt-6">
+                  <h4 className="text-sm font-medium p-3 bg-muted">Edit Volume & Intensitas</h4>
                   <div className="overflow-x-auto max-h-96">
                     <table className="w-full text-sm">
-                      <thead className="bg-muted sticky top-0">
+                      <thead className="bg-muted/50 sticky top-0">
                         <tr>
                           <th className="text-left p-2 font-medium">Minggu</th>
                           <th className="text-left p-2 font-medium">Tanggal</th>

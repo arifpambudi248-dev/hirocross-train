@@ -660,6 +660,7 @@ export type Database = {
           focus_type: string
           id: string
           intensity_level: number | null
+          label: string | null
           notes: string | null
           plan_id: string
           updated_at: string
@@ -670,6 +671,7 @@ export type Database = {
           focus_type: string
           id?: string
           intensity_level?: number | null
+          label?: string | null
           notes?: string | null
           plan_id: string
           updated_at?: string
@@ -680,6 +682,7 @@ export type Database = {
           focus_type?: string
           id?: string
           intensity_level?: number | null
+          label?: string | null
           notes?: string | null
           plan_id?: string
           updated_at?: string
