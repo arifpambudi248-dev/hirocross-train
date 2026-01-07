@@ -10,9 +10,9 @@ import { id as localeId } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, ReferenceLine, ReferenceArea } from "recharts";
 import { Pencil, Save, FolderOpen, Plus, FileDown, Trash2, Trophy, Calendar } from "lucide-react";
 import { exportAnnualPlanToPDF, type AnnualPlanExportData } from "@/lib/exportUtils";
+import { PeriodizationCalendar } from "@/components/PeriodizationCalendar";
 import {
   Dialog,
   DialogContent,
@@ -1384,11 +1384,11 @@ export default function AnnualPlan() {
           </Card>
         )}
 
-        {/* Weekly Volume/Intensity Chart with Editing */}
+        {/* Periodization Calendar */}
         {phases.length > 0 && generatedWeeklyData.length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Grafik Volume & Intensitas Mingguan</CardTitle>
+              <CardTitle>Kalender Periodisasi</CardTitle>
               {isCoach && currentPlanId && (
                 <Button
                   variant={isEditingWeeklyData ? "default" : "outline"}
@@ -1416,212 +1416,64 @@ export default function AnnualPlan() {
               )}
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {/* Chart */}
-                <ResponsiveContainer width="100%" height={400}>
-                  <ComposedChart data={generatedWeeklyData} margin={{ top: 40, right: 20, left: 10, bottom: 10 }}>
-                    {/* Phase zone backgrounds */}
-                    {phases.length > 0 && periodizationType === "linear" && (() => {
-                      const phaseZones: { x1: number; x2: number; fill: string; name: string }[] = [];
-                      phases.forEach((phase) => {
-                        const phaseStart = new Date(phase.startDate);
-                        const phaseEnd = new Date(phase.endDate);
-                        const startD = new Date(startDate);
-                        const x1 = Math.max(1, Math.ceil(differenceInDays(phaseStart, startD) / 7) + 1);
-                        const x2 = Math.ceil(differenceInDays(phaseEnd, startD) / 7) + 1;
-                        
-                        let fill = "rgba(239, 68, 68, 0.15)"; // GPP - Red
-                        if (phase.name.includes("Khusus") || phase.name.includes("SPP")) {
-                          fill = "rgba(34, 197, 94, 0.15)"; // SPP - Green
-                        } else if (phase.name.includes("Pra")) {
-                          fill = "rgba(249, 115, 22, 0.15)"; // Pre-Comp - Orange
-                        } else if (phase.name.includes("Kompetisi") && !phase.name.includes("Pra")) {
-                          fill = "rgba(168, 85, 247, 0.15)"; // Competition - Purple
-                        }
-                        
-                        phaseZones.push({ x1, x2, fill, name: phase.name });
-                      });
-                      
-                      return phaseZones.map((zone, idx) => (
-                        <ReferenceArea
-                          key={`zone-${idx}`}
-                          x1={zone.x1}
-                          x2={zone.x2}
-                          fill={zone.fill}
-                          fillOpacity={1}
-                        />
-                      ));
-                    })()}
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="week_number" 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                      tickFormatter={(val) => `M${val}`}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                      domain={[0, 100]}
-                      label={{ value: '%', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                      formatter={(value: number, name: string) => [`${value}%`, name]}
-                      labelFormatter={(label) => `Minggu ${label}`}
-                    />
-                    <Legend wrapperStyle={{ paddingTop: '10px' }} />
-                    {/* Competition markers */}
-                    {competitions.map((comp, idx) => {
-                      const compDate = new Date(comp.competition_date);
-                      const startD = new Date(startDate);
-                      const weekNum = Math.ceil(differenceInDays(compDate, startD) / 7);
-                      if (weekNum > 0 && weekNum <= generatedWeeklyData.length) {
-                        return (
-                          <ReferenceLine 
-                            key={idx}
-                            x={weekNum} 
-                            stroke={comp.priority === 1 ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
-                            strokeDasharray="5 5"
-                            ifOverflow="extendDomain"
-                            label={{ 
-                              value: comp.competition_name, 
-                              position: 'insideTopRight',
-                              fill: 'hsl(var(--foreground))',
-                              fontSize: 10
-                            }}
-                          />
-                        );
-                      }
-                      return null;
-                    })}
-                    {/* Main competition marker */}
-                    {(() => {
-                      const compDate = new Date(competitionDate);
-                      const startD = new Date(startDate);
-                      const weekNum = Math.ceil(differenceInDays(compDate, startD) / 7);
-                      return (
-                        <ReferenceLine 
-                          x={weekNum} 
-                          stroke="hsl(var(--destructive))"
-                          strokeWidth={2}
-                          ifOverflow="extendDomain"
-                          label={{ 
-                            value: '🏆 Kompetisi Utama', 
-                            position: 'insideTopRight',
-                            fill: 'hsl(var(--destructive))',
-                            fontSize: 11,
-                            fontWeight: 'bold'
-                          }}
-                        />
-                      );
-                    })()}
-                    <Bar 
-                      dataKey="planned_volume" 
-                      fill="#FFC107" 
-                      name="Volume (%)"
-                      opacity={0.8}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="planned_intensity" 
-                      stroke="#F44336" 
-                      strokeWidth={3}
-                      name="Intensitas (%)"
-                      dot={{ fill: '#F44336', r: 4 }}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
+              <PeriodizationCalendar
+                startDate={startDate}
+                competitionDate={competitionDate}
+                phases={phases}
+                competitions={competitions}
+                weeklyData={generatedWeeklyData}
+                periodizationType={periodizationType}
+                onWeeklyDataChange={handleWeeklyDataChange}
+                isEditing={isEditingWeeklyData}
+              />
 
-                {/* Editable Table */}
-                {isEditingWeeklyData && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto max-h-96">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted sticky top-0">
-                          <tr>
-                            <th className="text-left p-2 font-medium">Minggu</th>
-                            <th className="text-left p-2 font-medium">Tanggal</th>
-                            <th className="text-center p-2 font-medium">Volume (%)</th>
-                            <th className="text-center p-2 font-medium">Intensitas (%)</th>
+              {/* Editable Table */}
+              {isEditingWeeklyData && (
+                <div className="border rounded-lg overflow-hidden mt-6">
+                  <div className="overflow-x-auto max-h-96">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th className="text-left p-2 font-medium">Minggu</th>
+                          <th className="text-left p-2 font-medium">Tanggal</th>
+                          <th className="text-center p-2 font-medium">Volume (%)</th>
+                          <th className="text-center p-2 font-medium">Intensitas (%)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {generatedWeeklyData.map((week) => (
+                          <tr key={week.week_number} className="border-t">
+                            <td className="p-2 font-medium">M{week.week_number}</td>
+                            <td className="p-2 text-muted-foreground">
+                              {format(new Date(week.week_start_date), "d MMM", { locale: localeId })}
+                            </td>
+                            <td className="p-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={week.planned_volume}
+                                onChange={(e) => handleWeeklyDataChange(week.week_number, 'planned_volume', Number(e.target.value))}
+                                className="h-8 w-20 text-center mx-auto"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={week.planned_intensity}
+                                onChange={(e) => handleWeeklyDataChange(week.week_number, 'planned_intensity', Number(e.target.value))}
+                                className="h-8 w-20 text-center mx-auto"
+                              />
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {generatedWeeklyData.map((week) => (
-                            <tr key={week.week_number} className="border-t">
-                              <td className="p-2 font-medium">M{week.week_number}</td>
-                              <td className="p-2 text-muted-foreground">
-                                {format(new Date(week.week_start_date), "d MMM", { locale: localeId })}
-                              </td>
-                              <td className="p-2">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={week.planned_volume}
-                                  onChange={(e) => handleWeeklyDataChange(week.week_number, 'planned_volume', Number(e.target.value))}
-                                  className="h-8 w-20 text-center mx-auto"
-                                />
-                              </td>
-                              <td className="p-2">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={week.planned_intensity}
-                                  onChange={(e) => handleWeeklyDataChange(week.week_number, 'planned_intensity', Number(e.target.value))}
-                                  className="h-8 w-20 text-center mx-auto"
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-
-                {/* Legend */}
-                <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-[#FFC107] rounded"></div>
-                    <span>Volume</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-[#F44336] rounded"></div>
-                    <span>Intensitas</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-0.5 bg-destructive"></div>
-                    <span>Kompetisi Utama</span>
-                  </div>
-            {periodizationType === "linear" && (
-                    <>
-                      <div className="h-4 w-px bg-border mx-2"></div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(239, 68, 68, 0.4)' }}></div>
-                        <span>Persiapan Umum</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(34, 197, 94, 0.4)' }}></div>
-                        <span>Persiapan Khusus</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(249, 115, 22, 0.4)' }}></div>
-                        <span>Pra Kompetisi</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(168, 85, 247, 0.4)' }}></div>
-                        <span>Kompetisi</span>
-                      </div>
-                    </>
-                  )}
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         )}
