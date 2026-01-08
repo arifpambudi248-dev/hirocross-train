@@ -141,8 +141,8 @@ export default function AnnualPlan() {
   // Weekly tests state
   const [weeklyTests, setWeeklyTests] = useState<WeeklyTest[]>([]);
   
-  // Meso weeks configuration
-  const [mesoWeeks, setMesoWeeks] = useState(4);
+  // Meso configuration - array of weeks per meso (e.g., [4, 4, 3, 5] means meso 1 = 4w, meso 2 = 4w, etc.)
+  const [mesoConfig, setMesoConfig] = useState<number[]>([4]);
 
   useEffect(() => {
     loadUser();
@@ -1676,8 +1676,8 @@ export default function AnnualPlan() {
                 onTestAdd={handleTestAdd}
                 onTestRemove={handleTestRemove}
                 onCompetitionAdd={handleCompetitionAddFromCalendar}
-                onMesoWeeksChange={setMesoWeeks}
-                mesoWeeks={mesoWeeks}
+                onMesoConfigChange={setMesoConfig}
+                mesoConfig={mesoConfig}
                 isEditing={isEditingWeeklyData}
                 isCoach={isCoach}
               />
