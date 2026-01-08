@@ -67,8 +67,8 @@ interface PeriodizationCalendarProps {
   onTestAdd?: (weekNumber: number, testName: string) => void;
   onTestRemove?: (weekNumber: number, testId: string) => void;
   onCompetitionAdd?: (weekNumber: number, competitionName: string, date: string) => void;
-  onMesoWeeksChange?: (weeksPerMeso: number) => void;
-  mesoWeeks?: number;
+  onMesoConfigChange?: (mesoConfig: number[]) => void;
+  mesoConfig?: number[];
   isEditing?: boolean;
   isCoach?: boolean;
 }
@@ -97,8 +97,8 @@ export function PeriodizationCalendar({
   onTestAdd,
   onTestRemove,
   onCompetitionAdd,
-  onMesoWeeksChange,
-  mesoWeeks = 4,
+  onMesoConfigChange,
+  mesoConfig = [4],
   isEditing = false,
   isCoach = false,
 }: PeriodizationCalendarProps) {
@@ -234,10 +234,10 @@ export function PeriodizationCalendar({
 
     const periodeData = calculatePeriodeSpans(weeks);
     const faseData = calculateFaseSpans(weeks);
-    const mesocycleData = calculateMesocycles(weeks, mesoWeeks);
+    const mesocycleData = calculateMesocyclesFromConfig(weeks, mesoConfig);
 
     return { months, weeks, periodeData, faseData, mesocycleData, totalWeeks };
-  }, [startDate, competitionDate, phases, competitions, weeklyData, trainingFocus, weeklyTests, mesoWeeks]);
+  }, [startDate, competitionDate, phases, competitions, weeklyData, trainingFocus, weeklyTests, mesoConfig]);
 
   const toggleWeekSelection = useCallback((focusType: string, weekNumber: number) => {
     if (!isEditing || !isCoach) return;
@@ -290,39 +290,52 @@ export function PeriodizationCalendar({
 
   const { months, weeks, periodeData, faseData, mesocycleData, totalWeeks } = calendarData;
   
-  // Check if meso configuration is appropriate
-  const totalMesoWeeks = mesocycleData.reduce((sum, m) => sum + m.span, 0);
-  const hasMesoWarning = mesoWeeks > 6 || (totalWeeks > 0 && totalWeeks % mesoWeeks !== 0);
+  // Check if any meso exceeds 6 weeks
+  const hasMesoWarning = mesoConfig.some(w => w > 6);
+  
+  // Calculate total configured weeks
+  const totalConfiguredWeeks = mesoConfig.reduce((sum, w) => sum + w, 0);
+  const weeksDifference = totalWeeks - totalConfiguredWeeks;
+
+  // Update meso config for a specific meso
+  const updateMesoWeeks = (mesoIndex: number, delta: number) => {
+    if (!onMesoConfigChange) return;
+    const newConfig = [...mesoConfig];
+    const newValue = (newConfig[mesoIndex] || 4) + delta;
+    if (newValue >= 1 && newValue <= 12) {
+      newConfig[mesoIndex] = newValue;
+      onMesoConfigChange(newConfig);
+    }
+  };
+
+  // Add a new meso
+  const addMeso = () => {
+    if (!onMesoConfigChange) return;
+    if (weeksDifference > 0) {
+      // Add remaining weeks as new meso
+      const weeksToAdd = Math.min(weeksDifference, 4);
+      onMesoConfigChange([...mesoConfig, weeksToAdd]);
+    }
+  };
+
+  // Remove the last meso
+  const removeMeso = (mesoIndex: number) => {
+    if (!onMesoConfigChange || mesoConfig.length <= 1) return;
+    const newConfig = mesoConfig.filter((_, idx) => idx !== mesoIndex);
+    onMesoConfigChange(newConfig);
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-lg font-semibold">KALENDER PERIODISASI</h3>
         
-        {/* Meso Configuration */}
+        {/* Info about total weeks */}
         {isEditing && isCoach && (
-          <div className="flex items-center gap-2">
-            <Label className="text-xs">Minggu/Meso:</Label>
-            <div className="flex items-center gap-1">
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-7 w-7"
-                onClick={() => onMesoWeeksChange && mesoWeeks > 2 && onMesoWeeksChange(mesoWeeks - 1)}
-                disabled={mesoWeeks <= 2}
-              >
-                <Minus className="h-3 w-3" />
-              </Button>
-              <span className="w-8 text-center font-medium">{mesoWeeks}</span>
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-7 w-7"
-                onClick={() => onMesoWeeksChange && onMesoWeeksChange(mesoWeeks + 1)}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
+          <div className="text-xs text-muted-foreground">
+            Total: {totalWeeks} minggu | Terkonfigurasi: {totalConfiguredWeeks} minggu
+            {weeksDifference > 0 && <span className="text-amber-500 ml-1">(+{weeksDifference} belum diatur)</span>}
+            {weeksDifference < 0 && <span className="text-red-500 ml-1">({weeksDifference} kelebihan)</span>}
           </div>
         )}
       </div>
@@ -332,10 +345,19 @@ export function PeriodizationCalendar({
         <Alert variant="destructive" className="py-2">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-xs">
-            {mesoWeeks > 6 
-              ? "Mesocycle lebih dari 6 minggu tidak disarankan. Pertimbangkan untuk mengurangi."
-              : `Total ${totalWeeks} minggu tidak habis dibagi ${mesoWeeks}. Mesocycle terakhir akan memiliki ${totalWeeks % mesoWeeks} minggu.`
-            }
+            Ada mesocycle yang lebih dari 6 minggu. Pertimbangkan untuk membaginya.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {weeksDifference > 0 && isEditing && isCoach && (
+        <Alert className="py-2 border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
+            Masih ada {weeksDifference} minggu yang belum dikonfigurasi. 
+            <Button variant="link" size="sm" className="h-auto p-0 ml-1 text-xs" onClick={addMeso}>
+              Tambah Meso
+            </Button>
           </AlertDescription>
         </Alert>
       )}
@@ -469,22 +491,54 @@ export function PeriodizationCalendar({
                 ))}
               </tr>
 
-              {/* Row 7: MESOCYCLE */}
+              {/* Row 7: MESOCYCLE with individual editing */}
               <tr>
                 <td className="bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold p-2 border border-slate-400 dark:border-slate-500 sticky left-0 z-20">
                   MESOCYCLE
                 </td>
                 {mesocycleData.map((meso, idx) => (
                   <td key={idx} colSpan={meso.span} className={cn(
-                    "font-medium p-2 border border-slate-300 dark:border-slate-600 text-center whitespace-nowrap",
-                    meso.span < mesoWeeks && idx === mesocycleData.length - 1 
-                      ? "bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200" 
+                    "font-medium p-1 border border-slate-300 dark:border-slate-600 text-center whitespace-nowrap",
+                    meso.span > 6 
+                      ? "bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200" 
                       : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
                   )}>
-                    {meso.name}
-                    {meso.span < mesoWeeks && idx === mesocycleData.length - 1 && (
-                      <span className="text-[9px] block">({meso.span}w)</span>
-                    )}
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-[10px] font-bold">{meso.name}</span>
+                      <span className="text-[9px] text-muted-foreground">({meso.span}w)</span>
+                      {isEditing && isCoach && (
+                        <div className="flex items-center gap-0.5 mt-0.5">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-4 w-4 p-0"
+                            onClick={() => updateMesoWeeks(idx, -1)}
+                            disabled={mesoConfig[idx] <= 1}
+                          >
+                            <Minus className="h-2 w-2" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-4 w-4 p-0"
+                            onClick={() => updateMesoWeeks(idx, 1)}
+                            disabled={mesoConfig[idx] >= 12}
+                          >
+                            <Plus className="h-2 w-2" />
+                          </Button>
+                          {mesoConfig.length > 1 && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-4 w-4 p-0 text-red-500 hover:text-red-700"
+                              onClick={() => removeMeso(idx)}
+                            >
+                              <X className="h-2 w-2" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </td>
                 ))}
               </tr>
@@ -708,13 +762,27 @@ function calculateFaseSpans(weeks: any[]) {
   return fases;
 }
 
-function calculateMesocycles(weeks: any[], weeksPerMeso: number) {
+function calculateMesocyclesFromConfig(weeks: any[], mesoConfig: number[]) {
   const mesos: { name: string; span: number }[] = [];
+  let weekIndex = 0;
   let mesoNumber = 1;
 
-  for (let i = 0; i < weeks.length; i += weeksPerMeso) {
-    const span = Math.min(weeksPerMeso, weeks.length - i);
+  for (const mesoWeeks of mesoConfig) {
+    const remainingWeeks = weeks.length - weekIndex;
+    if (remainingWeeks <= 0) break;
+    
+    const span = Math.min(mesoWeeks, remainingWeeks);
     mesos.push({ name: `MESO ${mesoNumber}`, span });
+    weekIndex += span;
+    mesoNumber++;
+  }
+
+  // If there are remaining weeks not covered by config, add them as extra mesos
+  while (weekIndex < weeks.length) {
+    const remainingWeeks = weeks.length - weekIndex;
+    const span = Math.min(4, remainingWeeks); // Default 4 weeks per meso
+    mesos.push({ name: `MESO ${mesoNumber}`, span });
+    weekIndex += span;
     mesoNumber++;
   }
 
