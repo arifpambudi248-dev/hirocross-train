@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
@@ -80,23 +81,31 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/annual-plan" element={<AnnualPlan />} />
-            <Route path="/program-latihan" element={<ProgramLatihan />} />
-            <Route path="/tes-fisik" element={<TesFisik />} />
-            <Route path="/readiness" element={<Readiness />} />
-            <Route path="/laporan" element={<Laporan />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/historical" element={<Historical />} />
-            <Route path="/athlete-management" element={<AthleteManagement />} />
-            <Route path="/athlete-comparison" element={<AthleteComparison />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/subscription" element={<Subscription />} />
-            <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <SubscriptionGuard>
+            <Routes>
+              {/* Free pages - accessible without subscription */}
+              <Route path="/" element={<Index />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/subscription" element={<Subscription />} />
+              
+              {/* Admin pages */}
+              <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+              
+              {/* Protected pages - require active subscription */}
+              <Route path="/annual-plan" element={<AnnualPlan />} />
+              <Route path="/program-latihan" element={<ProgramLatihan />} />
+              <Route path="/tes-fisik" element={<TesFisik />} />
+              <Route path="/readiness" element={<Readiness />} />
+              <Route path="/laporan" element={<Laporan />} />
+              <Route path="/historical" element={<Historical />} />
+              <Route path="/athlete-management" element={<AthleteManagement />} />
+              <Route path="/athlete-comparison" element={<AthleteComparison />} />
+              <Route path="/notifications" element={<Notifications />} />
+              
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </SubscriptionGuard>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

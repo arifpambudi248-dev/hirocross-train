@@ -238,8 +238,8 @@ const Subscription = () => {
                     <h3 className="font-semibold">Upload Bukti Pembayaran</h3>
                     <div className="p-4 bg-muted rounded-lg">
                       <p className="text-sm font-medium mb-2">Transfer ke:</p>
-                      <p className="text-sm">Bank BCA: 1234567890</p>
-                      <p className="text-sm">a.n. Nama Pemilik</p>
+                      <p className="text-sm">Bank Mandiri: 1370020414021</p>
+                      <p className="text-sm">a.n. Nafisa Arif Pambudi</p>
                       <p className="text-sm font-semibold mt-2">Total: {formatPrice(currentSubscription.plan?.price || 0)}</p>
                     </div>
                     <div className="space-y-2">
