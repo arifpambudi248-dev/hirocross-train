@@ -21,6 +21,7 @@ import AthleteComparison from "./pages/AthleteComparison";
 import Notifications from "./pages/Notifications";
 import Subscription from "./pages/Subscription";
 import AdminSubscriptions from "./pages/AdminSubscriptions";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -89,6 +90,7 @@ const App = () => {
               <Route path="/subscription" element={<Subscription />} />
               
               {/* Admin pages */}
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
               
               {/* Protected pages - require active subscription */}

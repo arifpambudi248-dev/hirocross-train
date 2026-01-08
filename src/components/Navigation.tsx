@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
-import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users, Bell, CreditCard } from "lucide-react";
+import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users, Bell, CreditCard, Shield } from "lucide-react";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +20,7 @@ export const Navigation = () => {
   const [athleteName, setAthleteName] = useState<string>("");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isCoach, setIsCoach] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -32,6 +33,7 @@ export const Navigation = () => {
       } else {
         setAthleteName("");
         setIsCoach(false);
+        setIsAdmin(false);
       }
     });
 
@@ -46,10 +48,11 @@ export const Navigation = () => {
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .single();
+        .eq("user_id", user.id);
 
-      setIsCoach(roleData?.role === "coach");
+      const roles = roleData?.map(r => r.role) || [];
+      setIsCoach(roles.includes("coach"));
+      setIsAdmin(roles.includes("admin"));
     } catch (error) {
       console.error("Error checking role:", error);
     }
@@ -102,9 +105,17 @@ export const Navigation = () => {
     { to: "/subscription", icon: CreditCard, label: "Langganan" },
   ];
 
-  const navItems = isCoach 
+  const adminNavItems = [
+    { to: "/admin/dashboard", icon: Shield, label: "Admin Dashboard" },
+  ];
+
+  let navItems = isCoach 
     ? [...baseNavItems, ...coachNavItems] 
     : [...baseNavItems, ...athleteNavItems];
+  
+  if (isAdmin) {
+    navItems = [...navItems, ...adminNavItems];
+  }
 
   return (
     <nav className="border-b border-border bg-card">
