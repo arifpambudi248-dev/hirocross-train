@@ -829,14 +829,14 @@ export default function ProgramLatihan() {
                 {ex.is_completed ? (
                   <CheckCircle className="w-5 h-5 text-green-400" />
                 ) : (
-                  <Circle className={`w-5 h-5 text-slate-500 hover:${c.text} transition-colors`} />
+                  <Circle className={`w-5 h-5 text-muted-foreground hover:${c.text} transition-colors`} />
                 )}
               </button>
               <div className="flex-1">
-                <div className={`font-medium ${ex.is_completed ? 'text-green-300 line-through' : 'text-white'}`}>
+                <div className={`font-medium ${ex.is_completed ? 'text-green-300 line-through' : 'text-foreground'}`}>
                   {ex.exercise_name}
                 </div>
-                <div className="flex gap-4 text-xs text-slate-400 mt-1">
+                <div className="flex gap-4 text-xs text-muted-foreground mt-1">
                   {type === 'strength' && (
                     <>
                       <span>{ex.sets} set × {ex.reps} rep</span>
@@ -990,7 +990,7 @@ export default function ProgramLatihan() {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="container mx-auto px-4 py-6">
           {/* Header */}
@@ -1003,7 +1003,7 @@ export default function ProgramLatihan() {
                   const athlete = athletes.find(a => a.id === val);
                   if (athlete) setAthleteName(athlete.athlete_name);
                 }}>
-                  <SelectTrigger className="w-48 bg-slate-900 border-slate-800">
+                  <SelectTrigger className="w-48 bg-card border-border">
                     <SelectValue placeholder="Pilih atlet..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1020,7 +1020,7 @@ export default function ProgramLatihan() {
                 const [year, month] = val.split('-');
                 setCurrentMonth(startOfMonth(new Date(parseInt(year), parseInt(month) - 1, 1)));
               }}>
-                <SelectTrigger className="w-40 bg-slate-900 border-slate-800">
+                <SelectTrigger className="w-40 bg-card border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1058,7 +1058,7 @@ export default function ProgramLatihan() {
                       Multi-Atlet
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-lg bg-slate-900 border-slate-800 max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+                  <DialogContent className="max-w-lg bg-card border-border max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
                     <DialogHeader>
                       <DialogTitle>Buat Program untuk Beberapa Atlet</DialogTitle>
                       <DialogDescription>
@@ -1089,7 +1089,7 @@ export default function ProgramLatihan() {
                     Template
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md bg-slate-900 border-slate-800">
+                <DialogContent className="max-w-md bg-card border-border">
                   <DialogHeader>
                     <DialogTitle>Template Sesi Latihan</DialogTitle>
                     <DialogDescription>
@@ -1098,19 +1098,19 @@ export default function ProgramLatihan() {
                   </DialogHeader>
                   <div className="space-y-4">
                     {templates.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-4">
+                      <p className="text-sm text-muted-foreground text-center py-4">
                         Belum ada template. Buat template dari form tambah sesi.
                       </p>
                     ) : (
                       <div className="space-y-2 max-h-[400px] overflow-y-auto">
                         {templates.map((template) => (
-                          <Card key={template.id} className="bg-slate-950 border-slate-800">
+                          <Card key={template.id} className="bg-background border-border">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1">
-                                  <h4 className="font-semibold text-white">{template.template_name}</h4>
-                                  <p className="text-sm text-slate-400">{template.session_name || "Tanpa nama"}</p>
-                                  <div className="flex gap-3 mt-2 text-xs text-slate-500">
+                                  <h4 className="font-semibold text-foreground">{template.template_name}</h4>
+                                  <p className="text-sm text-muted-foreground">{template.session_name || "Tanpa nama"}</p>
+                                  <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
                                     <span>RPE: {template.rpe}</span>
                                     <span>Durasi: {template.duration_minutes}m</span>
                                   </div>
@@ -1140,7 +1140,7 @@ export default function ProgramLatihan() {
                     Tambah Sesi
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md bg-slate-900 border-slate-800 max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Tambah Sesi Latihan</DialogTitle>
                     <DialogDescription>
@@ -1156,7 +1156,7 @@ export default function ProgramLatihan() {
                           setSelectedTemplateId(val);
                           handleLoadTemplate(val);
                         }}>
-                          <SelectTrigger className="bg-slate-950 border-slate-800">
+                          <SelectTrigger className="bg-background border-border">
                             <SelectValue placeholder="Pilih template..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -1178,7 +1178,7 @@ export default function ProgramLatihan() {
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
                         required
-                        className="bg-slate-950 border-slate-800"
+                        className="bg-background border-border"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1188,7 +1188,7 @@ export default function ProgramLatihan() {
                         placeholder="Contoh: Latihan Endurance"
                         value={sessionName}
                         onChange={(e) => setSessionName(e.target.value)}
-                        className="bg-slate-950 border-slate-800"
+                        className="bg-background border-border"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -1202,7 +1202,7 @@ export default function ProgramLatihan() {
                           value={rpe}
                           onChange={(e) => setRpe(Number(e.target.value))}
                           required
-                          className="bg-slate-950 border-slate-800"
+                          className="bg-background border-border"
                         />
                       </div>
                       <div className="space-y-2">
@@ -1214,13 +1214,13 @@ export default function ProgramLatihan() {
                           value={duration}
                           onChange={(e) => setDuration(Number(e.target.value))}
                           required
-                          className="bg-slate-950 border-slate-800"
+                          className="bg-background border-border"
                         />
                       </div>
                     </div>
-                    <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                      <p className="text-sm text-slate-400">
-                        Load otomatis: <span className="font-bold text-white">{currentLoadAuto} AU</span>
+                    <div className="p-3 bg-background rounded-lg border border-border">
+                      <p className="text-sm text-muted-foreground">
+                        Load otomatis: <span className="font-bold text-foreground">{currentLoadAuto} AU</span>
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -1233,7 +1233,7 @@ export default function ProgramLatihan() {
                         onChange={(e) =>
                           setLoadManual(e.target.value ? Number(e.target.value) : null)
                         }
-                        className="bg-slate-950 border-slate-800"
+                        className="bg-background border-border"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1244,17 +1244,17 @@ export default function ProgramLatihan() {
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         rows={2}
-                        className="bg-slate-950 border-slate-800"
+                        className="bg-background border-border"
                       />
                     </div>
 
                     {/* Exercise Details */}
-                    <div className="border-t border-slate-800 pt-4">
+                    <div className="border-t border-border pt-4">
                       <ExerciseForm exercises={exercises} onChange={setExercises} phaseNotes={phaseNotes} onPhaseNotesChange={setPhaseNotes} />
                     </div>
 
                     {/* Save as Template */}
-                    <div className="border-t border-slate-800 pt-4 space-y-2">
+                    <div className="border-t border-border pt-4 space-y-2">
                       <Label htmlFor="template-name">Simpan sebagai Template (opsional)</Label>
                       <div className="flex gap-2">
                         <Input
@@ -1262,7 +1262,7 @@ export default function ProgramLatihan() {
                           placeholder="Nama template..."
                           value={templateName}
                           onChange={(e) => setTemplateName(e.target.value)}
-                          className="bg-slate-950 border-slate-800"
+                          className="bg-background border-border"
                         />
                         <Button
                           type="button"
@@ -1285,30 +1285,30 @@ export default function ProgramLatihan() {
           </div>
 
           {/* Monthly Summary */}
-          <Card className="mb-6 bg-slate-900 border-slate-800">
+          <Card className="mb-6 bg-card border-border">
             <CardContent className="p-6">
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-400">Total</span>
-                    <span className="text-lg font-bold text-white">{format(currentMonth, "MMMM yyyy", { locale: localeId })}</span>
+                    <span className="text-sm text-muted-foreground">Total</span>
+                    <span className="text-lg font-bold text-foreground">{format(currentMonth, "MMMM yyyy", { locale: localeId })}</span>
                   </div>
-                  <div className="text-sm text-slate-400">Load <span className="text-xl font-bold text-primary">{monthlyMetrics.totalLoad}</span></div>
+                  <div className="text-sm text-muted-foreground">Load <span className="text-xl font-bold text-primary">{monthlyMetrics.totalLoad}</span></div>
                 </div>
                 
                 <div className="space-y-1">
-                  <div className="text-sm text-slate-400">Durasi</div>
-                  <div className="text-xl font-bold text-white">{Math.floor(monthlyMetrics.totalDuration / 60)}j {monthlyMetrics.totalDuration % 60}m</div>
+                  <div className="text-sm text-muted-foreground">Durasi</div>
+                  <div className="text-xl font-bold text-foreground">{Math.floor(monthlyMetrics.totalDuration / 60)}j {monthlyMetrics.totalDuration % 60}m</div>
                 </div>
                 
                 <div className="space-y-1">
-                  <div className="text-sm text-slate-400">Avg RPE</div>
-                  <div className="text-xl font-bold text-white">{monthlyMetrics.avgRPE}</div>
+                  <div className="text-sm text-muted-foreground">Avg RPE</div>
+                  <div className="text-xl font-bold text-foreground">{monthlyMetrics.avgRPE}</div>
                 </div>
                 
                 <div className="space-y-1">
-                  <div className="text-sm text-slate-400">Sesi</div>
-                  <div className="text-xl font-bold text-white">{monthlyMetrics.sessionCount}</div>
+                  <div className="text-sm text-muted-foreground">Sesi</div>
+                  <div className="text-xl font-bold text-foreground">{monthlyMetrics.sessionCount}</div>
                 </div>
 
                 {/* Comprehensive Volume Metrics */}
@@ -1377,10 +1377,10 @@ export default function ProgramLatihan() {
           )}
 
           {/* Filter and Calendar Grid */}
-          <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
             {/* Filter Bar */}
-            <div className="p-3 border-b border-slate-800 flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-slate-400">Filter:</span>
+            <div className="p-3 border-b border-border flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-muted-foreground">Filter:</span>
               <div className="flex gap-1 flex-wrap">
                 <Button
                   variant={exerciseTypeFilter === "all" ? "default" : "outline"}
@@ -1439,9 +1439,9 @@ export default function ProgramLatihan() {
             </div>
             
             {/* Week Day Headers */}
-            <div className="grid grid-cols-7 border-b border-slate-800">
+            <div className="grid grid-cols-7 border-b border-border">
               {weekDayNames.map((dayName, idx) => (
-                <div key={idx} className="p-2 text-center text-xs font-semibold text-slate-400 bg-slate-900/50">
+                <div key={idx} className="p-2 text-center text-xs font-semibold text-muted-foreground bg-muted/50">
                   {dayName}
                 </div>
               ))}
@@ -1457,16 +1457,16 @@ export default function ProgramLatihan() {
                 
                 return (
                   <Droppable key={idx} id={dayId}>
-                    <div className={`min-h-[120px] border-b border-r border-slate-800 ${!isCurrentMonth ? 'bg-slate-950/50' : ''}`}>
+                    <div className={`min-h-[120px] border-b border-r border-border ${!isCurrentMonth ? 'bg-muted/30' : ''}`}>
                       {/* Day Header */}
                       <div className={`p-2 flex items-center justify-between ${isToday ? 'bg-primary/10' : ''}`}>
-                        <span className={`text-sm font-semibold ${isToday ? 'text-primary bg-primary/20 px-2 py-0.5 rounded-full' : isCurrentMonth ? 'text-white' : 'text-slate-600'}`}>
+                        <span className={`text-sm font-semibold ${isToday ? 'text-primary bg-primary/20 px-2 py-0.5 rounded-full' : isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50'}`}>
                           {format(day, "d")}
                         </span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 text-slate-600 hover:text-primary hover:bg-primary/10"
+                          className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10"
                           onClick={() => handleOpenNewForm(dayId)}
                         >
                           <Plus className="w-3 h-3" />
@@ -1478,21 +1478,21 @@ export default function ProgramLatihan() {
                         {daySessions.map((session) => (
                           <Draggable key={session.id} id={session.id}>
                             <div 
-                              className={`group relative p-1.5 rounded text-xs cursor-grab active:cursor-grabbing ${getRPEColor(session.rpe || 5)} bg-opacity-20 border border-slate-700 hover:border-slate-600`}
+                              className={`group relative p-1.5 rounded text-xs cursor-grab active:cursor-grabbing ${getRPEColor(session.rpe || 5)} bg-opacity-20 border border-border hover:border-muted-foreground`}
                               onClick={() => handleViewSession(session)}
                             >
                               <div className="flex items-center gap-1">
-                                <GripVertical className="w-3 h-3 text-slate-500 opacity-0 group-hover:opacity-100" />
-                                <Activity className="w-3 h-3 text-slate-400" />
-                                <span className="font-medium text-white truncate flex-1">
+                                <GripVertical className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100" />
+                                <Activity className="w-3 h-3 text-muted-foreground" />
+                                <span className="font-medium text-foreground truncate flex-1">
                                   {session.session_name || "Latihan"}
                                 </span>
-                                <span className="text-slate-400">{session.duration_minutes}m</span>
+                                <span className="text-muted-foreground">{session.duration_minutes}m</span>
                               </div>
                               
                               {/* Quick metrics */}
                               <div className="flex items-center gap-2 mt-1 pl-4">
-                                <span className="text-slate-400">RPE {session.rpe}</span>
+                                <span className="text-muted-foreground">RPE {session.rpe}</span>
                                 <span className="text-primary font-semibold">{session.load_final} AU</span>
                               </div>
 
@@ -1505,7 +1505,7 @@ export default function ProgramLatihan() {
                                     return (
                                       <>
                                         {completionStatus && (
-                                          <div className={`flex items-center gap-0.5 ${completionStatus.isComplete ? 'text-green-400' : 'text-slate-500'}`}>
+                                          <div className={`flex items-center gap-0.5 ${completionStatus.isComplete ? 'text-green-400' : 'text-muted-foreground'}`}>
                                             {completionStatus.isComplete ? (
                                               <CheckCircle className="w-3 h-3" />
                                             ) : (
@@ -1562,13 +1562,13 @@ export default function ProgramLatihan() {
       {/* Drag Overlay */}
       <DragOverlay>
         {activeSession ? (
-          <Card className="bg-slate-900 border-slate-700 opacity-80 w-48">
+          <Card className="bg-card border-border opacity-80 w-48">
             <CardContent className="p-3">
-              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold text-white ${getRPEColor(activeSession.rpe || 5)}`}>
+              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold text-foreground ${getRPEColor(activeSession.rpe || 5)}`}>
                 <Activity className="w-3 h-3" />
                 {activeSession.duration_minutes}m
               </div>
-              <div className="text-sm font-medium text-white mt-2">
+              <div className="text-sm font-medium text-foreground mt-2">
                 {activeSession.session_name || "Latihan"}
               </div>
             </CardContent>
@@ -1578,7 +1578,7 @@ export default function ProgramLatihan() {
 
       {/* View Session Detail Dialog */}
       <Dialog open={viewSessionOpen} onOpenChange={setViewSessionOpen}>
-        <DialogContent className="max-w-lg bg-slate-900 border-slate-800 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg bg-card border-border max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{viewingSession?.session_name || "Detail Sesi Latihan"}</DialogTitle>
             <DialogDescription>
@@ -1611,19 +1611,19 @@ export default function ProgramLatihan() {
               </div>
               
               {/* Session Metrics */}
-              <div className="grid grid-cols-3 gap-3 p-3 bg-slate-950 rounded-lg border border-slate-800">
+              <div className="grid grid-cols-3 gap-3 p-3 bg-background rounded-lg border border-border">
                 <div className="text-center">
-                  <div className="text-xs text-slate-400">Durasi</div>
-                  <div className="font-semibold text-white">{viewingSession.duration_minutes} menit</div>
+                  <div className="text-xs text-muted-foreground">Durasi</div>
+                  <div className="font-semibold text-foreground">{viewingSession.duration_minutes} menit</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-slate-400">RPE</div>
+                  <div className="text-xs text-muted-foreground">RPE</div>
                   <div className={`font-semibold ${viewingSession.rpe && viewingSession.rpe >= 8 ? 'text-red-400' : viewingSession.rpe && viewingSession.rpe >= 6 ? 'text-orange-400' : 'text-green-400'}`}>
                     {viewingSession.rpe}/10
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-slate-400">Load</div>
+                  <div className="text-xs text-muted-foreground">Load</div>
                   <div className="font-semibold text-primary">{viewingSession.load_final} AU</div>
                 </div>
               </div>
@@ -1633,14 +1633,14 @@ export default function ProgramLatihan() {
                 const status = getSessionCompletionStatus(viewingSession);
                 if (!status) return null;
                 return (
-                  <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <div className="p-3 bg-background rounded-lg border border-border">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-400">Progress Latihan</span>
+                      <span className="text-sm text-muted-foreground">Progress Latihan</span>
                       <span className={`text-sm font-semibold ${status.isComplete ? 'text-green-400' : 'text-yellow-400'}`}>
                         {status.completed}/{status.total} selesai
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                       <div 
                         className={`h-full transition-all ${status.isComplete ? 'bg-green-500' : 'bg-yellow-500'}`}
                         style={{ width: `${(status.completed / status.total) * 100}%` }}
@@ -1656,7 +1656,7 @@ export default function ProgramLatihan() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-semibold text-amber-400 uppercase">🔥 Warm Up</span>
                   </div>
-                  <p className="text-sm text-white whitespace-pre-line">{viewingSession.warmup_notes}</p>
+                  <p className="text-sm text-foreground whitespace-pre-line">{viewingSession.warmup_notes}</p>
                 </div>
               )}
 
@@ -1664,7 +1664,7 @@ export default function ProgramLatihan() {
               {viewingSession.exercises && viewingSession.exercises.length > 0 && (
                 <div className="space-y-3 p-3 rounded-lg border bg-primary/20 border-primary/50">
                   <h4 className="font-semibold text-primary">💪 Main Set ({viewingSession.exercises.length} latihan)</h4>
-                  <p className="text-xs text-slate-400">Klik tombol untuk menandai latihan yang sudah selesai</p>
+                  <p className="text-xs text-muted-foreground">Klik tombol untuk menandai latihan yang sudah selesai</p>
                   
                   {/* Render exercises by type */}
                   {renderExercisesByType(viewingSession.exercises, "strength", "Strength", Dumbbell, "blue")}
@@ -1680,42 +1680,42 @@ export default function ProgramLatihan() {
                     const summary = getExerciseSummary(viewingSession);
                     if (!summary) return null;
                     return (
-                      <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                        <div className="text-xs font-semibold text-slate-400 mb-2">Total Volume Sesi</div>
+                      <div className="p-3 bg-background rounded-lg border border-border">
+                        <div className="text-xs font-semibold text-muted-foreground mb-2">Total Volume Sesi</div>
                         <div className="grid grid-cols-3 gap-2 text-sm">
                           {summary.strengthTotal > 0 && (
                             <div>
-                              <span className="text-slate-500">Strength:</span>
+                              <span className="text-muted-foreground">Strength:</span>
                               <span className="ml-1 font-bold text-blue-400">{summary.strengthTotal.toLocaleString()} kg</span>
                             </div>
                           )}
                           {summary.cardioTotal > 0 && (
                             <div>
-                              <span className="text-slate-500">Endurance:</span>
+                              <span className="text-muted-foreground">Endurance:</span>
                               <span className="ml-1 font-bold text-green-400">{(summary.cardioTotal / 1000).toFixed(2)} km</span>
                             </div>
                           )}
                           {summary.skillTotal > 0 && (
                             <div>
-                              <span className="text-slate-500">Skill:</span>
+                              <span className="text-muted-foreground">Skill:</span>
                               <span className="ml-1 font-bold text-orange-400">{summary.skillTotal} rep</span>
                             </div>
                           )}
                           {summary.speedTotal > 0 && (
                             <div>
-                              <span className="text-slate-500">Speed:</span>
+                              <span className="text-muted-foreground">Speed:</span>
                               <span className="ml-1 font-bold text-yellow-400">{summary.speedTotal} m</span>
                             </div>
                           )}
                           {summary.techniqueTotal > 0 && (
                             <div>
-                              <span className="text-slate-500">Teknik:</span>
+                              <span className="text-muted-foreground">Teknik:</span>
                               <span className="ml-1 font-bold text-pink-400">{summary.techniqueTotal} rep</span>
                             </div>
                           )}
                           {summary.tacticsTotal > 0 && (
                             <div>
-                              <span className="text-slate-500">Taktik:</span>
+                              <span className="text-muted-foreground">Taktik:</span>
                               <span className="ml-1 font-bold text-purple-400">{summary.tacticsTotal} rep</span>
                             </div>
                           )}
@@ -1732,7 +1732,7 @@ export default function ProgramLatihan() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-semibold text-cyan-400 uppercase">❄️ Cooling Down</span>
                   </div>
-                  <p className="text-sm text-white whitespace-pre-line">{viewingSession.cooldown_notes}</p>
+                  <p className="text-sm text-foreground whitespace-pre-line">{viewingSession.cooldown_notes}</p>
                 </div>
               )}
 
@@ -1742,15 +1742,15 @@ export default function ProgramLatihan() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-semibold text-emerald-400 uppercase">✨ Recovery & Notes</span>
                   </div>
-                  <p className="text-sm text-white whitespace-pre-line">{viewingSession.recovery_notes}</p>
+                  <p className="text-sm text-foreground whitespace-pre-line">{viewingSession.recovery_notes}</p>
                 </div>
               )}
 
               {/* Additional Notes */}
               {viewingSession.notes && (
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <div className="text-xs font-semibold text-slate-400 mb-1">Catatan Tambahan</div>
-                  <p className="text-sm text-white">{viewingSession.notes}</p>
+                <div className="p-3 bg-background rounded-lg border border-border">
+                  <div className="text-xs font-semibold text-muted-foreground mb-1">Catatan Tambahan</div>
+                  <p className="text-sm text-foreground">{viewingSession.notes}</p>
                 </div>
               )}
             </div>
