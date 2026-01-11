@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
-import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users, Bell, CreditCard, Shield } from "lucide-react";
+import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users, Bell, CreditCard, Shield, UserCog } from "lucide-react";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -107,6 +107,7 @@ export const Navigation = () => {
 
   const adminNavItems = [
     { to: "/admin/dashboard", icon: Shield, label: "Admin Dashboard" },
+    { to: "/admin/users", icon: UserCog, label: "Kelola User" },
   ];
 
   let navItems = isCoach 
