@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Check, X, Eye, Clock, AlertCircle, Users, CreditCard, TrendingUp } from 'lucide-react';
+import { Check, X, Eye, Clock, AlertCircle, Users, CreditCard, TrendingUp, CalendarPlus } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { id } from 'date-fns/locale';
 
@@ -53,7 +53,9 @@ const AdminSubscriptions = () => {
   const [selectedSubscription, setSelectedSubscription] = useState<SubscriptionWithUser | null>(null);
   const [showProofDialog, setShowProofDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showExtendDialog, setShowExtendDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [extensionMonths, setExtensionMonths] = useState(1);
   const [processing, setProcessing] = useState(false);
   const [stats, setStats] = useState({
     pending: 0,
@@ -217,6 +219,41 @@ const AdminSubscriptions = () => {
       loadData();
     } catch (error: any) {
       toast.error('Gagal menolak: ' + error.message);
+    }
+  };
+
+  const handleExtendSubscription = async () => {
+    if (!selectedSubscription || extensionMonths < 1) return;
+
+    setProcessing(true);
+    try {
+      // Calculate new end date based on current end_date or today if expired
+      const currentEndDate = selectedSubscription.end_date 
+        ? new Date(selectedSubscription.end_date) 
+        : new Date();
+      const baseDate = currentEndDate > new Date() ? currentEndDate : new Date();
+      const newEndDate = addMonths(baseDate, extensionMonths);
+
+      const { error } = await supabase
+        .from('user_subscriptions')
+        .update({
+          status: 'active',
+          end_date: newEndDate.toISOString().split('T')[0],
+          start_date: selectedSubscription.start_date || new Date().toISOString().split('T')[0]
+        })
+        .eq('id', selectedSubscription.id);
+
+      if (error) throw error;
+
+      toast.success(`Langganan diperpanjang ${extensionMonths} bulan!`);
+      setShowExtendDialog(false);
+      setExtensionMonths(1);
+      setSelectedSubscription(null);
+      loadData();
+    } catch (error: any) {
+      toast.error('Gagal memperpanjang: ' + error.message);
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -405,6 +442,7 @@ const AdminSubscriptions = () => {
                         <TableHead>Status</TableHead>
                         <TableHead>Mulai</TableHead>
                         <TableHead>Berakhir</TableHead>
+                        <TableHead>Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -420,6 +458,19 @@ const AdminSubscriptions = () => {
                           </TableCell>
                           <TableCell>
                             {sub.end_date ? format(new Date(sub.end_date), 'dd MMM yyyy', { locale: id }) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedSubscription(sub);
+                                setShowExtendDialog(true);
+                              }}
+                              title="Perpanjang Langganan"
+                            >
+                              <CalendarPlus className="w-4 h-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -563,6 +614,59 @@ const AdminSubscriptions = () => {
               disabled={!rejectionReason.trim() || processing}
             >
               Tolak Langganan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Extend Subscription Dialog */}
+      <Dialog open={showExtendDialog} onOpenChange={setShowExtendDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Perpanjang Langganan Manual</DialogTitle>
+            <DialogDescription>
+              Perpanjang masa aktif untuk User ID: {selectedSubscription?.user_id.slice(0, 8)}... - {selectedSubscription?.plan?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg space-y-2">
+              <p className="text-sm"><strong>Status saat ini:</strong> {selectedSubscription?.status}</p>
+              <p className="text-sm"><strong>Berakhir:</strong> {selectedSubscription?.end_date ? format(new Date(selectedSubscription.end_date), 'dd MMM yyyy', { locale: id }) : '-'}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="extension-months">Tambah Durasi (Bulan)</Label>
+              <Input
+                id="extension-months"
+                type="number"
+                min={1}
+                max={24}
+                value={extensionMonths}
+                onChange={(e) => setExtensionMonths(parseInt(e.target.value) || 1)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Tanggal berakhir baru: {selectedSubscription?.end_date 
+                  ? format(addMonths(
+                      new Date(selectedSubscription.end_date) > new Date() 
+                        ? new Date(selectedSubscription.end_date) 
+                        : new Date(), 
+                      extensionMonths
+                    ), 'dd MMM yyyy', { locale: id })
+                  : format(addMonths(new Date(), extensionMonths), 'dd MMM yyyy', { locale: id })}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowExtendDialog(false);
+              setExtensionMonths(1);
+            }}>
+              Batal
+            </Button>
+            <Button 
+              onClick={handleExtendSubscription}
+              disabled={extensionMonths < 1 || processing}
+            >
+              <CalendarPlus className="w-4 h-4 mr-2" /> Perpanjang
             </Button>
           </DialogFooter>
         </DialogContent>
