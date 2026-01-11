@@ -298,56 +298,60 @@ const AdminSubscriptions = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Admin Panel - Manajemen Langganan</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 lg:mb-8">Admin Panel - Manajemen Langganan</h1>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 lg:mb-8">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Perlu Verifikasi</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+              <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">Perlu Verifikasi</CardTitle>
+                <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.pending}</div>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold">{stats.pending}</div>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Langganan Aktif</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+              <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">Langganan Aktif</CardTitle>
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.active}</div>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold">{stats.active}</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <Card className="col-span-2 sm:col-span-1">
+              <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">Total Pendapatan</CardTitle>
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatPrice(stats.totalRevenue)}</div>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold">{formatPrice(stats.totalRevenue)}</div>
               </CardContent>
             </Card>
           </div>
 
-          <Tabs defaultValue="pending" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="pending" className="relative">
-                Perlu Verifikasi
+          <Tabs defaultValue="pending" className="space-y-3 sm:space-y-4">
+            <TabsList className="w-full sm:w-auto flex overflow-x-auto">
+              <TabsTrigger value="pending" className="relative text-xs sm:text-sm flex-1 sm:flex-initial">
+                <span className="hidden sm:inline">Perlu Verifikasi</span>
+                <span className="sm:hidden">Verifikasi</span>
                 {pendingSubscriptions.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] sm:text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
                     {pendingSubscriptions.length}
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="all">Semua Langganan</TabsTrigger>
-              <TabsTrigger value="coach-athlete" className="relative">
+              <TabsTrigger value="all" className="text-xs sm:text-sm flex-1 sm:flex-initial">
+                <span className="hidden sm:inline">Semua Langganan</span>
+                <span className="sm:hidden">Semua</span>
+              </TabsTrigger>
+              <TabsTrigger value="coach-athlete" className="relative text-xs sm:text-sm flex-1 sm:flex-initial">
                 Coach-Athlete
                 {coachAthleteRequests.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] sm:text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
                     {coachAthleteRequests.length}
                   </span>
                 )}
