@@ -112,13 +112,15 @@ export default function AthleteManagement() {
         return;
       }
 
+      // Use array query instead of .single() to handle users with multiple roles
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .single();
+        .eq("user_id", user.id);
 
-      if (roleData?.role === "coach") {
+      const roles = roleData?.map(r => r.role) || [];
+      
+      if (roles.includes("coach") || roles.includes("admin")) {
         setIsCoach(true);
         loadAthletes();
       } else {
