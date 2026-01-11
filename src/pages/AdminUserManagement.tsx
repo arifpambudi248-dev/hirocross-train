@@ -346,136 +346,211 @@ const AdminUserManagement = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <UserCog className="h-8 w-8 text-primary" />
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2">
+                <UserCog className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-primary" />
                 Manajemen User
               </h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 Kelola pengguna, role, dan akses akun
               </p>
             </div>
-            <Button onClick={loadUsers} variant="outline">
-              <RefreshCcw className="mr-2 h-4 w-4" /> Refresh
+            <Button onClick={loadUsers} variant="outline" size="sm" className="w-full sm:w-auto">
+              <RefreshCcw className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Refresh
             </Button>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{users.length}</div>
-                <p className="text-sm text-muted-foreground">Total User</p>
+              <CardContent className="p-3 sm:p-4 lg:pt-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold">{users.length}</div>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Total User</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-red-600">
+              <CardContent className="p-3 sm:p-4 lg:pt-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600">
                   {users.filter(u => u.role === 'admin').length}
                 </div>
-                <p className="text-sm text-muted-foreground">Admin</p>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Admin</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-blue-600">
+              <CardContent className="p-3 sm:p-4 lg:pt-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">
                   {users.filter(u => u.role === 'coach').length}
                 </div>
-                <p className="text-sm text-muted-foreground">Pelatih</p>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Pelatih</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-green-600">
+              <CardContent className="p-3 sm:p-4 lg:pt-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">
                   {users.filter(u => u.role === 'athlete').length}
                 </div>
-                <p className="text-sm text-muted-foreground">Atlet</p>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Atlet</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Filters */}
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <CardContent className="p-3 sm:p-4 lg:p-6 pt-3 sm:pt-4 lg:pt-6">
+              <div className="flex flex-col gap-3 sm:gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                   <Input
                     placeholder="Cari nama atau email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-8 sm:pl-10 text-sm"
                   />
                 </div>
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Filter Role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Role</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="coach">Pelatih</SelectItem>
-                    <SelectItem value="athlete">Atlet</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Filter Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Status</SelectItem>
-                    <SelectItem value="active">Aktif</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2 sm:gap-4">
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger className="w-full sm:w-[150px] text-xs sm:text-sm">
+                      <SelectValue placeholder="Filter Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Role</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="coach">Pelatih</SelectItem>
+                      <SelectItem value="athlete">Atlet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-[150px] text-xs sm:text-sm">
+                      <SelectValue placeholder="Filter Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      <SelectItem value="active">Aktif</SelectItem>
+                      <SelectItem value="suspended">Suspended</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Users Table */}
           <Card>
-            <CardHeader>
-              <CardTitle>Daftar Pengguna</CardTitle>
-              <CardDescription>
+            <CardHeader className="p-3 sm:p-4 lg:p-6">
+              <CardTitle className="text-sm sm:text-base lg:text-lg">Daftar Pengguna</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 Menampilkan {filteredUsers.length} dari {users.length} pengguna
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0 sm:p-4 lg:p-6 pt-0">
               <div className="overflow-x-auto">
-                <Table>
+                {/* Mobile Card View */}
+                <div className="block sm:hidden divide-y divide-border">
+                  {filteredUsers.map((user) => (
+                    <div key={user.id} className="p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={user.profile?.avatar_url || ''} />
+                            <AvatarFallback className="text-xs">
+                              {(user.profile?.athlete_name || user.email || '?')[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">
+                              {user.profile?.athlete_name || user.user_metadata?.athlete_name || '-'}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          </div>
+                        </div>
+                        {getStatusBadge(user)}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        {getRoleBadge(user.role)}
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 w-7 p-0"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setNewRole(user.role || 'athlete');
+                              setEditRoleDialog(true);
+                            }}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 w-7 p-0"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setResetPasswordDialog(true);
+                            }}
+                          >
+                            <Key className="h-3 w-3" />
+                          </Button>
+                          {user.banned_until ? (
+                            <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleActivateUser(user)}>
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleSuspendUser(user)}>
+                              <Ban className="h-3 w-3 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <Table className="hidden sm:table">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Pengguna</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Terdaftar</TableHead>
-                      <TableHead>Terakhir Login</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
+                      <TableHead className="text-xs lg:text-sm">Pengguna</TableHead>
+                      <TableHead className="text-xs lg:text-sm hidden md:table-cell">Email</TableHead>
+                      <TableHead className="text-xs lg:text-sm">Role</TableHead>
+                      <TableHead className="text-xs lg:text-sm">Status</TableHead>
+                      <TableHead className="text-xs lg:text-sm hidden lg:table-cell">Terdaftar</TableHead>
+                      <TableHead className="text-xs lg:text-sm hidden lg:table-cell">Terakhir Login</TableHead>
+                      <TableHead className="text-right text-xs lg:text-sm">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <Avatar className="h-6 w-6 sm:h-8 sm:w-8">
                               <AvatarImage src={user.profile?.avatar_url || ''} />
-                              <AvatarFallback>
+                              <AvatarFallback className="text-xs">
                                 {(user.profile?.athlete_name || user.email || '?')[0].toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">
+                            <span className="font-medium text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">
                               {user.profile?.athlete_name || user.user_metadata?.athlete_name || '-'}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-muted-foreground text-xs sm:text-sm hidden md:table-cell">
                           {user.email}
+                        </TableCell>
+                        <TableCell>{getRoleBadge(user.role)}</TableCell>
+                        <TableCell>{getStatusBadge(user)}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs hidden lg:table-cell">
+                          {user.created_at && format(new Date(user.created_at), 'dd MMM yyyy', { locale: localeId })}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs hidden lg:table-cell">
+                          {user.last_sign_in_at 
+                            ? format(new Date(user.last_sign_in_at), 'dd MMM yyyy HH:mm', { locale: localeId })
+                            : '-'}
                         </TableCell>
                         <TableCell>{getRoleBadge(user.role)}</TableCell>
                         <TableCell>{getStatusBadge(user)}</TableCell>

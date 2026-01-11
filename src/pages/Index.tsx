@@ -357,12 +357,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
+      <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+        <div className="mb-4 sm:mb-6 lg:mb-8">
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2">
             {isCoach ? "Dashboard Pelatih" : "Sistem Periodisasi Latihan Atletik"}
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-sm sm:text-base lg:text-lg">
             {isCoach 
               ? "Monitoring dan analisis performa tim secara keseluruhan"
               : "Platform komprehensif untuk monitoring dan analisis performa atlet"
@@ -372,13 +372,13 @@ const Index = () => {
 
         {/* Training Recommendation Alert */}
         {!isCoach && recommendation && (
-          <Alert className="mb-6 border-l-4" style={{ borderLeftColor: recommendation.color.replace('text-', '') }}>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle className="font-bold">Rekomendasi Latihan Hari Ini</AlertTitle>
+          <Alert className="mb-4 sm:mb-6 border-l-4" style={{ borderLeftColor: recommendation.color.replace('text-', '') }}>
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <AlertTitle className="font-bold text-sm sm:text-base">Rekomendasi Latihan Hari Ini</AlertTitle>
             <AlertDescription>
               <div className="mt-2 space-y-1">
-                <p className="font-semibold">{recommendation.description}</p>
-                <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                <p className="font-semibold text-sm sm:text-base">{recommendation.description}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2 mt-2 text-xs sm:text-sm">
                   <div>
                     <span className="text-muted-foreground">Intensitas: </span>
                     <span className="font-medium">{recommendation.intensity}</span>
@@ -396,77 +396,78 @@ const Index = () => {
         {/* Coach Dashboard */}
         {isCoach && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Atlet</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Total Atlet</CardTitle>
+                  <Users className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{teamStats.length}</div>
-                  <p className="text-xs text-muted-foreground">Atlet aktif</p>
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold">{teamStats.length}</div>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Atlet aktif</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Rata-rata Load Tim</CardTitle>
-                  <Dumbbell className="h-4 w-4 text-muted-foreground" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Rata-rata Load</CardTitle>
+                  <Dumbbell className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold">
                     {loading ? "..." : Math.round(teamStats.reduce((sum, a) => sum + a.weekly_load, 0) / Math.max(teamStats.length, 1))}
                   </div>
-                  <p className="text-xs text-muted-foreground">AU minggu ini</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">AU minggu ini</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Rata-rata Readiness</CardTitle>
-                  <Heart className="h-4 w-4 text-muted-foreground" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Rata-rata Readiness</CardTitle>
+                  <Heart className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold">
                     {loading ? "..." : Math.round(teamStats.reduce((sum, a) => sum + a.latest_readiness, 0) / Math.max(teamStats.length, 1))}%
                   </div>
-                  <p className="text-xs text-muted-foreground">Kesiapan tim</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Kesiapan tim</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Atlet Siap</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Atlet Siap</CardTitle>
+                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold">
                     {loading ? "..." : teamStats.filter(a => a.readiness_zone === 'prime').length}
                   </div>
-                  <p className="text-xs text-muted-foreground">Zona prime</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Zona prime</p>
                 </CardContent>
               </Card>
             </div>
 
             {/* Team Trends Chart */}
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Tren Tim (4 Minggu Terakhir)</CardTitle>
+            <Card className="mb-4 sm:mb-6 lg:mb-8">
+              <CardHeader className="p-3 sm:p-4 lg:p-6">
+                <CardTitle className="text-sm sm:text-base lg:text-lg">Tren Tim (4 Minggu Terakhir)</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="p-2 sm:p-4 lg:p-6 pt-0">
+                <ResponsiveContainer width="100%" height={200} className="sm:h-[250px] lg:h-[300px]">
                   <LineChart data={teamTrends}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="week" stroke="hsl(var(--foreground))" />
-                    <YAxis yAxisId="left" stroke="hsl(var(--foreground))" />
-                    <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--foreground))" />
+                    <XAxis dataKey="week" stroke="hsl(var(--foreground))" tick={{ fontSize: 10 }} />
+                    <YAxis yAxisId="left" stroke="hsl(var(--foreground))" tick={{ fontSize: 10 }} width={35} />
+                    <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--foreground))" tick={{ fontSize: 10 }} width={35} />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))' 
+                        border: '1px solid hsl(var(--border))',
+                        fontSize: '12px'
                       }} 
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
                     <Line yAxisId="left" type="monotone" dataKey="load" stroke="hsl(var(--primary))" name="Total Load" strokeWidth={2} />
                     <Line yAxisId="right" type="monotone" dataKey="readiness" stroke="hsl(var(--chart-2))" name="Avg Readiness (%)" strokeWidth={2} />
                   </LineChart>
@@ -475,28 +476,28 @@ const Index = () => {
             </Card>
 
             {/* Team Members Status */}
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Status Atlet</CardTitle>
+            <Card className="mb-4 sm:mb-6 lg:mb-8">
+              <CardHeader className="p-3 sm:p-4 lg:p-6">
+                <CardTitle className="text-sm sm:text-base lg:text-lg">Status Atlet</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                <div className="space-y-2 sm:space-y-3 lg:space-y-4">
                   {teamStats.map((athlete) => (
-                    <div key={athlete.athlete_id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                      <div>
-                        <p className="font-semibold">{athlete.athlete_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Load: {athlete.weekly_load} AU | Avg: {Math.round(athlete.avg_weekly_load)} AU
+                    <div key={athlete.athlete_id} className="flex items-center justify-between p-2 sm:p-3 lg:p-4 border border-border rounded-lg">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm sm:text-base truncate">{athlete.athlete_name}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          Load: {athlete.weekly_load} | Avg: {Math.round(athlete.avg_weekly_load)}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className={`text-lg font-bold ${
+                      <div className="text-right ml-2 shrink-0">
+                        <p className={`text-base sm:text-lg font-bold ${
                           athlete.readiness_zone === 'prime' ? 'text-green-500' :
                           athlete.readiness_zone === 'moderate' ? 'text-yellow-500' : 'text-red-500'
                         }`}>
                           {athlete.latest_readiness}%
                         </p>
-                        <p className="text-xs capitalize text-muted-foreground">{athlete.readiness_zone}</p>
+                        <p className="text-[10px] sm:text-xs capitalize text-muted-foreground">{athlete.readiness_zone}</p>
                       </div>
                     </div>
                   ))}
@@ -511,27 +512,27 @@ const Index = () => {
           <>
             {/* Injury Risk Assessment */}
             {riskAssessment && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
+              <Card className="mb-4 sm:mb-6 lg:mb-8">
+                <CardHeader className="p-3 sm:p-4 lg:p-6">
+                  <CardTitle className="flex items-center gap-2 text-sm sm:text-base lg:text-lg">
+                    <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
                     Analisis Risiko Cedera
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 space-y-4 sm:space-y-6">
                   <Alert className={getRiskBgColor(riskAssessment.risk)}>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle className="font-bold">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <AlertTitle className="font-bold text-sm sm:text-base">
                       Risiko: {riskAssessment.risk === 'low' ? 'Rendah' : 
                                riskAssessment.risk === 'moderate' ? 'Sedang' : 
                                riskAssessment.risk === 'high' ? 'Tinggi' : 'Sangat Tinggi'}
                     </AlertTitle>
                     <AlertDescription>
                       <div className="mt-2 space-y-2">
-                        <p className="font-semibold">Rekomendasi:</p>
+                        <p className="font-semibold text-xs sm:text-sm">Rekomendasi:</p>
                         <ul className="list-disc list-inside space-y-1">
                           {riskAssessment.recommendations.map((rec: string, idx: number) => (
-                            <li key={idx} className="text-sm">{rec}</li>
+                            <li key={idx} className="text-xs sm:text-sm">{rec}</li>
                           ))}
                         </ul>
                       </div>
@@ -539,21 +540,21 @@ const Index = () => {
                   </Alert>
 
                   {riskAssessment.factors && riskAssessment.factors.length > 0 && (
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-2 sm:gap-3 lg:gap-4 grid-cols-1 sm:grid-cols-2">
                       {riskAssessment.factors.map((factor: any, idx: number) => (
                         <Card key={idx} className={getRiskBgColor(factor.severity)}>
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-sm flex items-center justify-between">
-                              <span>{factor.name}</span>
-                              <span className={`text-xs ${getRiskColor(factor.severity)}`}>
+                          <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-4">
+                            <CardTitle className="text-xs sm:text-sm flex items-center justify-between gap-2">
+                              <span className="truncate">{factor.name}</span>
+                              <span className={`text-[10px] sm:text-xs shrink-0 ${getRiskColor(factor.severity)}`}>
                                 {factor.severity === 'low' ? 'Rendah' :
                                  factor.severity === 'moderate' ? 'Sedang' :
                                  factor.severity === 'high' ? 'Tinggi' : 'Sangat Tinggi'}
                               </span>
                             </CardTitle>
                           </CardHeader>
-                          <CardContent>
-                            <p className="text-xs text-muted-foreground">{factor.description}</p>
+                          <CardContent className="p-3 sm:p-4 pt-0">
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">{factor.description}</p>
                           </CardContent>
                         </Card>
                       ))}
@@ -563,13 +564,13 @@ const Index = () => {
                   {/* ACWR Chart */}
                   {acwrData.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-semibold mb-2">ACWR (2 Minggu Terakhir)</h4>
-                      <ResponsiveContainer width="100%" height={200}>
+                      <h4 className="text-xs sm:text-sm font-semibold mb-2">ACWR (2 Minggu Terakhir)</h4>
+                      <ResponsiveContainer width="100%" height={150} className="sm:h-[180px] lg:h-[200px]">
                         <LineChart data={acwrData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                          <YAxis domain={[0, 2]} stroke="hsl(var(--muted-foreground))" />
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} />
+                          <YAxis domain={[0, 2]} stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} width={30} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: '12px' }} />
                           <Line type="monotone" dataKey="acwr" stroke="hsl(var(--primary))" strokeWidth={2} name="ACWR" />
                         </LineChart>
                       </ResponsiveContainer>
@@ -579,13 +580,13 @@ const Index = () => {
                   {/* Weekly Load Chart */}
                   {riskLoadData.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-semibold mb-2">Beban Latihan Mingguan</h4>
-                      <ResponsiveContainer width="100%" height={200}>
+                      <h4 className="text-xs sm:text-sm font-semibold mb-2">Beban Latihan Mingguan</h4>
+                      <ResponsiveContainer width="100%" height={150} className="sm:h-[180px] lg:h-[200px]">
                         <BarChart data={riskLoadData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" />
-                          <YAxis stroke="hsl(var(--muted-foreground))" />
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                          <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} />
+                          <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} width={30} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: '12px' }} />
                           <Bar dataKey="load" fill="hsl(var(--primary))" name="Load (AU)" />
                         </BarChart>
                       </ResponsiveContainer>
@@ -595,13 +596,13 @@ const Index = () => {
                   {/* Readiness Trend */}
                   {riskReadinessData.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-semibold mb-2">Tren Readiness (7 Hari)</h4>
-                      <ResponsiveContainer width="100%" height={200}>
+                      <h4 className="text-xs sm:text-sm font-semibold mb-2">Tren Readiness (7 Hari)</h4>
+                      <ResponsiveContainer width="100%" height={150} className="sm:h-[180px] lg:h-[200px]">
                         <LineChart data={riskReadinessData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                          <YAxis domain={[0, 100]} stroke="hsl(var(--muted-foreground))" />
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} />
+                          <YAxis domain={[0, 100]} stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} width={30} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: '12px' }} />
                           <Line type="monotone" dataKey="score" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Readiness" />
                         </LineChart>
                       </ResponsiveContainer>
@@ -611,57 +612,57 @@ const Index = () => {
               </Card>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Load Mingguan (7 Hari)</CardTitle>
-              <Dumbbell className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Load Mingguan (7 Hari)</CardTitle>
+              <Dumbbell className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? "..." : weeklyLoad}</div>
-              <p className="text-xs text-muted-foreground">Total beban latihan</p>
+            <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold">{loading ? "..." : weeklyLoad}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Total beban latihan</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Readiness Terkini</CardTitle>
-              <Heart className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Readiness Terkini</CardTitle>
+              <Heart className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
               {loading ? (
-                <div className="text-2xl font-bold">...</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold">...</div>
               ) : latestReadiness ? (
                 <>
-                  <div className="text-2xl font-bold">{latestReadiness.score}%</div>
-                  <p className={`text-xs capitalize ${getZoneColor(latestReadiness.zone)}`}>
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold">{latestReadiness.score}%</div>
+                  <p className={`text-[10px] sm:text-xs capitalize ${getZoneColor(latestReadiness.zone)}`}>
                     {latestReadiness.zone}
                   </p>
                 </>
               ) : (
-                <div className="text-sm text-muted-foreground">Belum ada data</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Belum ada data</div>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tes Fisik Terbaru</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
+          <Card className="sm:col-span-2 lg:col-span-1">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Tes Fisik Terbaru</CardTitle>
+              <Target className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
               {loading ? (
-                <div className="text-sm">...</div>
+                <div className="text-xs sm:text-sm">...</div>
               ) : recentTests.length > 0 ? (
                 <div className="space-y-1">
                   {recentTests.slice(0, 2).map((test, idx) => (
-                    <div key={idx} className="text-xs">
+                    <div key={idx} className="text-[10px] sm:text-xs">
                       <span className="font-medium">{test.test_name}:</span> {test.value} {test.unit}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">Belum ada data</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Belum ada data</div>
               )}
             </CardContent>
           </Card>
@@ -671,56 +672,56 @@ const Index = () => {
 
         {/* Feature Cards */}
         {!isCoach && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-              <Calendar className="h-8 w-8 text-primary" />
-              <div>
-                <CardTitle className="text-lg">Annual Plan</CardTitle>
-                <p className="text-sm text-muted-foreground">GPP-SPP-Pra-Komp</p>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-4 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+              <div className="min-w-0">
+                <CardTitle className="text-sm sm:text-base lg:text-lg">Annual Plan</CardTitle>
+                <p className="text-xs sm:text-sm text-muted-foreground">GPP-SPP-Pra-Komp</p>
               </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm">Periodisasi tahunan dengan grafik load</p>
+            <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 hidden sm:block">
+              <p className="text-xs sm:text-sm">Periodisasi tahunan dengan grafik load</p>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-              <TrendingUp className="h-8 w-8 text-primary" />
-              <div>
-                <CardTitle className="text-lg">Analisis Load</CardTitle>
-                <p className="text-sm text-muted-foreground">FFF & ACWR</p>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-4 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+              <div className="min-w-0">
+                <CardTitle className="text-sm sm:text-base lg:text-lg">Analisis Load</CardTitle>
+                <p className="text-xs sm:text-sm text-muted-foreground">FFF & ACWR</p>
               </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm">Fitness, Fatigue, Form, dan ACWR monitoring</p>
+            <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 hidden sm:block">
+              <p className="text-xs sm:text-sm">Fitness, Fatigue, Form, dan ACWR monitoring</p>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-              <Activity className="h-8 w-8 text-primary" />
-              <div>
-                <CardTitle className="text-lg">Readiness</CardTitle>
-                <p className="text-sm text-muted-foreground">VJ + RHR</p>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-4 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+              <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+              <div className="min-w-0">
+                <CardTitle className="text-sm sm:text-base lg:text-lg">Readiness</CardTitle>
+                <p className="text-xs sm:text-sm text-muted-foreground">VJ + RHR</p>
               </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm">Monitoring kesiapan atlet harian</p>
+            <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 hidden sm:block">
+              <p className="text-xs sm:text-sm">Monitoring kesiapan atlet harian</p>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-              <Target className="h-8 w-8 text-primary" />
-              <div>
-                <CardTitle className="text-lg">Tes Fisik</CardTitle>
-                <p className="text-sm text-muted-foreground">6 Kategori</p>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-4 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+              <div className="min-w-0">
+                <CardTitle className="text-sm sm:text-base lg:text-lg">Tes Fisik</CardTitle>
+                <p className="text-xs sm:text-sm text-muted-foreground">6 Kategori</p>
               </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm">Tracking tes kondisi fisik atlet</p>
+            <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 hidden sm:block">
+              <p className="text-xs sm:text-sm">Tracking tes kondisi fisik atlet</p>
             </CardContent>
           </Card>
         </div>
@@ -728,32 +729,32 @@ const Index = () => {
 
         {!isCoach && (
         <Card>
-          <CardHeader>
-            <CardTitle>Fitur Utama</CardTitle>
+          <CardHeader className="p-3 sm:p-4 lg:p-6">
+            <CardTitle className="text-sm sm:text-base lg:text-lg">Fitur Utama</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-primary">Training Load Otomatis</h3>
-                <p className="text-sm text-muted-foreground">
+          <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
+              <div className="space-y-1 sm:space-y-2">
+                <h3 className="font-semibold text-primary text-xs sm:text-sm lg:text-base">Training Load Otomatis</h3>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">
                   Perhitungan load otomatis dari RPE × durasi dengan opsi edit manual
                 </p>
               </div>
-              <div className="space-y-2">
-                <h3 className="font-semibold text-primary">Grafik FFF</h3>
-                <p className="text-sm text-muted-foreground">
+              <div className="space-y-1 sm:space-y-2">
+                <h3 className="font-semibold text-primary text-xs sm:text-sm lg:text-base">Grafik FFF</h3>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">
                   Visualisasi Fitness (CTL), Fatigue (ATL), dan Form (TSB)
                 </p>
               </div>
-              <div className="space-y-2">
-                <h3 className="font-semibold text-primary">ACWR Monitoring</h3>
-                <p className="text-sm text-muted-foreground">
+              <div className="space-y-1 sm:space-y-2">
+                <h3 className="font-semibold text-primary text-xs sm:text-sm lg:text-base">ACWR Monitoring</h3>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">
                   Deteksi dini risiko overtraining dengan Acute:Chronic Workload Ratio
                 </p>
               </div>
-              <div className="space-y-2">
-                <h3 className="font-semibold text-primary">Readiness Scoring</h3>
-                <p className="text-sm text-muted-foreground">
+              <div className="space-y-1 sm:space-y-2">
+                <h3 className="font-semibold text-primary text-xs sm:text-sm lg:text-base">Readiness Scoring</h3>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">
                   Skor 0-100 dari Vertical Jump dan Resting Heart Rate
                 </p>
               </div>
