@@ -1,4 +1,9 @@
 {
+  "name": "hirocross-train",
+  "packageManager": "npm@10.9.2",
+  ...
+}
+{
   "name": "vite_react_shadcn_ts",
   "private": true,
   "version": "0.0.0",
