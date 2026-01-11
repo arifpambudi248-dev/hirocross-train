@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -990,7 +991,7 @@ export default function ProgramLatihan() {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-bottom-nav">
         <Navigation />
         <div className="container mx-auto px-4 py-6">
           {/* Header */}
@@ -1786,6 +1787,7 @@ export default function ProgramLatihan() {
           )}
         </DialogContent>
       </Dialog>
+      <BottomNavigation />
     </DndContext>
   );
 }

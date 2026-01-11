@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -420,7 +421,7 @@ export default function TesFisik() {
   }, {} as Record<string, PhysicalTest[]>);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-bottom-nav">
       <Navigation />
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
@@ -803,6 +804,7 @@ export default function TesFisik() {
           </Card>
         )}
       </div>
+      <BottomNavigation />
     </div>
   );
 }
