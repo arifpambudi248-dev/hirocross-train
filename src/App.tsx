@@ -22,6 +22,7 @@ import Notifications from "./pages/Notifications";
 import Subscription from "./pages/Subscription";
 import AdminSubscriptions from "./pages/AdminSubscriptions";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminUserManagement from "./pages/AdminUserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -92,6 +93,7 @@ const App = () => {
               {/* Admin pages */}
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+              <Route path="/admin/users" element={<AdminUserManagement />} />
               
               {/* Protected pages - require active subscription */}
               <Route path="/annual-plan" element={<AnnualPlan />} />
