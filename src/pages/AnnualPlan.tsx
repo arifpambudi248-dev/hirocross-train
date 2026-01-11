@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Navigation } from "@/components/Navigation";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -1222,7 +1223,7 @@ export default function AnnualPlan() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-bottom-nav">
       <Navigation />
       <div className="container mx-auto px-4 py-8 space-y-6">
         <Card>
@@ -2135,6 +2136,7 @@ export default function AnnualPlan() {
           </Card>
         )}
       </div>
+      <BottomNavigation />
     </div>
   );
 }

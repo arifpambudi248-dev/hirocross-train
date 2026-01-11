@@ -142,6 +142,22 @@ All colors MUST be HSL.
   }
 }
 
+/* Safe area for bottom navigation on mobile */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Content padding for bottom navigation */
+.pb-bottom-nav {
+  padding-bottom: 4.5rem;
+}
+
+@media (min-width: 640px) {
+  .pb-bottom-nav {
+    padding-bottom: 0;
+  }
+}
+
 @layer components {
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary-foreground to-primary;

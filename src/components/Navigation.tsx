@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import logo from "@/assets/hirocross-logo.png";
 import { ThemeToggle } from "./ThemeToggle";
+import { ScrollArea } from "./ui/scroll-area";
 import {
   Sheet,
   SheetContent,
@@ -14,7 +15,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
-
 export const Navigation = () => {
   const navigate = useNavigate();
   const [athleteName, setAthleteName] = useState<string>("");
@@ -129,24 +129,26 @@ export const Navigation = () => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64">
-                <SheetHeader>
+              <SheetContent side="left" className="w-64 flex flex-col p-0">
+                <SheetHeader className="p-4 pb-2 border-b border-border">
                   <SheetTitle>Menu Navigasi</SheetTitle>
                 </SheetHeader>
-                <div className="flex flex-col gap-2 mt-6">
-                  {navItems.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                      activeClassName="bg-secondary text-foreground"
-                      onClick={() => setIsSheetOpen(false)}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </NavLink>
-                  ))}
-                </div>
+                <ScrollArea className="flex-1 px-2">
+                  <div className="flex flex-col gap-1 py-4">
+                    {navItems.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        activeClassName="bg-secondary text-foreground"
+                        onClick={() => setIsSheetOpen(false)}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </ScrollArea>
               </SheetContent>
             </Sheet>
 

@@ -1,4 +1,5 @@
 import { Navigation } from "@/components/Navigation";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, TrendingUp, Activity, Target, Dumbbell, Heart, Users, AlertCircle, CheckCircle, Shield, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -355,7 +356,7 @@ const Index = () => {
     : null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-bottom-nav">
       <Navigation />
       <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         <div className="mb-4 sm:mb-6 lg:mb-8">
@@ -763,6 +764,7 @@ const Index = () => {
         </Card>
         )}
       </div>
+      <BottomNavigation />
     </div>
   );
 };
