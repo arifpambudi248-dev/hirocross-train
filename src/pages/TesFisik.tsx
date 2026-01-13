@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, TrendingUp, Award, FileDown, User, Calendar } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Award, FileDown, User, Calendar, Users, Dumbbell } from "lucide-react";
 import { exportPhysicalTestsToPDF, type PhysicalTestExportData } from "@/lib/exportUtils";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip, ResponsiveContainer } from "recharts";
 import type { PhysicalTest } from "@/types/database";
@@ -27,6 +28,7 @@ import {
   type Gender,
   type TestBenchmark,
 } from "@/lib/physicalTestBenchmarks";
+import { SPORT_CATEGORIES, getSportLabel, SPORT_BIOMOTOR_PRIORITY } from "@/lib/sportCategories";
 
 export default function TesFisik() {
   const [tests, setTests] = useState<PhysicalTest[]>([]);
@@ -41,9 +43,13 @@ export default function TesFisik() {
   const [notes, setNotes] = useState<string>("");
   const [calculatedScore, setCalculatedScore] = useState<number | null>(null);
   
-  // Age and gender for norm calculation
+  // Age, gender and sport for norm calculation
   const [athleteAge, setAthleteAge] = useState<number>(25);
   const [athleteGender, setAthleteGender] = useState<Gender>('male');
+  const [athleteSport, setAthleteSport] = useState<string | null>(null);
+  
+  // Grouping view mode
+  const [groupBy, setGroupBy] = useState<'category' | 'gender' | 'sport'>('category');
 
   useEffect(() => {
     loadUser();
@@ -93,7 +99,7 @@ export default function TesFisik() {
           const athleteIds = assignments.map(a => a.athlete_id);
           const { data: profilesData } = await supabase
             .from("profiles")
-            .select("id, athlete_name, age")
+            .select("id, athlete_name, age, gender, sport")
             .in("id", athleteIds)
             .order("athlete_name");
           
@@ -111,12 +117,14 @@ export default function TesFisik() {
   const loadAthleteProfile = async (uid: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("age")
+      .select("age, gender, sport")
       .eq("id", uid)
       .single();
     
-    if (data?.age) {
-      setAthleteAge(data.age);
+    if (data) {
+      if (data.age) setAthleteAge(data.age);
+      if (data.gender) setAthleteGender(data.gender as Gender);
+      if (data.sport) setAthleteSport(data.sport);
     }
   };
 
@@ -516,12 +524,12 @@ export default function TesFisik() {
           </div>
         </div>
 
-        {/* Athlete Selector for Coach + Age/Gender Display */}
+        {/* Athlete Selector for Coach + Age/Gender/Sport Display */}
         {isCoach && athletes.length > 0 && (
           <Card className="mb-6">
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-1">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
                   <Label>Pilih Atlet</Label>
                   <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
                     <SelectTrigger className="bg-background mt-2">
@@ -530,7 +538,14 @@ export default function TesFisik() {
                     <SelectContent className="bg-popover z-50">
                       {athletes.map((athlete) => (
                         <SelectItem key={athlete.id} value={athlete.id}>
-                          {athlete.athlete_name}
+                          <div className="flex items-center gap-2">
+                            <span>{athlete.athlete_name}</span>
+                            {athlete.gender && (
+                              <Badge variant="outline" className="text-xs">
+                                {athlete.gender === 'male' ? 'L' : 'P'}
+                              </Badge>
+                            )}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -539,7 +554,7 @@ export default function TesFisik() {
                 <div>
                   <Label className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Usia untuk Norma
+                    Usia
                   </Label>
                   <Input
                     type="number"
@@ -550,7 +565,7 @@ export default function TesFisik() {
                     className="mt-2"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Kelompok: {getAgeGroupLabel(getAgeGroup(athleteAge))}
+                    {getAgeGroupLabel(getAgeGroup(athleteAge))}
                   </p>
                 </div>
                 <div>
@@ -571,16 +586,25 @@ export default function TesFisik() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Dumbbell className="h-4 w-4" />
+                    Cabang Olahraga
+                  </Label>
+                  <p className="mt-2 text-sm font-medium py-2 px-3 bg-secondary rounded-md">
+                    {getSportLabel(athleteSport)}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Age/Gender for non-coach */}
+        {/* Age/Gender/Sport for non-coach */}
         {!isCoach && (
           <Card className="mb-6">
             <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
@@ -595,7 +619,7 @@ export default function TesFisik() {
                     className="mt-2"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Kelompok: {getAgeGroupLabel(getAgeGroup(athleteAge))}
+                    {getAgeGroupLabel(getAgeGroup(athleteAge))}
                   </p>
                 </div>
                 <div>
@@ -616,10 +640,52 @@ export default function TesFisik() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Dumbbell className="h-4 w-4" />
+                    Cabang Olahraga
+                  </Label>
+                  <p className="mt-2 text-sm font-medium py-2 px-3 bg-secondary rounded-md">
+                    {getSportLabel(athleteSport)}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Grouping Controls */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Kelompokkan Berdasarkan:
+              </Label>
+              <Tabs value={groupBy} onValueChange={(v) => setGroupBy(v as any)} className="w-auto">
+                <TabsList>
+                  <TabsTrigger value="category">Kategori Biomotor</TabsTrigger>
+                  <TabsTrigger value="sport">Cabang Olahraga</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              {athleteSport && SPORT_BIOMOTOR_PRIORITY[athleteSport] && (
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Prioritas untuk {getSportLabel(athleteSport)}:</span>
+                  <div className="flex gap-1">
+                    {SPORT_BIOMOTOR_PRIORITY[athleteSport].slice(0, 3).map((cat, idx) => {
+                      const catLabel = CATEGORIES.find(c => c.value === cat)?.label || cat;
+                      return (
+                        <Badge key={cat} variant={idx === 0 ? "default" : "secondary"} className="text-xs">
+                          {idx + 1}. {catLabel}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Radar Chart */}
         {radarData.length > 0 && (
@@ -669,74 +735,225 @@ export default function TesFisik() {
           </Card>
         )}
 
-        {/* Test Results by Category */}
-        <div className="space-y-6">
-          {Object.entries(testGroups).map(([testName, testList]) => {
-            const benchmark = findBenchmark(testName);
-            const latestTest = testList[0];
-            const score = benchmark ? calculateScore(latestTest.value, benchmark, athleteAge, athleteGender) : null;
+        {/* Test Results Grouped */}
+        {groupBy === 'category' ? (
+          // Group by Biomotor Category
+          <div className="space-y-8">
+            {CATEGORIES.map(category => {
+              const categoryTests = tests.filter(t => t.category === category.value);
+              if (categoryTests.length === 0) return null;
 
-            return (
-              <Card key={testName}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CardTitle>{testName}</CardTitle>
-                      {score && (
-                        <Badge className={getScoreColor(score)}>
-                          {score}/5 - {getScoreLabel(score)}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {testList.length} data
-                      </span>
-                    </div>
+              // Group tests by test name within category
+              const testsByName = categoryTests.reduce((acc, test) => {
+                if (!acc[test.test_name]) acc[test.test_name] = [];
+                acc[test.test_name].push(test);
+                return acc;
+              }, {} as Record<string, PhysicalTest[]>);
+
+              // Check if this is a priority category for the sport
+              const isPriority = athleteSport && SPORT_BIOMOTOR_PRIORITY[athleteSport]?.slice(0, 3).includes(category.value);
+
+              return (
+                <div key={category.value}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <h2 className="text-xl font-bold">{category.label}</h2>
+                    {isPriority && (
+                      <Badge variant="default" className="text-xs">
+                        Prioritas {getSportLabel(athleteSport)}
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {Object.keys(testsByName).length} jenis tes
+                    </Badge>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {testList.slice(0, 5).map((test) => {
-                      const testScore = benchmark ? calculateScore(test.value, benchmark, athleteAge, athleteGender) : null;
+                  
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {Object.entries(testsByName).map(([testName, testList]) => {
+                      const benchmark = findBenchmark(testName);
+                      const latestTest = testList[0];
+                      const score = benchmark ? calculateScore(latestTest.value, benchmark, athleteAge, athleteGender) : null;
+
                       return (
-                        <div 
-                          key={test.id}
-                          className="flex items-center justify-between p-3 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                              <span className="font-semibold text-lg">
-                                {test.value} {test.unit}
+                        <Card key={testName}>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <CardTitle className="text-base">{testName}</CardTitle>
+                                {score && (
+                                  <Badge className={`${getScoreColor(score)} text-xs`}>
+                                    {score}/5
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {testList.length} data
                               </span>
-                              {testScore && (
-                                <Badge className={`${getScoreColor(testScore)} text-xs`}>
-                                  {testScore}/5
-                                </Badge>
-                              )}
                             </div>
-                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                              <span>{new Date(test.test_date).toLocaleDateString('id-ID')}</span>
-                              {test.notes && <span className="italic">"{test.notes}"</span>}
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="space-y-2">
+                              {testList.slice(0, 3).map((test) => {
+                                const testScore = benchmark ? calculateScore(test.value, benchmark, athleteAge, athleteGender) : null;
+                                return (
+                                  <div 
+                                    key={test.id}
+                                    className="flex items-center justify-between p-2 rounded-lg border border-border bg-secondary/30 text-sm"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold">
+                                        {test.value} {test.unit}
+                                      </span>
+                                      {testScore && (
+                                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                          testScore >= 4 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
+                                          testScore >= 3 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : 
+                                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                        }`}>
+                                          {getScoreLabel(testScore)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-xs">
+                                        {new Date(test.test_date).toLocaleDateString('id-ID')}
+                                      </span>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => deleteTest(test.id)}
+                                      >
+                                        <Trash2 className="h-3 w-3 text-red-500" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteTest(test.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          // Group by Sport Context - Show recommendations
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Dumbbell className="h-5 w-5" />
+                  Analisis untuk {getSportLabel(athleteSport)}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {athleteSport && SPORT_BIOMOTOR_PRIORITY[athleteSport] ? (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="font-semibold mb-3">Prioritas Komponen Biomotor:</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {SPORT_BIOMOTOR_PRIORITY[athleteSport].map((cat, idx) => {
+                          const catLabel = CATEGORIES.find(c => c.value === cat)?.label || cat;
+                          const hasTests = tests.some(t => t.category === cat);
+                          return (
+                            <Badge 
+                              key={cat} 
+                              variant={idx < 3 ? "default" : "secondary"}
+                              className={`text-sm py-1 px-3 ${!hasTests ? 'opacity-50' : ''}`}
+                            >
+                              {idx + 1}. {catLabel}
+                              {!hasTests && ' (Belum ada tes)'}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {SPORT_BIOMOTOR_PRIORITY[athleteSport].map((cat, idx) => {
+                        const catLabel = CATEGORIES.find(c => c.value === cat)?.label || cat;
+                        const categoryTests = tests.filter(t => t.category === cat);
+                        
+                        // Calculate average score for this category
+                        const scores = categoryTests.map(t => {
+                          const benchmark = findBenchmark(t.test_name);
+                          return benchmark ? calculateScore(t.value, benchmark, athleteAge, athleteGender) : null;
+                        }).filter((s): s is number => s !== null);
+                        
+                        const avgScore = scores.length > 0 
+                          ? scores.reduce((a, b) => a + b, 0) / scores.length 
+                          : null;
+
+                        return (
+                          <Card key={cat} className={idx < 3 ? 'border-primary/50' : ''}>
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                  {idx < 3 && <span className="text-primary">★</span>}
+                                  {catLabel}
+                                </CardTitle>
+                                {avgScore && (
+                                  <Badge className={getScoreColor(Math.round(avgScore))}>
+                                    {avgScore.toFixed(1)}/5
+                                  </Badge>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              {categoryTests.length > 0 ? (
+                                <div className="space-y-1 text-sm">
+                                  {Array.from(new Set(categoryTests.map(t => t.test_name))).slice(0, 3).map(testName => {
+                                    const latestTest = categoryTests.find(t => t.test_name === testName);
+                                    return (
+                                      <div key={testName} className="flex justify-between text-muted-foreground">
+                                        <span className="truncate">{testName}</span>
+                                        <span>{latestTest?.value} {latestTest?.unit}</span>
+                                      </div>
+                                    );
+                                  })}
+                                  {categoryTests.length > 3 && (
+                                    <p className="text-xs text-muted-foreground">
+                                      +{categoryTests.length - 3} tes lainnya
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  Belum ada data tes
+                                </p>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+
+                    {/* Gender-specific info */}
+                    <div className="p-4 bg-secondary/50 rounded-lg">
+                      <h3 className="font-semibold mb-2 flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Norma {athleteGender === 'male' ? 'Laki-laki' : 'Perempuan'} - {getAgeGroupLabel(getAgeGroup(athleteAge))}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Semua skor dihitung berdasarkan norma untuk {athleteGender === 'male' ? 'laki-laki' : 'perempuan'} 
+                        {' '}usia {athleteAge} tahun (kelompok {getAgeGroupLabel(getAgeGroup(athleteAge))}).
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Dumbbell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Cabang olahraga belum ditentukan di profil atlet.</p>
+                    <p className="text-sm mt-2">Silakan update profil untuk melihat analisis berdasarkan cabang olahraga.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {tests.length === 0 && (
           <Card>

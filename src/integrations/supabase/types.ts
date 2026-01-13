@@ -217,7 +217,9 @@ export type Database = {
           baseline_vj: number | null
           body_weight: number | null
           created_at: string
+          gender: string | null
           id: string
+          sport: string | null
           updated_at: string
         }
         Insert: {
@@ -228,7 +230,9 @@ export type Database = {
           baseline_vj?: number | null
           body_weight?: number | null
           created_at?: string
+          gender?: string | null
           id: string
+          sport?: string | null
           updated_at?: string
         }
         Update: {
@@ -239,7 +243,9 @@ export type Database = {
           baseline_vj?: number | null
           body_weight?: number | null
           created_at?: string
+          gender?: string | null
           id?: string
+          sport?: string | null
           updated_at?: string
         }
         Relationships: []
