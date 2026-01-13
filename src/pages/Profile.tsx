@@ -11,13 +11,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, User, Activity, Shield, TrendingUp, Brain, AlertCircle, Camera, Heart, Edit } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, User, Activity, Shield, TrendingUp, Brain, AlertCircle, Camera, Heart, Edit, Dumbbell } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from "recharts";
 import { computeReadinessScore } from "@/lib/readiness";
 import { assessInjuryRisk, getRiskColor, getRiskBgColor } from "@/lib/injuryRisk";
 import { calculateMaxHR, calculateTrainingZones, type TrainingZone } from "@/lib/trainingZones";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
+import { SPORT_CATEGORIES, getSportLabel } from "@/lib/sportCategories";
 
 export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
@@ -37,6 +39,8 @@ export default function Profile() {
   const [editBaselineRHR, setEditBaselineRHR] = useState("");
   const [editBaselineVJ, setEditBaselineVJ] = useState("");
   const [editBodyWeight, setEditBodyWeight] = useState("");
+  const [editGender, setEditGender] = useState<string>("male");
+  const [editSport, setEditSport] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   
   // Avatar upload states
@@ -79,6 +83,8 @@ export default function Profile() {
         setEditBaselineRHR(profileData.baseline_rhr?.toString() || "60");
         setEditBaselineVJ(profileData.baseline_vj?.toString() || "40");
         setEditBodyWeight((profileData as any).body_weight?.toString() || "");
+        setEditGender((profileData as any).gender || "male");
+        setEditSport((profileData as any).sport || "");
       }
 
       // Load avatar if exists
@@ -250,7 +256,9 @@ export default function Profile() {
           age,
           baseline_rhr: rhr,
           baseline_vj: vj,
-          body_weight: bodyWeight
+          body_weight: bodyWeight,
+          gender: editGender,
+          sport: editSport || null
         })
         .eq('id', user.id);
 
@@ -577,9 +585,33 @@ export default function Profile() {
                         onChange={(e) => setEditBodyWeight(e.target.value)}
                         placeholder="Contoh: 70"
                       />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Digunakan untuk perhitungan power yang lebih akurat
-                      </p>
+                    </div>
+                    <div>
+                      <Label>Jenis Kelamin</Label>
+                      <Select value={editGender} onValueChange={setEditGender}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Laki-laki</SelectItem>
+                          <SelectItem value="female">Perempuan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Cabang Olahraga</Label>
+                      <Select value={editSport} onValueChange={setEditSport}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Pilih cabang olahraga" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {SPORT_CATEGORIES.map(sport => (
+                            <SelectItem key={sport.value} value={sport.value}>
+                              {sport.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <Button
                       onClick={handleSaveProfile}
@@ -600,18 +632,31 @@ export default function Profile() {
               </Dialog>
             </div>
             <p className="text-muted-foreground mb-2">Profil Komprehensif & Analisis Performa</p>
-            {profile?.age && (
-              <Badge variant="outline" className="mr-2">
-                <User className="h-3 w-3 mr-1" />
-                {profile.age} tahun
-              </Badge>
-            )}
-            {maxHR && (
-              <Badge variant="outline">
-                <Heart className="h-3 w-3 mr-1" />
-                HR Max: {maxHR} bpm
-              </Badge>
-            )}
+            <div className="flex flex-wrap gap-2 mb-2">
+              {profile?.age && (
+                <Badge variant="outline">
+                  <User className="h-3 w-3 mr-1" />
+                  {profile.age} tahun
+                </Badge>
+              )}
+              {(profile as any)?.gender && (
+                <Badge variant="outline">
+                  {(profile as any).gender === 'male' ? 'Laki-laki' : 'Perempuan'}
+                </Badge>
+              )}
+              {(profile as any)?.sport && (
+                <Badge variant="outline">
+                  <Dumbbell className="h-3 w-3 mr-1" />
+                  {getSportLabel((profile as any).sport)}
+                </Badge>
+              )}
+              {maxHR && (
+                <Badge variant="outline">
+                  <Heart className="h-3 w-3 mr-1" />
+                  HR Max: {maxHR} bpm
+                </Badge>
+              )}
+            </div>
             
             <div className="flex gap-4 mt-4">
               <Button 
