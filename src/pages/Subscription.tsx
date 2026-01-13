@@ -5,12 +5,9 @@ import { Navigation } from '@/components/Navigation';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Check, Upload, Clock, AlertCircle, CreditCard } from 'lucide-react';
+import { Check, Clock, AlertCircle, CreditCard, Banknote } from 'lucide-react';
 
 interface SubscriptionPlan {
   id: string;
@@ -37,11 +34,7 @@ const Subscription = () => {
   const navigate = useNavigate();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<UserSubscription | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [paymentProof, setPaymentProof] = useState<File | null>(null);
-  const [paymentNotes, setPaymentNotes] = useState('');
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,67 +94,15 @@ const Subscription = () => {
         .insert({
           user_id: userId,
           plan_id: planId,
-          status: 'pending_payment'
+          status: 'pending_approval'
         });
 
       if (error) throw error;
       
-      toast.success('Paket dipilih! Silakan upload bukti pembayaran.');
+      toast.success('Paket berhasil dipilih! Silakan transfer ke rekening yang tertera, lalu tunggu verifikasi dari admin.');
       loadData(userId);
     } catch (error: any) {
       toast.error('Gagal memilih paket: ' + error.message);
-    }
-  };
-
-  const handleUploadPaymentProof = async () => {
-    if (!paymentProof || !currentSubscription || !userId) return;
-
-    setUploading(true);
-    try {
-      const fileExt = paymentProof.name.split('.').pop();
-      const fileName = `${userId}/${currentSubscription.id}-${Date.now()}.${fileExt}`;
-
-      // Check if file already exists and remove it first
-      const { data: existingFiles } = await supabase.storage
-        .from('payment-proofs')
-        .list(userId);
-
-      const existingFile = existingFiles?.find(f => f.name.startsWith(currentSubscription.id));
-      if (existingFile) {
-        await supabase.storage
-          .from('payment-proofs')
-          .remove([`${userId}/${existingFile.name}`]);
-      }
-
-      const { error: uploadError } = await supabase.storage
-        .from('payment-proofs')
-        .upload(fileName, paymentProof, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Store the file path (not public URL) for signed URL generation later
-      const { error: updateError } = await supabase
-        .from('user_subscriptions')
-        .update({
-          payment_proof_url: fileName,
-          payment_notes: paymentNotes,
-          status: 'pending_approval'
-        })
-        .eq('id', currentSubscription.id);
-
-      if (updateError) throw updateError;
-
-      toast.success('Bukti pembayaran berhasil diupload! Menunggu konfirmasi admin.');
-      loadData(userId);
-      setPaymentProof(null);
-      setPaymentNotes('');
-    } catch (error: any) {
-      toast.error('Gagal upload: ' + error.message);
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -178,7 +119,7 @@ const Subscription = () => {
       case 'pending_payment':
         return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20"><Clock className="w-3 h-3 mr-1" /> Menunggu Pembayaran</Badge>;
       case 'pending_approval':
-        return <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20"><Clock className="w-3 h-3 mr-1" /> Menunggu Konfirmasi</Badge>;
+        return <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20"><Clock className="w-3 h-3 mr-1" /> Menunggu Verifikasi Admin</Badge>;
       case 'active':
         return <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20"><Check className="w-3 h-3 mr-1" /> Aktif</Badge>;
       case 'expired':
@@ -245,54 +186,32 @@ const Subscription = () => {
                   </div>
                 )}
 
-                {/* Payment Upload Form */}
-                {(currentSubscription.status === 'pending_payment' || currentSubscription.status === 'rejected') && (
+                {/* Payment Instructions */}
+                {(currentSubscription.status === 'pending_payment' || currentSubscription.status === 'rejected' || currentSubscription.status === 'pending_approval') && (
                   <div className="mt-4 p-4 border rounded-lg space-y-4">
-                    <h3 className="font-semibold">Upload Bukti Pembayaran</h3>
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Banknote className="w-5 h-5" />
+                      Instruksi Pembayaran
+                    </h3>
                     <div className="p-4 bg-muted rounded-lg">
                       <p className="text-sm font-medium mb-2">Transfer ke:</p>
                       <p className="text-sm">Bank Mandiri: 1370020414021</p>
                       <p className="text-sm">a.n. Nafisa Arif Pambudi</p>
                       <p className="text-sm font-semibold mt-2">Total: {formatPrice(currentSubscription.plan?.price || 0)}</p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="payment-proof">Bukti Transfer</Label>
-                      <Input
-                        id="payment-proof"
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
-                      />
+                    <div className="p-4 bg-blue-500/10 rounded-lg">
+                      <p className="text-sm text-blue-600">
+                        <strong>Catatan:</strong> Setelah melakukan transfer, langganan Anda akan diverifikasi secara manual oleh admin. 
+                        Proses verifikasi biasanya memakan waktu 1x24 jam pada hari kerja.
+                      </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="payment-notes">Catatan (opsional)</Label>
-                      <Textarea
-                        id="payment-notes"
-                        placeholder="Nama pengirim, nominal, dll."
-                        value={paymentNotes}
-                        onChange={(e) => setPaymentNotes(e.target.value)}
-                      />
-                    </div>
-                    <Button 
-                      onClick={handleUploadPaymentProof} 
-                      disabled={!paymentProof || uploading}
-                      className="w-full"
-                    >
-                      {uploading ? (
-                        <span className="animate-spin mr-2">⏳</span>
-                      ) : (
-                        <Upload className="w-4 h-4 mr-2" />
-                      )}
-                      Upload Bukti Pembayaran
-                    </Button>
-                  </div>
-                )}
-
-                {currentSubscription.status === 'pending_approval' && (
-                  <div className="p-4 bg-blue-500/10 rounded-lg">
-                    <p className="text-sm text-blue-600">
-                      Bukti pembayaran Anda sedang dalam proses verifikasi. Mohon tunggu konfirmasi dari admin.
-                    </p>
+                    {currentSubscription.status === 'pending_approval' && (
+                      <div className="p-4 bg-green-500/10 rounded-lg">
+                        <p className="text-sm text-green-600">
+                          ✓ Permintaan langganan Anda sudah tercatat. Mohon tunggu verifikasi dari admin.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
