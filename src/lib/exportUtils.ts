@@ -584,76 +584,275 @@ export const exportReadinessToPDF = (data: ReadinessExportData) => {
   doc.save(`readiness-${data.athleteName}-${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-// Physical Tests Export
+// Physical Tests Export with comprehensive norms
 export interface PhysicalTestExportData {
   athleteName: string;
   tests: PhysicalTest[];
-  testScores?: { testName: string; score: number; value: number; unit: string }[];
+  testScores?: { 
+    testName: string; 
+    score: number; 
+    value: number; 
+    unit: string;
+    category?: string;
+  }[];
+  athleteAge?: number;
+  athleteGender?: 'male' | 'female';
 }
+
+// Category label mapping
+const CATEGORY_LABELS: Record<string, string> = {
+  daya_tahan: 'Daya Tahan',
+  kecepatan: 'Kecepatan',
+  kekuatan: 'Kekuatan',
+  kelincahan: 'Kelincahan',
+  fleksibilitas: 'Fleksibilitas',
+  power: 'Power/Daya Ledak',
+  koordinasi: 'Koordinasi',
+};
+
+const getScoreCategoryLabel = (score: number): string => {
+  if (score >= 5) return 'Excellent';
+  if (score >= 4) return 'Baik';
+  if (score >= 3) return 'Cukup';
+  if (score >= 2) return 'Kurang';
+  return 'Sangat Kurang';
+};
+
+const getAgeGroupLabel = (age: number): string => {
+  if (age < 15) return '< 15 tahun (Youth)';
+  if (age < 20) return '15-19 tahun (Junior)';
+  if (age < 35) return '20-34 tahun (Senior)';
+  return '≥ 35 tahun (Master)';
+};
 
 export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
   const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.width;
   
   let yPos = addPDFHeader(doc, 'Laporan Tes Kondisi Fisik', data.athleteName);
   
+  // Info section
   doc.setFontSize(10);
-  doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 14, yPos);
-  yPos += 10;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Tanggal Laporan: ${new Date().toLocaleDateString('id-ID', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  })}`, 14, yPos);
+  yPos += 6;
   
-  // Group by category
+  // Add athlete info if available
+  if (data.athleteAge || data.athleteGender) {
+    const genderLabel = data.athleteGender === 'male' ? 'Laki-laki' : data.athleteGender === 'female' ? 'Perempuan' : '-';
+    const ageLabel = data.athleteAge ? `${data.athleteAge} tahun` : '-';
+    const ageGroupLabel = data.athleteAge ? getAgeGroupLabel(data.athleteAge) : '-';
+    
+    doc.text(`Usia: ${ageLabel}  |  Jenis Kelamin: ${genderLabel}  |  Kelompok: ${ageGroupLabel}`, 14, yPos);
+    yPos += 10;
+  } else {
+    yPos += 4;
+  }
+  
+  // Overall summary box
+  if (data.testScores && data.testScores.length > 0) {
+    const avgScore = data.testScores.reduce((sum, s) => sum + s.score, 0) / data.testScores.length;
+    
+    // Summary box
+    doc.setFillColor(245, 245, 245);
+    doc.roundedRect(14, yPos, pageWidth - 28, 25, 3, 3, 'F');
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Ringkasan Kondisi Fisik', 20, yPos + 8);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Tes Dilakukan: ${data.testScores.length}`, 20, yPos + 16);
+    doc.text(`Rata-rata Skor: ${avgScore.toFixed(2)}/5 (${getScoreCategoryLabel(avgScore)})`, 100, yPos + 16);
+    
+    yPos += 32;
+  }
+  
+  // Performance summary table with norms
+  if (data.testScores && data.testScores.length > 0) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Detail Hasil Tes dengan Norma', 14, yPos);
+    yPos += 8;
+    
+    // Group scores by category
+    const scoresByCategory = data.testScores.reduce((acc, s) => {
+      const cat = s.category || 'Lainnya';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(s);
+      return acc;
+    }, {} as Record<string, typeof data.testScores>);
+    
+    // Create table data with category grouping
+    const scoreData: (string | { content: string; styles?: any })[][] = [];
+    
+    Object.entries(scoresByCategory).forEach(([category, scores]) => {
+      // Add category header row
+      scoreData.push([{
+        content: CATEGORY_LABELS[category] || category,
+        styles: { 
+          fontStyle: 'bold', 
+          fillColor: [240, 240, 240] as [number, number, number],
+          halign: 'left' as const
+        }
+      }, '', '', '', '']);
+      
+      // Add test rows
+      scores.forEach(s => {
+        let scoreColor: [number, number, number];
+        if (s.score >= 4) scoreColor = [34, 197, 94];  // green
+        else if (s.score >= 3) scoreColor = [250, 204, 21]; // yellow
+        else scoreColor = [239, 68, 68]; // red
+        
+        scoreData.push([
+          s.testName,
+          `${s.value}`,
+          s.unit,
+          s.score.toString(),
+          getScoreCategoryLabel(s.score),
+        ]);
+      });
+    });
+    
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Nama Tes', 'Nilai', 'Satuan', 'Skor', 'Kategori']],
+      body: scoreData,
+      theme: 'grid',
+      headStyles: { fillColor: BRAND_RED, textColor: 255 },
+      styles: { fontSize: 9, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 55 },
+        1: { halign: 'center' as const, cellWidth: 25 },
+        2: { halign: 'center' as const, cellWidth: 30 },
+        3: { halign: 'center' as const, cellWidth: 20 },
+        4: { halign: 'center' as const, cellWidth: 35 },
+      },
+      didParseCell: function(hookData: { row: { index: number }; column: { index: number }; cell: { styles: any } }) {
+        // Color code the score column
+        if (hookData.row.index >= 0 && hookData.column.index === 4) {
+          const cellText = String((hookData.cell as any).raw || '');
+          if (cellText === 'Excellent' || cellText === 'Baik') {
+            hookData.cell.styles.textColor = [22, 163, 74];
+          } else if (cellText === 'Cukup') {
+            hookData.cell.styles.textColor = [202, 138, 4];
+          } else if (cellText === 'Kurang' || cellText === 'Sangat Kurang') {
+            hookData.cell.styles.textColor = [220, 38, 38];
+          }
+        }
+      },
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 12;
+  }
+  
+  // Check if we need a new page
+  if (yPos > 240) {
+    doc.addPage();
+    yPos = 20;
+  }
+  
+  // Norms reference legend
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Keterangan Skala Penilaian:', 14, yPos);
+  yPos += 6;
+  
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  const normLegend = [
+    ['5 - Excellent', 'Performa sangat baik, di atas rata-rata populasi'],
+    ['4 - Baik', 'Performa baik, sesuai standar atlet'],
+    ['3 - Cukup', 'Performa rata-rata, perlu peningkatan'],
+    ['2 - Kurang', 'Performa di bawah rata-rata, perlu latihan intensif'],
+    ['1 - Sangat Kurang', 'Performa rendah, perlu evaluasi program latihan'],
+  ];
+  
+  autoTable(doc, {
+    startY: yPos,
+    body: normLegend,
+    theme: 'plain',
+    styles: { fontSize: 8, cellPadding: 2 },
+    columnStyles: {
+      0: { cellWidth: 35, fontStyle: 'bold' },
+      1: { cellWidth: 120 },
+    },
+  });
+  
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+  
+  // Check if we need a new page for history
+  if (yPos > 200) {
+    doc.addPage();
+    yPos = 20;
+  }
+  
+  // All tests history
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Riwayat Lengkap Tes Fisik', 14, yPos);
+  yPos += 8;
+  
+  // Group tests by category for better organization
   const testsByCategory = data.tests.reduce((acc, test) => {
     if (!acc[test.category]) acc[test.category] = [];
     acc[test.category].push(test);
     return acc;
   }, {} as Record<string, PhysicalTest[]>);
   
-  // Latest test per category summary
-  if (data.testScores && data.testScores.length > 0) {
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Ringkasan Performa', 14, yPos);
-    yPos += 8;
+  Object.entries(testsByCategory).forEach(([category, categoryTests]) => {
+    // Check if we need a new page
+    if (yPos > 250) {
+      doc.addPage();
+      yPos = 20;
+    }
     
-    const scoreData = data.testScores.map(s => [
-      s.testName,
-      `${s.value} ${s.unit}`,
-      s.score.toString(),
-      s.score >= 4 ? 'Baik' : s.score >= 3 ? 'Cukup' : 'Kurang',
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(BRAND_RED[0], BRAND_RED[1], BRAND_RED[2]);
+    doc.text(CATEGORY_LABELS[category] || category, 14, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 6;
+    
+    const testData = categoryTests.map(t => [
+      t.test_date,
+      t.test_name,
+      `${t.value} ${t.unit}`,
+      t.notes || '-',
     ]);
     
     autoTable(doc, {
       startY: yPos,
-      head: [['Tes', 'Nilai', 'Skor (1-5)', 'Kategori']],
-      body: scoreData,
-      theme: 'grid',
-      headStyles: { fillColor: BRAND_RED },
+      head: [['Tanggal', 'Nama Tes', 'Hasil', 'Catatan']],
+      body: testData,
+      theme: 'striped',
+      headStyles: { fillColor: [100, 100, 100] },
+      styles: { fontSize: 8, cellPadding: 2 },
+      margin: { left: 14 },
     });
     
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
-  
-  // All tests history
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Riwayat Tes Fisik', 14, yPos);
-  yPos += 8;
-  
-  const testData = data.tests.map(t => [
-    t.test_date,
-    t.category,
-    t.test_name,
-    `${t.value} ${t.unit}`,
-    t.notes || '-',
-  ]);
-  
-  autoTable(doc, {
-    startY: yPos,
-    head: [['Tanggal', 'Kategori', 'Tes', 'Hasil', 'Catatan']],
-    body: testData,
-    theme: 'grid',
-    headStyles: { fillColor: BRAND_RED },
-    styles: { fontSize: 9 },
+    yPos = (doc as any).lastAutoTable.finalY + 8;
   });
   
-  doc.save(`tes-fisik-${data.athleteName}-${new Date().toISOString().split('T')[0]}.pdf`);
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text(
+      `Halaman ${i} dari ${pageCount} - Dibuat oleh HIROCROSS_TRAIN`,
+      pageWidth / 2,
+      doc.internal.pageSize.height - 10,
+      { align: 'center' }
+    );
+  }
+  
+  doc.save(`tes-fisik-lengkap-${data.athleteName}-${new Date().toISOString().split('T')[0]}.pdf`);
 };

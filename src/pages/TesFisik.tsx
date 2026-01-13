@@ -262,7 +262,7 @@ export default function TesFisik() {
                 className="gap-2"
                 onClick={() => {
                   const athleteNameData = athletes.find(a => a.id === selectedAthleteId)?.athlete_name || 'Atlet';
-                  // Calculate scores for latest tests
+                  // Calculate scores for latest tests with category info
                   const latestTestsMap = new Map<string, PhysicalTest>();
                   tests.forEach(test => {
                     const existing = latestTestsMap.get(test.test_name);
@@ -279,6 +279,7 @@ export default function TesFisik() {
                       score,
                       value: test.value,
                       unit: test.unit,
+                      category: test.category,
                     };
                   });
                   
@@ -286,6 +287,8 @@ export default function TesFisik() {
                     athleteName: athleteNameData,
                     tests,
                     testScores,
+                    athleteAge,
+                    athleteGender,
                   };
                   exportPhysicalTestsToPDF(exportData);
                   toast.success('PDF berhasil diekspor');

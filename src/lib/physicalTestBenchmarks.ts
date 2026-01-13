@@ -451,6 +451,26 @@ export const BENCHMARKS: CategoryBenchmarks = {
         },
       },
     },
+    {
+      testName: "Leg Dynamometer",
+      unit: "kg",
+      inverse: false,
+      description: "Kekuatan otot tungkai menggunakan dynamometer",
+      norms: {
+        male: {
+          youth: { scale5: 120, scale4: 100, scale3: 80, scale2: 65, scale1: 50 },
+          junior: { scale5: 180, scale4: 150, scale3: 120, scale2: 95, scale1: 70 },
+          senior: { scale5: 250, scale4: 210, scale3: 170, scale2: 130, scale1: 100 },
+          master: { scale5: 200, scale4: 165, scale3: 130, scale2: 100, scale1: 75 },
+        },
+        female: {
+          youth: { scale5: 80, scale4: 65, scale3: 50, scale2: 40, scale1: 30 },
+          junior: { scale5: 120, scale4: 100, scale3: 80, scale2: 60, scale1: 45 },
+          senior: { scale5: 160, scale4: 135, scale3: 110, scale2: 85, scale1: 65 },
+          master: { scale5: 130, scale4: 105, scale3: 85, scale2: 65, scale1: 50 },
+        },
+      },
+    },
   ],
   kelincahan: [
     {
