@@ -13,9 +13,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Check, X, Eye, Clock, AlertCircle, Users, CreditCard, TrendingUp, CalendarPlus } from 'lucide-react';
+import { Check, X, Eye, Clock, AlertCircle, Users, CreditCard, TrendingUp, CalendarPlus, Loader2, ImageIcon } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id as localeId } from 'date-fns/locale';
 
 interface SubscriptionWithUser {
   id: string;
@@ -58,6 +58,8 @@ const AdminSubscriptions = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [extensionMonths, setExtensionMonths] = useState(1);
   const [processing, setProcessing] = useState(false);
+  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
+  const [loadingProofImage, setLoadingProofImage] = useState(false);
   const [stats, setStats] = useState({
     pending: 0,
     active: 0,
@@ -266,6 +268,41 @@ const AdminSubscriptions = () => {
     }).format(price);
   };
 
+  const loadPaymentProofImage = async (subscription: SubscriptionWithUser) => {
+    if (!subscription.payment_proof_url) {
+      setProofImageUrl(null);
+      return;
+    }
+
+    setLoadingProofImage(true);
+    try {
+      // Check if it's already a full URL (legacy data)
+      if (subscription.payment_proof_url.startsWith('http')) {
+        setProofImageUrl(subscription.payment_proof_url);
+      } else {
+        // Generate signed URL for the file path
+        const { data, error } = await supabase.storage
+          .from('payment-proofs')
+          .createSignedUrl(subscription.payment_proof_url, 3600); // 1 hour expiry
+
+        if (error) throw error;
+        setProofImageUrl(data.signedUrl);
+      }
+    } catch (error: any) {
+      console.error('Error loading payment proof:', error.message);
+      setProofImageUrl(null);
+      toast.error('Gagal memuat bukti pembayaran');
+    } finally {
+      setLoadingProofImage(false);
+    }
+  };
+
+  const handleOpenProofDialog = async (subscription: SubscriptionWithUser) => {
+    setSelectedSubscription(subscription);
+    setShowProofDialog(true);
+    await loadPaymentProofImage(subscription);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending_payment':
@@ -388,7 +425,7 @@ const AdminSubscriptions = () => {
                             <TableCell>{sub.plan?.name}</TableCell>
                             <TableCell>{formatPrice(sub.plan?.price || 0)}</TableCell>
                             <TableCell>
-                              {format(new Date(sub.created_at), 'dd MMM yyyy', { locale: id })}
+                              {format(new Date(sub.created_at), 'dd MMM yyyy', { locale: localeId })}
                             </TableCell>
                             <TableCell className="max-w-[200px] truncate">
                               {sub.payment_notes || '-'}
@@ -398,10 +435,7 @@ const AdminSubscriptions = () => {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => {
-                                    setSelectedSubscription(sub);
-                                    setShowProofDialog(true);
-                                  }}
+                                  onClick={() => handleOpenProofDialog(sub)}
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
@@ -459,10 +493,10 @@ const AdminSubscriptions = () => {
                           <TableCell>{sub.plan?.name}</TableCell>
                           <TableCell>{getStatusBadge(sub.status)}</TableCell>
                           <TableCell>
-                            {sub.start_date ? format(new Date(sub.start_date), 'dd MMM yyyy', { locale: id }) : '-'}
+                            {sub.start_date ? format(new Date(sub.start_date), 'dd MMM yyyy', { locale: localeId }) : '-'}
                           </TableCell>
                           <TableCell>
-                            {sub.end_date ? format(new Date(sub.end_date), 'dd MMM yyyy', { locale: id }) : '-'}
+                            {sub.end_date ? format(new Date(sub.end_date), 'dd MMM yyyy', { locale: localeId }) : '-'}
                           </TableCell>
                           <TableCell>
                             <Button
@@ -515,7 +549,7 @@ const AdminSubscriptions = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {format(new Date(req.assigned_at), 'dd MMM yyyy', { locale: id })}
+                              {format(new Date(req.assigned_at), 'dd MMM yyyy', { locale: localeId })}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
@@ -547,7 +581,12 @@ const AdminSubscriptions = () => {
       </div>
 
       {/* View Payment Proof Dialog */}
-      <Dialog open={showProofDialog} onOpenChange={setShowProofDialog}>
+      <Dialog open={showProofDialog} onOpenChange={(open) => {
+        setShowProofDialog(open);
+        if (!open) {
+          setProofImageUrl(null);
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Bukti Pembayaran</DialogTitle>
@@ -556,14 +595,21 @@ const AdminSubscriptions = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {selectedSubscription?.payment_proof_url ? (
+            {loadingProofImage ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : proofImageUrl ? (
               <img
-                src={selectedSubscription.payment_proof_url}
+                src={proofImageUrl}
                 alt="Bukti pembayaran"
                 className="w-full max-h-[400px] object-contain rounded-lg border"
               />
             ) : (
-              <p className="text-muted-foreground">Tidak ada bukti pembayaran.</p>
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <ImageIcon className="w-12 h-12 mb-2" />
+                <p>Tidak ada bukti pembayaran.</p>
+              </div>
             )}
             {selectedSubscription?.payment_notes && (
               <div className="p-4 bg-muted rounded-lg">
@@ -636,7 +682,7 @@ const AdminSubscriptions = () => {
           <div className="space-y-4">
             <div className="p-4 bg-muted rounded-lg space-y-2">
               <p className="text-sm"><strong>Status saat ini:</strong> {selectedSubscription?.status}</p>
-              <p className="text-sm"><strong>Berakhir:</strong> {selectedSubscription?.end_date ? format(new Date(selectedSubscription.end_date), 'dd MMM yyyy', { locale: id }) : '-'}</p>
+              <p className="text-sm"><strong>Berakhir:</strong> {selectedSubscription?.end_date ? format(new Date(selectedSubscription.end_date), 'dd MMM yyyy', { locale: localeId }) : '-'}</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="extension-months">Tambah Durasi (Bulan)</Label>
@@ -655,8 +701,8 @@ const AdminSubscriptions = () => {
                         ? new Date(selectedSubscription.end_date) 
                         : new Date(), 
                       extensionMonths
-                    ), 'dd MMM yyyy', { locale: id })
-                  : format(addMonths(new Date(), extensionMonths), 'dd MMM yyyy', { locale: id })}
+                    ), 'dd MMM yyyy', { locale: localeId })
+                  : format(addMonths(new Date(), extensionMonths), 'dd MMM yyyy', { locale: localeId })}
               </p>
             </div>
           </div>

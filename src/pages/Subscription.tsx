@@ -121,20 +121,32 @@ const Subscription = () => {
       const fileExt = paymentProof.name.split('.').pop();
       const fileName = `${userId}/${currentSubscription.id}-${Date.now()}.${fileExt}`;
 
+      // Check if file already exists and remove it first
+      const { data: existingFiles } = await supabase.storage
+        .from('payment-proofs')
+        .list(userId);
+
+      const existingFile = existingFiles?.find(f => f.name.startsWith(currentSubscription.id));
+      if (existingFile) {
+        await supabase.storage
+          .from('payment-proofs')
+          .remove([`${userId}/${existingFile.name}`]);
+      }
+
       const { error: uploadError } = await supabase.storage
         .from('payment-proofs')
-        .upload(fileName, paymentProof);
+        .upload(fileName, paymentProof, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from('payment-proofs')
-        .getPublicUrl(fileName);
-
+      // Store the file path (not public URL) for signed URL generation later
       const { error: updateError } = await supabase
         .from('user_subscriptions')
         .update({
-          payment_proof_url: urlData.publicUrl,
+          payment_proof_url: fileName,
           payment_notes: paymentNotes,
           status: 'pending_approval'
         })
