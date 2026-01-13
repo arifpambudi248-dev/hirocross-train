@@ -10,217 +10,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, TrendingUp, Award, FileDown } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Award, FileDown, User, Calendar } from "lucide-react";
 import { exportPhysicalTestsToPDF, type PhysicalTestExportData } from "@/lib/exportUtils";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip, ResponsiveContainer } from "recharts";
 import type { PhysicalTest } from "@/types/database";
-
-// Comprehensive benchmark definitions with 5-level scoring
-const BENCHMARKS = {
-  daya_tahan: [
-    { 
-      testName: "VO2max", 
-      scale5: 65, scale4: 55, scale3: 45, scale2: 40, scale1: 35,
-      unit: "ml/kg/min", 
-      inverse: false,
-      description: "Konsumsi oksigen maksimal"
-    },
-    { 
-      testName: "Cooper Test (12 min)", 
-      scale5: 3200, scale4: 2800, scale3: 2400, scale2: 2200, scale1: 2000,
-      unit: "m", 
-      inverse: false,
-      description: "Jarak lari 12 menit"
-    },
-    { 
-      testName: "Beep Test", 
-      scale5: 15, scale4: 12, scale3: 10, scale2: 7, scale1: 5,
-      unit: "level", 
-      inverse: false,
-      description: "Multistage fitness test"
-    },
-  ],
-  kecepatan: [
-    { 
-      testName: "Sprint 10m", 
-      scale5: 1.6, scale4: 1.75, scale3: 1.9, scale2: 2.05, scale1: 2.2,
-      unit: "s", 
-      inverse: true,
-      description: "Waktu sprint 10 meter"
-    },
-    { 
-      testName: "Sprint 20m", 
-      scale5: 2.8, scale4: 3.0, scale3: 3.25, scale2: 3.5, scale1: 3.8,
-      unit: "s", 
-      inverse: true,
-      description: "Waktu sprint 20 meter"
-    },
-    { 
-      testName: "Sprint 40m", 
-      scale5: 4.9, scale4: 5.2, scale3: 5.6, scale2: 6.0, scale1: 6.5,
-      unit: "s", 
-      inverse: true,
-      description: "Waktu sprint 40 meter"
-    },
-  ],
-  kekuatan: [
-    { 
-      testName: "Back Squat 1RM", 
-      scale5: 2.5, scale4: 2.0, scale3: 1.5, scale2: 1.2, scale1: 1.0,
-      unit: "x BW", 
-      inverse: false,
-      description: "1 Rep Max relatif terhadap berat badan"
-    },
-    { 
-      testName: "Bench Press 1RM", 
-      scale5: 1.8, scale4: 1.5, scale3: 1.2, scale2: 1.0, scale1: 0.8,
-      unit: "x BW", 
-      inverse: false,
-      description: "1 Rep Max relatif terhadap berat badan"
-    },
-    { 
-      testName: "Deadlift 1RM", 
-      scale5: 3.0, scale4: 2.5, scale3: 2.0, scale2: 1.5, scale1: 1.2,
-      unit: "x BW", 
-      inverse: false,
-      description: "1 Rep Max relatif terhadap berat badan"
-    },
-    { 
-      testName: "Pull Up Max", 
-      scale5: 20, scale4: 15, scale3: 10, scale2: 7, scale1: 5,
-      unit: "reps", 
-      inverse: false,
-      description: "Jumlah maksimal pull up"
-    },
-  ],
-  kelincahan: [
-    { 
-      testName: "T-Test", 
-      scale5: 8.5, scale4: 9.5, scale3: 10.5, scale2: 11.5, scale1: 12.5,
-      unit: "s", 
-      inverse: true,
-      description: "Tes kelincahan bentuk T"
-    },
-    { 
-      testName: "Illinois Agility Test", 
-      scale5: 14.0, scale4: 15.5, scale3: 17.0, scale2: 18.5, scale1: 20.0,
-      unit: "s", 
-      inverse: true,
-      description: "Tes kelincahan Illinois"
-    },
-    { 
-      testName: "505 Agility Test", 
-      scale5: 2.0, scale4: 2.2, scale3: 2.4, scale2: 2.6, scale1: 2.8,
-      unit: "s", 
-      inverse: true,
-      description: "Tes kelincahan 5-0-5"
-    },
-    { 
-      testName: "Hexagon Test", 
-      scale5: 10.0, scale4: 11.5, scale3: 13.0, scale2: 14.5, scale1: 16.0,
-      unit: "s", 
-      inverse: true,
-      description: "Tes kelincahan hexagon"
-    },
-  ],
-  fleksibilitas: [
-    { 
-      testName: "Sit and Reach", 
-      scale5: 25, scale4: 20, scale3: 15, scale2: 10, scale1: 5,
-      unit: "cm", 
-      inverse: false,
-      description: "Fleksibilitas hamstring"
-    },
-    { 
-      testName: "Shoulder Flexibility", 
-      scale5: -5, scale4: 0, scale3: 5, scale2: 10, scale1: 15,
-      unit: "cm", 
-      inverse: true,
-      description: "Jarak antara tangan di belakang"
-    },
-    { 
-      testName: "Hip Flexion", 
-      scale5: 130, scale4: 120, scale3: 110, scale2: 100, scale1: 90,
-      unit: "deg", 
-      inverse: false,
-      description: "Range of motion pinggul"
-    },
-  ],
-  power: [
-    { 
-      testName: "CMJ (Counter Movement Jump)", 
-      scale5: 65, scale4: 55, scale3: 45, scale2: 35, scale1: 25,
-      unit: "cm", 
-      inverse: false,
-      description: "Lompat vertikal dengan ayunan"
-    },
-    { 
-      testName: "Standing Broad Jump", 
-      scale5: 310, scale4: 270, scale3: 230, scale2: 200, scale1: 170,
-      unit: "cm", 
-      inverse: false,
-      description: "Lompat jauh dari posisi berdiri"
-    },
-    { 
-      testName: "Medicine Ball Throw", 
-      scale5: 14, scale4: 12, scale3: 10, scale2: 8, scale1: 6,
-      unit: "m", 
-      inverse: false,
-      description: "Lempar medicine ball overhead"
-    },
-    { 
-      testName: "Drop Jump", 
-      scale5: 70, scale4: 60, scale3: 50, scale2: 40, scale1: 30,
-      unit: "cm", 
-      inverse: false,
-      description: "Lompat setelah turun dari box"
-    },
-  ],
-};
-
-const CATEGORIES = [
-  { value: "daya_tahan", label: "Daya Tahan" },
-  { value: "kecepatan", label: "Kecepatan" },
-  { value: "kekuatan", label: "Kekuatan" },
-  { value: "kelincahan", label: "Kelincahan" },
-  { value: "fleksibilitas", label: "Fleksibilitas" },
-  { value: "power", label: "Power" },
-];
-
-// Function to calculate score (1-5) based on benchmark
-function calculateScore(value: number, benchmark: any): number {
-  if (benchmark.inverse) {
-    if (value <= benchmark.scale5) return 5;
-    if (value <= benchmark.scale4) return 4;
-    if (value <= benchmark.scale3) return 3;
-    if (value <= benchmark.scale2) return 2;
-    return 1;
-  } else {
-    if (value >= benchmark.scale5) return 5;
-    if (value >= benchmark.scale4) return 4;
-    if (value >= benchmark.scale3) return 3;
-    if (value >= benchmark.scale2) return 2;
-    return 1;
-  }
-}
-
-// Function to get score color
-function getScoreColor(score: number): string {
-  if (score === 5) return "bg-green-500 text-white";
-  if (score === 4) return "bg-blue-500 text-white";
-  if (score === 3) return "bg-yellow-500 text-black";
-  if (score === 2) return "bg-orange-500 text-white";
-  return "bg-red-500 text-white";
-}
-
-// Function to get score label
-function getScoreLabel(score: number): string {
-  if (score === 5) return "Excellent";
-  if (score === 4) return "Good";
-  if (score === 3) return "Average";
-  if (score === 2) return "Below Average";
-  return "Poor";
-}
+import {
+  BENCHMARKS,
+  CATEGORIES,
+  calculateScore,
+  getScoreColor,
+  getScoreLabel,
+  findBenchmark,
+  getBenchmarkScale,
+  getAgeGroup,
+  getAgeGroupLabel,
+  type Gender,
+  type TestBenchmark,
+} from "@/lib/physicalTestBenchmarks";
 
 export default function TesFisik() {
   const [tests, setTests] = useState<PhysicalTest[]>([]);
@@ -234,6 +40,10 @@ export default function TesFisik() {
   const [testDate, setTestDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState<string>("");
   const [calculatedScore, setCalculatedScore] = useState<number | null>(null);
+  
+  // Age and gender for norm calculation
+  const [athleteAge, setAthleteAge] = useState<number>(25);
+  const [athleteGender, setAthleteGender] = useState<Gender>('male');
 
   useEffect(() => {
     loadUser();
@@ -242,22 +52,22 @@ export default function TesFisik() {
   useEffect(() => {
     if (selectedAthleteId) {
       loadTests(selectedAthleteId);
+      loadAthleteProfile(selectedAthleteId);
     }
   }, [selectedAthleteId]);
 
   // Auto-calculate score when value changes
   useEffect(() => {
     if (selectedTestName && testValue) {
-      const allBenchmarks = Object.values(BENCHMARKS).flat();
-      const benchmark = allBenchmarks.find(b => b.testName === selectedTestName);
+      const benchmark = findBenchmark(selectedTestName);
       if (benchmark) {
-        const score = calculateScore(parseFloat(testValue), benchmark);
+        const score = calculateScore(parseFloat(testValue), benchmark, athleteAge, athleteGender);
         setCalculatedScore(score);
       }
     } else {
       setCalculatedScore(null);
     }
-  }, [selectedTestName, testValue]);
+  }, [selectedTestName, testValue, athleteAge, athleteGender]);
 
   const loadUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -283,7 +93,7 @@ export default function TesFisik() {
           const athleteIds = assignments.map(a => a.athlete_id);
           const { data: profilesData } = await supabase
             .from("profiles")
-            .select("id, athlete_name")
+            .select("id, athlete_name, age")
             .in("id", athleteIds)
             .order("athlete_name");
           
@@ -295,6 +105,18 @@ export default function TesFisik() {
       } else {
         setSelectedAthleteId(user.id);
       }
+    }
+  };
+
+  const loadAthleteProfile = async (uid: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("age")
+      .eq("id", uid)
+      .single();
+    
+    if (data?.age) {
+      setAthleteAge(data.age);
     }
   };
 
@@ -318,8 +140,7 @@ export default function TesFisik() {
       return;
     }
 
-    const allBenchmarks = Object.values(BENCHMARKS).flat();
-    const benchmark = allBenchmarks.find(b => b.testName === selectedTestName);
+    const benchmark = findBenchmark(selectedTestName);
     
     if (!benchmark) {
       toast.error("Benchmark tidak ditemukan");
@@ -382,9 +203,8 @@ export default function TesFisik() {
 
   // Prepare radar chart data - only use tests that have been performed
   const radarData = (() => {
-    const allBenchmarks = Object.values(BENCHMARKS).flat();
     const performedTests = tests.filter(t => {
-      const benchmark = allBenchmarks.find(b => b.testName === t.test_name);
+      const benchmark = findBenchmark(t.test_name);
       return benchmark !== undefined;
     });
 
@@ -398,10 +218,10 @@ export default function TesFisik() {
     });
 
     return Array.from(latestTestsMap.values()).map(test => {
-      const benchmark = allBenchmarks.find(b => b.testName === test.test_name);
+      const benchmark = findBenchmark(test.test_name);
       if (!benchmark) return null;
 
-      const score = calculateScore(test.value, benchmark);
+      const score = calculateScore(test.value, benchmark, athleteAge, athleteGender);
       
       return {
         subject: test.test_name,
@@ -420,16 +240,18 @@ export default function TesFisik() {
     return acc;
   }, {} as Record<string, PhysicalTest[]>);
 
+  const selectedBenchmark = findBenchmark(selectedTestName);
+
   return (
     <div className="min-h-screen bg-background pb-bottom-nav">
       <Navigation />
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">Tes Kondisi Fisik</h1>
             <p className="text-muted-foreground">
-              Kelola dan analisis hasil tes kondisi fisik dengan norma otomatis
+              Kelola dan analisis hasil tes dengan norma berdasarkan usia & jenis kelamin
             </p>
           </div>
 
@@ -441,7 +263,6 @@ export default function TesFisik() {
                 onClick={() => {
                   const athleteNameData = athletes.find(a => a.id === selectedAthleteId)?.athlete_name || 'Atlet';
                   // Calculate scores for latest tests
-                  const allBenchmarks = Object.values(BENCHMARKS).flat();
                   const latestTestsMap = new Map<string, PhysicalTest>();
                   tests.forEach(test => {
                     const existing = latestTestsMap.get(test.test_name);
@@ -451,8 +272,8 @@ export default function TesFisik() {
                   });
                   
                   const testScores = Array.from(latestTestsMap.values()).map(test => {
-                    const benchmark = allBenchmarks.find(b => b.testName === test.test_name);
-                    const score = benchmark ? calculateScore(test.value, benchmark) : 0;
+                    const benchmark = findBenchmark(test.test_name);
+                    const score = benchmark ? calculateScore(test.value, benchmark, athleteAge, athleteGender) : 0;
                     return {
                       testName: test.test_name,
                       score,
@@ -481,195 +302,318 @@ export default function TesFisik() {
                   Tambah Tes
                 </Button>
               </DialogTrigger>
-            <DialogContent className="bg-card max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Tambah Tes Fisik Baru</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Tanggal Tes</Label>
-                    <Input
-                      type="date"
-                      value={testDate}
-                      onChange={(e) => setTestDate(e.target.value)}
-                    />
+              <DialogContent className="bg-card max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Tambah Tes Fisik Baru</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Tanggal Tes</Label>
+                      <Input
+                        type="date"
+                        value={testDate}
+                        onChange={(e) => setTestDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Kategori Biomotor</Label>
+                      <Select
+                        value={selectedCategory}
+                        onValueChange={(v) => {
+                          setSelectedCategory(v);
+                          setSelectedTestName("");
+                          setTestValue("");
+                          setCalculatedScore(null);
+                        }}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover z-50">
+                          {CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+
+                  {/* Age and Gender Selection */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Usia Atlet
+                      </Label>
+                      <Input
+                        type="number"
+                        min="5"
+                        max="80"
+                        value={athleteAge}
+                        onChange={(e) => setAthleteAge(parseInt(e.target.value) || 25)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Kelompok: {getAgeGroupLabel(getAgeGroup(athleteAge))}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Jenis Kelamin
+                      </Label>
+                      <Select
+                        value={athleteGender}
+                        onValueChange={(v) => setAthleteGender(v as Gender)}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover z-50">
+                          <SelectItem value="male">Laki-laki</SelectItem>
+                          <SelectItem value="female">Perempuan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label>Kategori Biomotor</Label>
+                    <Label>Pilih Jenis Tes ({availableTests.length} tes tersedia)</Label>
                     <Select
-                      value={selectedCategory}
+                      value={selectedTestName}
                       onValueChange={(v) => {
-                        setSelectedCategory(v);
-                        setSelectedTestName("");
+                        setSelectedTestName(v);
                         setTestValue("");
                         setCalculatedScore(null);
                       }}
                     >
                       <SelectTrigger className="bg-background">
-                        <SelectValue />
+                        <SelectValue placeholder="Pilih tes dari daftar..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover z-50">
-                        {CATEGORIES.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
+                      <SelectContent className="bg-popover z-50 max-h-[300px]">
+                        {availableTests.map((test) => (
+                          <SelectItem key={test.testName} value={test.testName}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{test.testName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {test.description} ({test.unit})
+                              </span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Pilih Jenis Tes</Label>
-                  <Select
-                    value={selectedTestName}
-                    onValueChange={(v) => {
-                      setSelectedTestName(v);
-                      setTestValue("");
-                      setCalculatedScore(null);
-                    }}
-                  >
-                    <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Pilih tes dari daftar..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover z-50 max-h-[300px]">
-                      {availableTests.map((test) => (
-                        <SelectItem key={test.testName} value={test.testName}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{test.testName}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {test.description} ({test.unit})
+                  {selectedTestName && selectedBenchmark && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Nilai Hasil Tes</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={testValue}
+                            onChange={(e) => setTestValue(e.target.value)}
+                            placeholder="Masukkan nilai..."
+                            className="flex-1"
+                          />
+                          <div className="bg-muted px-4 py-2 rounded-md flex items-center min-w-[80px] justify-center">
+                            <span className="font-semibold">
+                              {selectedBenchmark.unit}
                             </span>
                           </div>
+                        </div>
+                      </div>
+
+                      {calculatedScore && (
+                        <div className="p-4 bg-secondary rounded-lg border border-border">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">Skor Otomatis</p>
+                              <p className="text-2xl font-bold">
+                                {calculatedScore}/5
+                              </p>
+                            </div>
+                            <Badge className={`${getScoreColor(calculatedScore)} text-lg px-4 py-2`}>
+                              {getScoreLabel(calculatedScore)}
+                            </Badge>
+                          </div>
+
+                          {/* Show benchmark ranges based on age/gender */}
+                          <div className="mt-4 space-y-1 text-xs">
+                            <p className="font-semibold mb-2">
+                              Norma ({athleteGender === 'male' ? 'Laki-laki' : 'Perempuan'}, {getAgeGroupLabel(getAgeGroup(athleteAge))}):
+                            </p>
+                            {(() => {
+                              const scale = getBenchmarkScale(selectedBenchmark, athleteAge, athleteGender);
+                              return (
+                                <>
+                                  <div className="flex justify-between">
+                                    <span className="text-green-600">Excellent (5):</span>
+                                    <span className="font-semibold">
+                                      {selectedBenchmark.inverse ? `≤ ${scale.scale5}` : `≥ ${scale.scale5}`} {selectedBenchmark.unit}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-blue-600">Good (4):</span>
+                                    <span className="font-semibold">
+                                      {selectedBenchmark.inverse ? `≤ ${scale.scale4}` : `≥ ${scale.scale4}`} {selectedBenchmark.unit}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-yellow-600">Average (3):</span>
+                                    <span className="font-semibold">
+                                      {selectedBenchmark.inverse ? `≤ ${scale.scale3}` : `≥ ${scale.scale3}`} {selectedBenchmark.unit}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-orange-600">Below Average (2):</span>
+                                    <span className="font-semibold">
+                                      {selectedBenchmark.inverse ? `≤ ${scale.scale2}` : `≥ ${scale.scale2}`} {selectedBenchmark.unit}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-red-600">Poor (1):</span>
+                                    <span className="font-semibold">
+                                      {selectedBenchmark.inverse ? `> ${scale.scale2}` : `< ${scale.scale2}`} {selectedBenchmark.unit}
+                                    </span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label>Catatan (Opsional)</Label>
+                        <Input
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Catatan tambahan..."
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex gap-2 justify-end mt-4">
+                    <Button variant="outline" onClick={() => setShowDialog(false)}>
+                      Batal
+                    </Button>
+                    <Button onClick={saveTest} disabled={!selectedTestName || !testValue}>
+                      Simpan Tes
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {/* Athlete Selector for Coach + Age/Gender Display */}
+        {isCoach && athletes.length > 0 && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-1">
+                  <Label>Pilih Atlet</Label>
+                  <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
+                    <SelectTrigger className="bg-background mt-2">
+                      <SelectValue placeholder="Pilih atlet..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover z-50">
+                      {athletes.map((athlete) => (
+                        <SelectItem key={athlete.id} value={athlete.id}>
+                          {athlete.athlete_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {selectedTestName && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Nilai Hasil Tes</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={testValue}
-                          onChange={(e) => setTestValue(e.target.value)}
-                          placeholder="Masukkan nilai..."
-                          className="flex-1"
-                        />
-                        <div className="bg-muted px-4 py-2 rounded-md flex items-center min-w-[80px] justify-center">
-                          <span className="font-semibold">
-                            {availableTests.find(t => t.testName === selectedTestName)?.unit}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {calculatedScore && (
-                      <div className="p-4 bg-secondary rounded-lg border border-border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Skor Otomatis</p>
-                            <p className="text-2xl font-bold">
-                              {calculatedScore}/5
-                            </p>
-                          </div>
-                          <Badge className={`${getScoreColor(calculatedScore)} text-lg px-4 py-2`}>
-                            {getScoreLabel(calculatedScore)}
-                          </Badge>
-                        </div>
-
-                        {/* Show benchmark ranges */}
-                        <div className="mt-4 space-y-1 text-xs">
-                          <p className="font-semibold mb-2">Norma Pengukuran:</p>
-                          {(() => {
-                            const benchmark = availableTests.find(t => t.testName === selectedTestName);
-                            if (!benchmark) return null;
-                            return (
-                              <>
-                                <div className="flex justify-between">
-                                  <span>Excellent (5):</span>
-                                  <span className="font-semibold">
-                                    {benchmark.inverse ? `≤ ${benchmark.scale5}` : `≥ ${benchmark.scale5}`} {benchmark.unit}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Good (4):</span>
-                                  <span className="font-semibold">
-                                    {benchmark.inverse ? `≤ ${benchmark.scale4}` : `≥ ${benchmark.scale4}`} {benchmark.unit}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Average (3):</span>
-                                  <span className="font-semibold">
-                                    {benchmark.inverse ? `≤ ${benchmark.scale3}` : `≥ ${benchmark.scale3}`} {benchmark.unit}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Below Average (2):</span>
-                                  <span className="font-semibold">
-                                    {benchmark.inverse ? `≤ ${benchmark.scale2}` : `≥ ${benchmark.scale2}`} {benchmark.unit}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Poor (1):</span>
-                                  <span className="font-semibold">
-                                    {benchmark.inverse ? `> ${benchmark.scale2}` : `< ${benchmark.scale2}`} {benchmark.unit}
-                                  </span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label>Catatan (Opsional)</Label>
-                      <Input
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Catatan tambahan..."
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="flex gap-2 justify-end mt-4">
-                  <Button variant="outline" onClick={() => setShowDialog(false)}>
-                    Batal
-                  </Button>
-                  <Button onClick={saveTest} disabled={!selectedTestName || !testValue}>
-                    Simpan Tes
-                  </Button>
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Usia untuk Norma
+                  </Label>
+                  <Input
+                    type="number"
+                    min="5"
+                    max="80"
+                    value={athleteAge}
+                    onChange={(e) => setAthleteAge(parseInt(e.target.value) || 25)}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Kelompok: {getAgeGroupLabel(getAgeGroup(athleteAge))}
+                  </p>
+                </div>
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Jenis Kelamin
+                  </Label>
+                  <Select
+                    value={athleteGender}
+                    onValueChange={(v) => setAthleteGender(v as Gender)}
+                  >
+                    <SelectTrigger className="bg-background mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover z-50">
+                      <SelectItem value="male">Laki-laki</SelectItem>
+                      <SelectItem value="female">Perempuan</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
-          </div>
-        </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Athlete Selector for Coach */}
-        {isCoach && athletes.length > 0 && (
+        {/* Age/Gender for non-coach */}
+        {!isCoach && (
           <Card className="mb-6">
             <CardContent className="pt-6">
-              <Label>Pilih Atlet</Label>
-              <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
-                <SelectTrigger className="bg-background mt-2">
-                  <SelectValue placeholder="Pilih atlet..." />
-                </SelectTrigger>
-                <SelectContent className="bg-popover z-50">
-                  {athletes.map((athlete) => (
-                    <SelectItem key={athlete.id} value={athlete.id}>
-                      {athlete.athlete_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Usia untuk Norma
+                  </Label>
+                  <Input
+                    type="number"
+                    min="5"
+                    max="80"
+                    value={athleteAge}
+                    onChange={(e) => setAthleteAge(parseInt(e.target.value) || 25)}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Kelompok: {getAgeGroupLabel(getAgeGroup(athleteAge))}
+                  </p>
+                </div>
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Jenis Kelamin
+                  </Label>
+                  <Select
+                    value={athleteGender}
+                    onValueChange={(v) => setAthleteGender(v as Gender)}
+                  >
+                    <SelectTrigger className="bg-background mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover z-50">
+                      <SelectItem value="male">Laki-laki</SelectItem>
+                      <SelectItem value="female">Perempuan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -725,10 +669,9 @@ export default function TesFisik() {
         {/* Test Results by Category */}
         <div className="space-y-6">
           {Object.entries(testGroups).map(([testName, testList]) => {
-            const allBenchmarks = Object.values(BENCHMARKS).flat();
-            const benchmark = allBenchmarks.find(b => b.testName === testName);
+            const benchmark = findBenchmark(testName);
             const latestTest = testList[0];
-            const score = benchmark ? calculateScore(latestTest.value, benchmark) : null;
+            const score = benchmark ? calculateScore(latestTest.value, benchmark, athleteAge, athleteGender) : null;
 
             return (
               <Card key={testName}>
@@ -753,7 +696,7 @@ export default function TesFisik() {
                 <CardContent>
                   <div className="space-y-3">
                     {testList.slice(0, 5).map((test) => {
-                      const testScore = benchmark ? calculateScore(test.value, benchmark) : null;
+                      const testScore = benchmark ? calculateScore(test.value, benchmark, athleteAge, athleteGender) : null;
                       return (
                         <div 
                           key={test.id}
