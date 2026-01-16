@@ -288,7 +288,7 @@ export default function Laporan() {
     toast.success("Laporan PDF berhasil diekspor");
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const exportData: ExportData = {
       athleteName,
       weeklyLoad,
@@ -304,7 +304,7 @@ export default function Laporan() {
       physicalTests,
     };
     
-    exportToExcel(exportData);
+    await exportToExcel(exportData);
     toast.success("Laporan Excel berhasil diekspor");
   };
 
@@ -1026,7 +1026,10 @@ export default function Laporan() {
                     PDF
                   </Button>
                   <Button
-                    onClick={() => exportComparisonToExcel(allAthletes)}
+                    onClick={async () => {
+                      await exportComparisonToExcel(allAthletes);
+                      toast.success("Perbandingan Excel berhasil diekspor");
+                    }}
                     variant="outline"
                     size="sm"
                   >
