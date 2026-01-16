@@ -782,19 +782,28 @@ const drawMiniSpeedometer = (
   doc.setFillColor(60, 60, 60);
   doc.circle(centerX, centerY, 1.5, 'F');
   
-  // Percentage text
+  // Percentage text - positioned below arc
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(needleColor[0], needleColor[1], needleColor[2]);
-  doc.text(`${percentage.toFixed(0)}%`, centerX, centerY + radius + 6, { align: 'center' });
+  doc.text(`${percentage.toFixed(0)}%`, centerX, centerY + radius + 5, { align: 'center' });
   
-  // Label
-  doc.setFontSize(7);
+  // Label - truncate if too long
+  doc.setFontSize(6);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(60, 60, 60);
-  const maxWidth = 28;
-  const splitLabel = doc.splitTextToSize(label, maxWidth);
-  doc.text(splitLabel, centerX, centerY + radius + 12, { align: 'center' });
+  
+  // Truncate label to prevent overflow
+  const maxLabelWidth = 32;
+  let displayLabel = label;
+  while (doc.getTextWidth(displayLabel) > maxLabelWidth && displayLabel.length > 3) {
+    displayLabel = displayLabel.slice(0, -1);
+  }
+  if (displayLabel.length < label.length) {
+    displayLabel = displayLabel.slice(0, -2) + '..';
+  }
+  
+  doc.text(displayLabel, centerX, centerY + radius + 10, { align: 'center' });
   
   doc.setTextColor(0, 0, 0);
 };
@@ -891,8 +900,8 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
   
   let yPos = addPDFHeader(doc, 'Laporan Tes Kondisi Fisik', data.athleteName);
   
-  // Info section
-  doc.setFontSize(10);
+  // Info section - tanggal laporan
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(`Tanggal Laporan: ${new Date().toLocaleDateString('id-ID', { 
     weekday: 'long', 
@@ -900,44 +909,81 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     month: 'long', 
     day: 'numeric' 
   })}`, 14, yPos);
-  yPos += 6;
+  yPos += 8;
   
-  // Add athlete info if available
+  // Athlete info section with proper spacing
   if (data.athleteAge || data.athleteGender) {
     const genderLabel = data.athleteGender === 'male' ? 'Laki-laki' : data.athleteGender === 'female' ? 'Perempuan' : '-';
     const ageLabel = data.athleteAge ? `${data.athleteAge} tahun` : '-';
     const ageGroupLabel = data.athleteAge ? getAgeGroupLabel(data.athleteAge) : '-';
     
-    doc.text(`Usia: ${ageLabel}  |  Jenis Kelamin: ${genderLabel}  |  Kelompok: ${ageGroupLabel}`, 14, yPos);
-    yPos += 6;
+    doc.setFontSize(9);
+    doc.text(`Usia: ${ageLabel}  |  Jenis Kelamin: ${genderLabel}  |  Kelompok Usia: ${ageGroupLabel}`, 14, yPos);
+    yPos += 10;
   }
   
-  // BMI Section - Always show if data available
+  // BMI Section with complete calculation display
   if (data.bodyWeight && data.height) {
-    const calculatedBmi = data.bmi || (data.bodyWeight / Math.pow(data.height / 100, 2));
-    const bmiCategory = calculatedBmi < 18.5 ? 'Kurus' : calculatedBmi < 25 ? 'Normal' : calculatedBmi < 30 ? 'Gemuk' : 'Obesitas';
-    const bmiColor: [number, number, number] = calculatedBmi < 18.5 ? [249, 115, 22] : 
-                                                calculatedBmi < 25 ? [34, 197, 94] : 
-                                                calculatedBmi < 30 ? [249, 115, 22] : [239, 68, 68];
+    const heightInMeters = data.height / 100;
+    const calculatedBmi = data.bmi || (data.bodyWeight / Math.pow(heightInMeters, 2));
     
+    // Determine BMI category and color
+    let bmiCategory: string;
+    let bmiColor: [number, number, number];
+    if (calculatedBmi < 18.5) {
+      bmiCategory = 'Kurus (Underweight)';
+      bmiColor = [249, 115, 22]; // Orange
+    } else if (calculatedBmi < 25) {
+      bmiCategory = 'Normal';
+      bmiColor = [34, 197, 94]; // Green
+    } else if (calculatedBmi < 30) {
+      bmiCategory = 'Gemuk (Overweight)';
+      bmiColor = [249, 115, 22]; // Orange
+    } else {
+      bmiCategory = 'Obesitas';
+      bmiColor = [239, 68, 68]; // Red
+    }
+    
+    // Draw BMI box with proper height
     doc.setFillColor(245, 245, 245);
-    doc.roundedRect(14, yPos, pageWidth - 28, 18, 2, 2, 'F');
+    doc.roundedRect(14, yPos, pageWidth - 28, 28, 2, 2, 'F');
     
-    doc.setFontSize(9);
+    // Title
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('DATA ANTROPOMETRI', 18, yPos + 6);
+    doc.setTextColor(60, 60, 60);
+    doc.text('DATA ANTROPOMETRI & BMI/IMT', 18, yPos + 7);
     
+    // Body measurements row
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(`Berat Badan: ${data.bodyWeight} kg`, 18, yPos + 12);
-    doc.text(`Tinggi Badan: ${data.height} cm`, 70, yPos + 12);
-    
-    doc.setTextColor(bmiColor[0], bmiColor[1], bmiColor[2]);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`BMI/IMT: ${calculatedBmi.toFixed(1)} kg/m² (${bmiCategory})`, 122, yPos + 12);
+    doc.setFontSize(9);
     doc.setTextColor(0, 0, 0);
+    doc.text(`Berat Badan: ${data.bodyWeight} kg`, 18, yPos + 15);
+    doc.text(`Tinggi Badan: ${data.height} cm`, 65, yPos + 15);
     
-    yPos += 22;
+    // BMI calculation formula
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Rumus: ${data.bodyWeight} ÷ (${heightInMeters.toFixed(2)}²) = ${calculatedBmi.toFixed(2)}`, 120, yPos + 15);
+    
+    // BMI result with color
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(bmiColor[0], bmiColor[1], bmiColor[2]);
+    doc.text(`BMI/IMT: ${calculatedBmi.toFixed(1)} kg/m²`, 18, yPos + 23);
+    
+    // Category label
+    doc.setFontSize(9);
+    doc.text(`Kategori: ${bmiCategory}`, 75, yPos + 23);
+    
+    // BMI range reference
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Normal: 18.5-24.9 | Kurus: <18.5 | Gemuk: 25-29.9 | Obesitas: ≥30', 140, yPos + 23);
+    
+    doc.setTextColor(0, 0, 0);
+    yPos += 34;
   } else {
     yPos += 4;
   }
@@ -1082,8 +1128,12 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     
     // Draw mini speedometers for each category
     if (categoryScores.length > 0) {
+      // Calculate proper height based on number of rows with better spacing
+      const speedoPerRow = Math.min(categoryScores.length, 4);
+      const numRows = Math.ceil(categoryScores.length / speedoPerRow);
+      const speedoBoxHeight = numRows * 45 + 18;
+      
       doc.setFillColor(248, 248, 248);
-      const speedoBoxHeight = Math.ceil(categoryScores.length / 4) * 40 + 10;
       doc.roundedRect(14, yPos, pageWidth - 28, speedoBoxHeight, 2, 2, 'F');
       
       doc.setFontSize(10);
@@ -1092,14 +1142,13 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
       doc.text('Skor Per Kategori', 20, yPos + 8);
       
       // Draw mini speedometers in a grid (max 4 per row)
-      const speedoPerRow = 4;
       const speedoWidth = (pageWidth - 40) / speedoPerRow;
       
       categoryScores.forEach((cat, index) => {
         const row = Math.floor(index / speedoPerRow);
         const col = index % speedoPerRow;
         const speedoCenterX = 27 + col * speedoWidth + speedoWidth / 2;
-        const speedoCenterY = yPos + 25 + row * 40;
+        const speedoCenterY = yPos + 28 + row * 45;
         
         drawMiniSpeedometer(
           doc, 
@@ -1111,8 +1160,14 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
         );
       });
       
-      yPos += speedoBoxHeight + 8;
+      yPos += speedoBoxHeight + 10;
     }
+  }
+  
+  // Check if we need a new page before the table
+  if (yPos > 200) {
+    doc.addPage();
+    yPos = 20;
   }
   
   // Performance summary table with norms and percentage

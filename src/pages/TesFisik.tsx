@@ -49,10 +49,12 @@ export default function TesFisik() {
   const [notes, setNotes] = useState<string>("");
   const [calculatedScore, setCalculatedScore] = useState<number | null>(null);
   
-  // Age, gender and sport for norm calculation
+  // Age, gender, sport, and body data for norm calculation
   const [athleteAge, setAthleteAge] = useState<number>(25);
   const [athleteGender, setAthleteGender] = useState<Gender>('male');
   const [athleteSport, setAthleteSport] = useState<string | null>(null);
+  const [athleteBodyWeight, setAthleteBodyWeight] = useState<number | null>(null);
+  const [athleteHeight, setAthleteHeight] = useState<number | null>(null);
   
   // Grouping view mode
   const [groupBy, setGroupBy] = useState<'category' | 'gender' | 'sport'>('category');
@@ -123,7 +125,7 @@ export default function TesFisik() {
   const loadAthleteProfile = async (uid: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("age, gender, sport")
+      .select("age, gender, sport, body_weight, height")
       .eq("id", uid)
       .single();
     
@@ -131,6 +133,8 @@ export default function TesFisik() {
       if (data.age) setAthleteAge(data.age);
       if (data.gender) setAthleteGender(data.gender as Gender);
       if (data.sport) setAthleteSport(data.sport);
+      setAthleteBodyWeight(data.body_weight);
+      setAthleteHeight(data.height);
     }
   };
 
@@ -306,6 +310,8 @@ export default function TesFisik() {
                     testScores,
                     athleteAge,
                     athleteGender,
+                    bodyWeight: athleteBodyWeight || undefined,
+                    height: athleteHeight || undefined,
                   };
                   exportPhysicalTestsToPDF(exportData);
                   toast.success('PDF berhasil diekspor');
