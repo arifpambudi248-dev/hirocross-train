@@ -716,6 +716,175 @@ const scoreToPercentage = (score: number): number => {
   return ((score - 1) / 4) * 100;
 };
 
+// Helper function to draw mini speedometer
+const drawMiniSpeedometer = (
+  doc: jsPDF, 
+  centerX: number, 
+  centerY: number, 
+  percentage: number, 
+  label: string,
+  radius: number = 12
+) => {
+  const arcWidth = 3;
+  const startAngle = 135;
+  const endAngle = 405;
+  const sweepAngle = endAngle - startAngle;
+  
+  const toRadians = (deg: number) => (deg * Math.PI) / 180;
+  const polarToXY = (angle: number, r: number) => ({
+    x: centerX + r * Math.cos(toRadians(angle)),
+    y: centerY + r * Math.sin(toRadians(angle))
+  });
+  
+  // Draw gradient arc segments
+  const segments = [
+    { start: 0, end: 20, color: [239, 68, 68] as [number, number, number] },
+    { start: 20, end: 40, color: [249, 115, 22] as [number, number, number] },
+    { start: 40, end: 60, color: [250, 204, 21] as [number, number, number] },
+    { start: 60, end: 80, color: [59, 130, 246] as [number, number, number] },
+    { start: 80, end: 100, color: [34, 197, 94] as [number, number, number] },
+  ];
+  
+  doc.setLineWidth(arcWidth);
+  segments.forEach(seg => {
+    const segStartAngle = startAngle + (seg.start / 100) * sweepAngle;
+    const segEndAngle = startAngle + (seg.end / 100) * sweepAngle;
+    
+    const steps = 8;
+    for (let i = 0; i < steps; i++) {
+      const a1 = segStartAngle + (i / steps) * (segEndAngle - segStartAngle);
+      const a2 = segStartAngle + ((i + 1) / steps) * (segEndAngle - segStartAngle);
+      const p1 = polarToXY(a1, radius);
+      const p2 = polarToXY(a2, radius);
+      
+      doc.setDrawColor(seg.color[0], seg.color[1], seg.color[2]);
+      doc.line(p1.x, p1.y, p2.x, p2.y);
+    }
+  });
+  
+  // Draw needle
+  const needleAngle = startAngle + (percentage / 100) * sweepAngle;
+  const needleLength = radius * 0.55;
+  const needleEnd = polarToXY(needleAngle, needleLength);
+  
+  let needleColor: [number, number, number];
+  if (percentage >= 80) needleColor = [34, 197, 94];
+  else if (percentage >= 60) needleColor = [59, 130, 246];
+  else if (percentage >= 40) needleColor = [250, 204, 21];
+  else if (percentage >= 20) needleColor = [249, 115, 22];
+  else needleColor = [239, 68, 68];
+  
+  doc.setDrawColor(needleColor[0], needleColor[1], needleColor[2]);
+  doc.setLineWidth(1);
+  doc.line(centerX, centerY, needleEnd.x, needleEnd.y);
+  
+  // Center dot
+  doc.setFillColor(60, 60, 60);
+  doc.circle(centerX, centerY, 1.5, 'F');
+  
+  // Percentage text
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(needleColor[0], needleColor[1], needleColor[2]);
+  doc.text(`${percentage.toFixed(0)}%`, centerX, centerY + radius + 6, { align: 'center' });
+  
+  // Label
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  const maxWidth = 28;
+  const splitLabel = doc.splitTextToSize(label, maxWidth);
+  doc.text(splitLabel, centerX, centerY + radius + 12, { align: 'center' });
+  
+  doc.setTextColor(0, 0, 0);
+};
+
+// Helper function to draw radar chart
+const drawRadarChart = (
+  doc: jsPDF,
+  centerX: number,
+  centerY: number,
+  categoryScores: { category: string; percentage: number }[],
+  radius: number = 35
+) => {
+  const n = categoryScores.length;
+  if (n < 3) return; // Need at least 3 points for radar
+  
+  const toRadians = (deg: number) => (deg * Math.PI) / 180;
+  const angleStep = 360 / n;
+  
+  // Start from top (-90 degrees)
+  const getPoint = (index: number, value: number) => {
+    const angle = -90 + index * angleStep;
+    const r = (value / 100) * radius;
+    return {
+      x: centerX + r * Math.cos(toRadians(angle)),
+      y: centerY + r * Math.sin(toRadians(angle))
+    };
+  };
+  
+  // Draw grid circles
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  [20, 40, 60, 80, 100].forEach(level => {
+    const r = (level / 100) * radius;
+    doc.circle(centerX, centerY, r);
+  });
+  
+  // Draw grid lines from center to each axis
+  doc.setDrawColor(180, 180, 180);
+  for (let i = 0; i < n; i++) {
+    const endPoint = getPoint(i, 100);
+    doc.line(centerX, centerY, endPoint.x, endPoint.y);
+  }
+  
+  // Draw axis labels
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(60, 60, 60);
+  categoryScores.forEach((cat, i) => {
+    const labelPoint = getPoint(i, 120);
+    const label = CATEGORY_LABELS[cat.category] || cat.category;
+    doc.text(label, labelPoint.x, labelPoint.y, { align: 'center' });
+  });
+  
+  // Draw filled polygon for scores
+  const points = categoryScores.map((cat, i) => getPoint(i, cat.percentage));
+  
+  // Fill polygon
+  doc.setFillColor(220, 38, 38, 0.2);
+  doc.setDrawColor(220, 38, 38);
+  doc.setLineWidth(1);
+  
+  if (points.length > 0) {
+    // Create path for polygon fill
+    const pathData = points.map((p, i) => 
+      i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
+    ).join(' ') + ' Z';
+    
+    // Draw filled polygon manually
+    doc.setFillColor(220, 38, 38);
+    doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
+    
+    // Draw lines between points
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length];
+      doc.line(p1.x, p1.y, p2.x, p2.y);
+    }
+    
+    doc.setGState(new (doc as any).GState({ opacity: 1 }));
+    
+    // Draw points
+    doc.setFillColor(220, 38, 38);
+    points.forEach(p => {
+      doc.circle(p.x, p.y, 1.5, 'F');
+    });
+  }
+  
+  doc.setTextColor(0, 0, 0);
+};
+
 export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
@@ -740,60 +909,100 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     const ageGroupLabel = data.athleteAge ? getAgeGroupLabel(data.athleteAge) : '-';
     
     doc.text(`Usia: ${ageLabel}  |  Jenis Kelamin: ${genderLabel}  |  Kelompok: ${ageGroupLabel}`, 14, yPos);
-    yPos += 10;
+    yPos += 6;
+  }
+  
+  // BMI Section - Always show if data available
+  if (data.bodyWeight && data.height) {
+    const calculatedBmi = data.bmi || (data.bodyWeight / Math.pow(data.height / 100, 2));
+    const bmiCategory = calculatedBmi < 18.5 ? 'Kurus' : calculatedBmi < 25 ? 'Normal' : calculatedBmi < 30 ? 'Gemuk' : 'Obesitas';
+    const bmiColor: [number, number, number] = calculatedBmi < 18.5 ? [249, 115, 22] : 
+                                                calculatedBmi < 25 ? [34, 197, 94] : 
+                                                calculatedBmi < 30 ? [249, 115, 22] : [239, 68, 68];
+    
+    doc.setFillColor(245, 245, 245);
+    doc.roundedRect(14, yPos, pageWidth - 28, 18, 2, 2, 'F');
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DATA ANTROPOMETRI', 18, yPos + 6);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`Berat Badan: ${data.bodyWeight} kg`, 18, yPos + 12);
+    doc.text(`Tinggi Badan: ${data.height} cm`, 70, yPos + 12);
+    
+    doc.setTextColor(bmiColor[0], bmiColor[1], bmiColor[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`BMI/IMT: ${calculatedBmi.toFixed(1)} kg/m² (${bmiCategory})`, 122, yPos + 12);
+    doc.setTextColor(0, 0, 0);
+    
+    yPos += 22;
   } else {
     yPos += 4;
   }
   
-  // Overall summary box with professional speedometer
+  // Overall summary box with main speedometer
   if (data.testScores && data.testScores.length > 0) {
     const avgScore = data.testScores.reduce((sum, s) => sum + s.score, 0) / data.testScores.length;
     const avgPercentage = scoreToPercentage(avgScore);
     
-    // Larger summary box to accommodate speedometer
+    // Calculate scores by category
+    const scoresByCategory = data.testScores.reduce((acc, s) => {
+      const cat = s.category || 'Lainnya';
+      if (!acc[cat]) acc[cat] = { total: 0, count: 0 };
+      const pct = s.percentage !== undefined ? s.percentage : scoreToPercentage(s.score);
+      acc[cat].total += pct;
+      acc[cat].count += 1;
+      return acc;
+    }, {} as Record<string, { total: number; count: number }>);
+    
+    const categoryScores = Object.entries(scoresByCategory).map(([cat, data]) => ({
+      category: cat,
+      percentage: data.total / data.count
+    }));
+    
+    // Larger summary box
     doc.setFillColor(250, 250, 250);
-    doc.roundedRect(14, yPos, pageWidth - 28, 55, 3, 3, 'F');
+    doc.roundedRect(14, yPos, pageWidth - 28, 58, 3, 3, 'F');
     
-    // Draw professional speedometer gauge
-    const centerX = pageWidth - 50;
-    const centerY = yPos + 28;
-    const radius = 18;
-    const arcWidth = 4;
+    // Draw main speedometer (larger, on left side)
+    const mainCenterX = 50;
+    const mainCenterY = yPos + 30;
+    const mainRadius = 20;
     
-    // Arc angles (135° to 405° = 270° sweep, like the React component)
+    // Arc setup
     const startAngle = 135;
     const endAngle = 405;
     const sweepAngle = endAngle - startAngle;
+    const arcWidth = 4;
     
-    // Helper function for polar to cartesian
     const toRadians = (deg: number) => (deg * Math.PI) / 180;
     const polarToXY = (angle: number, r: number) => ({
-      x: centerX + r * Math.cos(toRadians(angle)),
-      y: centerY + r * Math.sin(toRadians(angle))
+      x: mainCenterX + r * Math.cos(toRadians(angle)),
+      y: mainCenterY + r * Math.sin(toRadians(angle))
     });
     
-    // Draw background arc segments (gradient effect)
+    // Draw gradient arc
     const segments = [
-      { start: 0, end: 20, color: [239, 68, 68] as [number, number, number] },     // Red
-      { start: 20, end: 40, color: [249, 115, 22] as [number, number, number] },   // Orange
-      { start: 40, end: 60, color: [250, 204, 21] as [number, number, number] },   // Yellow
-      { start: 60, end: 80, color: [59, 130, 246] as [number, number, number] },   // Blue
-      { start: 80, end: 100, color: [34, 197, 94] as [number, number, number] },   // Green
+      { start: 0, end: 20, color: [239, 68, 68] as [number, number, number] },
+      { start: 20, end: 40, color: [249, 115, 22] as [number, number, number] },
+      { start: 40, end: 60, color: [250, 204, 21] as [number, number, number] },
+      { start: 60, end: 80, color: [59, 130, 246] as [number, number, number] },
+      { start: 80, end: 100, color: [34, 197, 94] as [number, number, number] },
     ];
     
-    // Draw gradient arc background
     doc.setLineWidth(arcWidth);
     segments.forEach(seg => {
       const segStartAngle = startAngle + (seg.start / 100) * sweepAngle;
       const segEndAngle = startAngle + (seg.end / 100) * sweepAngle;
       
-      // Draw arc segment using small lines
       const steps = 10;
       for (let i = 0; i < steps; i++) {
         const a1 = segStartAngle + (i / steps) * (segEndAngle - segStartAngle);
         const a2 = segStartAngle + ((i + 1) / steps) * (segEndAngle - segStartAngle);
-        const p1 = polarToXY(a1, radius);
-        const p2 = polarToXY(a2, radius);
+        const p1 = polarToXY(a1, mainRadius);
+        const p2 = polarToXY(a2, mainRadius);
         
         doc.setDrawColor(seg.color[0], seg.color[1], seg.color[2]);
         doc.line(p1.x, p1.y, p2.x, p2.y);
@@ -805,8 +1014,8 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     doc.setDrawColor(100, 100, 100);
     [0, 20, 40, 60, 80, 100].forEach(tick => {
       const tickAngle = startAngle + (tick / 100) * sweepAngle;
-      const innerR = radius - arcWidth / 2 - 1;
-      const outerR = radius - arcWidth / 2 - 4;
+      const innerR = mainRadius - arcWidth / 2 - 1;
+      const outerR = mainRadius - arcWidth / 2 - 4;
       const inner = polarToXY(tickAngle, innerR);
       const outer = polarToXY(tickAngle, outerR);
       doc.line(inner.x, inner.y, outer.x, outer.y);
@@ -814,10 +1023,9 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     
     // Draw needle
     const needleAngle = startAngle + (avgPercentage / 100) * sweepAngle;
-    const needleLength = radius * 0.6;
+    const needleLength = mainRadius * 0.6;
     const needleEnd = polarToXY(needleAngle, needleLength);
     
-    // Needle color based on percentage
     let needleColor: [number, number, number];
     if (avgPercentage >= 80) needleColor = [34, 197, 94];
     else if (avgPercentage >= 60) needleColor = [59, 130, 246];
@@ -827,50 +1035,84 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     
     doc.setDrawColor(needleColor[0], needleColor[1], needleColor[2]);
     doc.setLineWidth(1.5);
-    doc.line(centerX, centerY, needleEnd.x, needleEnd.y);
+    doc.line(mainCenterX, mainCenterY, needleEnd.x, needleEnd.y);
     
     // Center dot
     doc.setFillColor(60, 60, 60);
-    doc.circle(centerX, centerY, 2, 'F');
+    doc.circle(mainCenterX, mainCenterY, 2, 'F');
     
-    // Percentage text below gauge
+    // Percentage text
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(needleColor[0], needleColor[1], needleColor[2]);
-    doc.text(`${avgPercentage.toFixed(0)}%`, centerX, centerY + radius + 8, { align: 'center' });
+    doc.text(`${avgPercentage.toFixed(0)}%`, mainCenterX, mainCenterY + mainRadius + 8, { align: 'center' });
     
     // Category label
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(80, 80, 80);
-    doc.text(getPercentageCategoryLabel(avgPercentage), centerX, centerY + radius + 13, { align: 'center' });
-    doc.setTextColor(0, 0, 0);
+    doc.text(getPercentageCategoryLabel(avgPercentage), mainCenterX, mainCenterY + mainRadius + 13, { align: 'center' });
     
-    // Left side info
-    doc.setFontSize(12);
+    // Title for overall score
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text('Skor Kondisi Fisik', 20, yPos + 12);
+    doc.setTextColor(60, 60, 60);
+    doc.text('SKOR OVERALL', mainCenterX, yPos + 6, { align: 'center' });
     
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(80, 80, 80);
-    doc.text(`Total Tes: ${data.testScores.length} item`, 20, yPos + 20);
-    
-    // BMI info if available
-    if (data.bmi) {
-      const bmiCategory = data.bmi < 18.5 ? 'Kurus' : data.bmi < 25 ? 'Normal' : data.bmi < 30 ? 'Gemuk' : 'Obesitas';
-      doc.text(`BMI/IMT: ${data.bmi.toFixed(1)} kg/m² (${bmiCategory})`, 20, yPos + 28);
+    // Draw radar chart in middle
+    if (categoryScores.length >= 3) {
+      drawRadarChart(doc, 115, yPos + 32, categoryScores, 22);
+      
+      // Radar chart title
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(60, 60, 60);
+      doc.text('RADAR PERFORMA', 115, yPos + 6, { align: 'center' });
     }
     
-    // Score interpretation
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Interpretasi: Skor berdasarkan norma standar tes fisik', 20, yPos + 38);
-    doc.text('sesuai usia dan jenis kelamin atlet.', 20, yPos + 44);
-    doc.setTextColor(0, 0, 0);
+    // Info text on right
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Total: ${data.testScores.length} tes`, pageWidth - 35, yPos + 20);
+    doc.text(`${categoryScores.length} kategori`, pageWidth - 35, yPos + 27);
     
-    yPos += 62;
+    doc.setTextColor(0, 0, 0);
+    yPos += 65;
+    
+    // Draw mini speedometers for each category
+    if (categoryScores.length > 0) {
+      doc.setFillColor(248, 248, 248);
+      const speedoBoxHeight = Math.ceil(categoryScores.length / 4) * 40 + 10;
+      doc.roundedRect(14, yPos, pageWidth - 28, speedoBoxHeight, 2, 2, 'F');
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('Skor Per Kategori', 20, yPos + 8);
+      
+      // Draw mini speedometers in a grid (max 4 per row)
+      const speedoPerRow = 4;
+      const speedoWidth = (pageWidth - 40) / speedoPerRow;
+      
+      categoryScores.forEach((cat, index) => {
+        const row = Math.floor(index / speedoPerRow);
+        const col = index % speedoPerRow;
+        const speedoCenterX = 27 + col * speedoWidth + speedoWidth / 2;
+        const speedoCenterY = yPos + 25 + row * 40;
+        
+        drawMiniSpeedometer(
+          doc, 
+          speedoCenterX, 
+          speedoCenterY, 
+          cat.percentage, 
+          CATEGORY_LABELS[cat.category] || cat.category,
+          10
+        );
+      });
+      
+      yPos += speedoBoxHeight + 8;
+    }
   }
   
   // Performance summary table with norms and percentage
