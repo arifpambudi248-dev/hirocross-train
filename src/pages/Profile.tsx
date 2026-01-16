@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, User, Activity, Shield, TrendingUp, Brain, AlertCircle, Camera, Heart, Edit, Dumbbell } from "lucide-react";
+import { Loader2, User, Activity, Shield, TrendingUp, Brain, AlertCircle, Camera, Heart, Edit, Dumbbell, Ruler, Scale, Gauge } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from "recharts";
 import { computeReadinessScore } from "@/lib/readiness";
 import { assessInjuryRisk, getRiskColor, getRiskBgColor } from "@/lib/injuryRisk";
@@ -39,8 +39,23 @@ export default function Profile() {
   const [editBaselineRHR, setEditBaselineRHR] = useState("");
   const [editBaselineVJ, setEditBaselineVJ] = useState("");
   const [editBodyWeight, setEditBodyWeight] = useState("");
+  const [editHeight, setEditHeight] = useState("");
   const [editGender, setEditGender] = useState<string>("male");
   const [editSport, setEditSport] = useState<string>("");
+
+  // BMI calculation
+  const calculateBMI = (weight: number | null, height: number | null): number | null => {
+    if (!weight || !height || height <= 0) return null;
+    const heightInMeters = height / 100;
+    return weight / (heightInMeters * heightInMeters);
+  };
+
+  const getBMICategory = (bmi: number): { label: string; color: string; description: string } => {
+    if (bmi < 18.5) return { label: "Kurus", color: "text-blue-500", description: "Di bawah berat normal" };
+    if (bmi < 25) return { label: "Normal", color: "text-green-500", description: "Berat badan ideal" };
+    if (bmi < 30) return { label: "Kelebihan", color: "text-yellow-500", description: "Kelebihan berat badan" };
+    return { label: "Obesitas", color: "text-red-500", description: "Berat badan berlebih" };
+  };
   const [isSaving, setIsSaving] = useState(false);
   
   // Avatar upload states
@@ -83,6 +98,7 @@ export default function Profile() {
         setEditBaselineRHR(profileData.baseline_rhr?.toString() || "60");
         setEditBaselineVJ(profileData.baseline_vj?.toString() || "40");
         setEditBodyWeight((profileData as any).body_weight?.toString() || "");
+        setEditHeight((profileData as any).height?.toString() || "");
         setEditGender((profileData as any).gender || "male");
         setEditSport((profileData as any).sport || "");
       }
@@ -239,6 +255,7 @@ export default function Profile() {
       const rhr = parseFloat(editBaselineRHR);
       const vj = parseFloat(editBaselineVJ);
       const bodyWeight = editBodyWeight ? parseFloat(editBodyWeight) : null;
+      const height = editHeight ? parseFloat(editHeight) : null;
 
       if (age < 10 || age > 100) {
         sonnerToast.error("Usia harus antara 10-100 tahun");
@@ -250,6 +267,11 @@ export default function Profile() {
         return;
       }
 
+      if (height && (height < 100 || height > 250)) {
+        sonnerToast.error("Tinggi badan harus antara 100-250 cm");
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -257,6 +279,7 @@ export default function Profile() {
           baseline_rhr: rhr,
           baseline_vj: vj,
           body_weight: bodyWeight,
+          height: height,
           gender: editGender,
           sport: editSport || null
         })
@@ -575,17 +598,42 @@ export default function Profile() {
                         placeholder="Contoh: 40"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="bodyWeight">Berat Badan (kg)</Label>
-                      <Input
-                        id="bodyWeight"
-                        type="number"
-                        step="0.1"
-                        value={editBodyWeight}
-                        onChange={(e) => setEditBodyWeight(e.target.value)}
-                        placeholder="Contoh: 70"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="bodyWeight">Berat Badan (kg)</Label>
+                        <Input
+                          id="bodyWeight"
+                          type="number"
+                          step="0.1"
+                          value={editBodyWeight}
+                          onChange={(e) => setEditBodyWeight(e.target.value)}
+                          placeholder="Contoh: 70"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="height">Tinggi Badan (cm)</Label>
+                        <Input
+                          id="height"
+                          type="number"
+                          step="0.1"
+                          value={editHeight}
+                          onChange={(e) => setEditHeight(e.target.value)}
+                          placeholder="Contoh: 175"
+                        />
+                      </div>
                     </div>
+                    {editBodyWeight && editHeight && (
+                      <div className="p-3 bg-secondary/50 rounded-lg">
+                        <p className="text-sm font-medium">
+                          BMI Preview: {calculateBMI(parseFloat(editBodyWeight), parseFloat(editHeight))?.toFixed(1) || '-'} kg/m²
+                        </p>
+                        {calculateBMI(parseFloat(editBodyWeight), parseFloat(editHeight)) && (
+                          <p className={`text-sm ${getBMICategory(calculateBMI(parseFloat(editBodyWeight), parseFloat(editHeight))!).color}`}>
+                            {getBMICategory(calculateBMI(parseFloat(editBodyWeight), parseFloat(editHeight))!).label}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <div>
                       <Label>Jenis Kelamin</Label>
                       <Select value={editGender} onValueChange={setEditGender}>
@@ -656,6 +704,12 @@ export default function Profile() {
                   HR Max: {maxHR} bpm
                 </Badge>
               )}
+              {(profile as any)?.body_weight && (profile as any)?.height && (
+                <Badge variant="outline">
+                  <Gauge className="h-3 w-3 mr-1" />
+                  BMI: {calculateBMI((profile as any).body_weight, (profile as any).height)?.toFixed(1)} kg/m²
+                </Badge>
+              )}
             </div>
             
             <div className="flex gap-4 mt-4">
@@ -679,6 +733,151 @@ export default function Profile() {
             </div>
           </div>
         </div>
+
+        {/* BMI Card */}
+        {(profile as any)?.body_weight && (profile as any)?.height && (
+          <Card className="bg-gradient-to-br from-card to-secondary/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gauge className="h-5 w-5 text-primary" />
+                Indeks Massa Tubuh (BMI/IMT)
+              </CardTitle>
+              <CardDescription>
+                Kalkulasi otomatis berdasarkan berat dan tinggi badan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const weight = (profile as any).body_weight;
+                const height = (profile as any).height;
+                const bmi = calculateBMI(weight, height);
+                
+                if (!bmi) return null;
+                
+                const category = getBMICategory(bmi);
+                const bmiPercentage = Math.min(100, Math.max(0, ((bmi - 15) / 25) * 100)); // Scale 15-40 to 0-100
+                
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* BMI Speedometer */}
+                    <div className="flex flex-col items-center">
+                      <div className="relative w-40 h-24">
+                        <svg viewBox="0 0 200 100" className="w-full h-full">
+                          {/* Background arc */}
+                          <path
+                            d="M 20 90 A 80 80 0 0 1 180 90"
+                            fill="none"
+                            stroke="hsl(var(--muted))"
+                            strokeWidth="20"
+                            strokeLinecap="round"
+                          />
+                          {/* Colored segments */}
+                          <path
+                            d="M 20 90 A 80 80 0 0 1 60 27"
+                            fill="none"
+                            stroke="hsl(217, 91%, 60%)"
+                            strokeWidth="20"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M 60 27 A 80 80 0 0 1 140 27"
+                            fill="none"
+                            stroke="hsl(142, 76%, 36%)"
+                            strokeWidth="20"
+                          />
+                          <path
+                            d="M 140 27 A 80 80 0 0 1 165 50"
+                            fill="none"
+                            stroke="hsl(45, 93%, 47%)"
+                            strokeWidth="20"
+                          />
+                          <path
+                            d="M 165 50 A 80 80 0 0 1 180 90"
+                            fill="none"
+                            stroke="hsl(0, 84%, 60%)"
+                            strokeWidth="20"
+                            strokeLinecap="round"
+                          />
+                          {/* Needle */}
+                          {(() => {
+                            const angle = 180 + (bmiPercentage / 100) * 180;
+                            const radians = (angle * Math.PI) / 180;
+                            const needleLength = 55;
+                            const endX = 100 + needleLength * Math.cos(radians);
+                            const endY = 90 + needleLength * Math.sin(radians);
+                            return (
+                              <>
+                                <line
+                                  x1="100"
+                                  y1="90"
+                                  x2={endX}
+                                  y2={endY}
+                                  stroke="hsl(var(--foreground))"
+                                  strokeWidth="3"
+                                  strokeLinecap="round"
+                                />
+                                <circle cx="100" cy="90" r="8" fill="hsl(var(--foreground))" />
+                              </>
+                            );
+                          })()}
+                        </svg>
+                      </div>
+                      <div className="text-center mt-2">
+                        <p className="text-3xl font-bold">{bmi.toFixed(1)}</p>
+                        <p className="text-sm text-muted-foreground">kg/m²</p>
+                      </div>
+                    </div>
+                    
+                    {/* BMI Category */}
+                    <div className="flex flex-col justify-center">
+                      <div className={`text-2xl font-bold ${category.color}`}>
+                        {category.label}
+                      </div>
+                      <p className="text-muted-foreground mt-1">{category.description}</p>
+                      <div className="mt-4 space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Scale className="h-4 w-4 text-muted-foreground" />
+                          <span>Berat: <strong>{weight} kg</strong></span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Ruler className="h-4 w-4 text-muted-foreground" />
+                          <span>Tinggi: <strong>{height} cm</strong></span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* BMI Scale Reference */}
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold mb-3">Skala BMI:</p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="w-3 h-3 rounded-full bg-blue-500" />
+                          <span>{"< 18.5"}</span>
+                          <span className="text-muted-foreground">Kurus</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="w-3 h-3 rounded-full bg-green-500" />
+                          <span>18.5 - 24.9</span>
+                          <span className="text-muted-foreground">Normal</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                          <span>25.0 - 29.9</span>
+                          <span className="text-muted-foreground">Kelebihan</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="w-3 h-3 rounded-full bg-red-500" />
+                          <span>≥ 30.0</span>
+                          <span className="text-muted-foreground">Obesitas</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Training Zones Card */}
         {trainingZones.length > 0 && (

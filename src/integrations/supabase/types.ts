@@ -218,6 +218,7 @@ export type Database = {
           body_weight: number | null
           created_at: string
           gender: string | null
+          height: number | null
           id: string
           sport: string | null
           updated_at: string
@@ -231,6 +232,7 @@ export type Database = {
           body_weight?: number | null
           created_at?: string
           gender?: string | null
+          height?: number | null
           id: string
           sport?: string | null
           updated_at?: string
@@ -244,6 +246,7 @@ export type Database = {
           body_weight?: number | null
           created_at?: string
           gender?: string | null
+          height?: number | null
           id?: string
           sport?: string | null
           updated_at?: string
