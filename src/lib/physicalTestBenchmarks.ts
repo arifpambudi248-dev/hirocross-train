@@ -252,6 +252,26 @@ export const BENCHMARKS: CategoryBenchmarks = {
   ],
   kekuatan: [
     {
+      testName: "Leg Dynamometer",
+      unit: "kg",
+      inverse: false,
+      description: "Kekuatan otot tungkai dengan dynamometer",
+      norms: {
+        male: {
+          youth: { scale5: 180, scale4: 150, scale3: 120, scale2: 90, scale1: 60 },
+          junior: { scale5: 220, scale4: 185, scale3: 150, scale2: 115, scale1: 80 },
+          senior: { scale5: 260, scale4: 220, scale3: 180, scale2: 140, scale1: 100 },
+          master: { scale5: 220, scale4: 185, scale3: 150, scale2: 115, scale1: 80 },
+        },
+        female: {
+          youth: { scale5: 120, scale4: 100, scale3: 80, scale2: 60, scale1: 40 },
+          junior: { scale5: 150, scale4: 125, scale3: 100, scale2: 75, scale1: 50 },
+          senior: { scale5: 180, scale4: 150, scale3: 120, scale2: 90, scale1: 60 },
+          master: { scale5: 150, scale4: 125, scale3: 100, scale2: 75, scale1: 50 },
+        },
+      },
+    },
+    {
       testName: "Back Squat 1RM",
       unit: "x BW",
       inverse: false,
@@ -880,8 +900,91 @@ export const BENCHMARKS: CategoryBenchmarks = {
       },
     },
   ],
+  komposisi_tubuh: [
+    {
+      testName: "IMT/BMI",
+      unit: "kg/m²",
+      inverse: true, // Lower is better (within healthy range)
+      description: "Indeks Massa Tubuh (Berat/Tinggi²)",
+      norms: {
+        male: {
+          youth: { scale5: 18.5, scale4: 20.0, scale3: 23.0, scale2: 25.0, scale1: 30.0 },
+          junior: { scale5: 19.0, scale4: 21.0, scale3: 23.5, scale2: 25.0, scale1: 30.0 },
+          senior: { scale5: 20.0, scale4: 22.0, scale3: 24.0, scale2: 26.5, scale1: 30.0 },
+          master: { scale5: 21.0, scale4: 23.0, scale3: 25.0, scale2: 27.0, scale1: 30.0 },
+        },
+        female: {
+          youth: { scale5: 17.5, scale4: 19.0, scale3: 22.0, scale2: 24.0, scale1: 29.0 },
+          junior: { scale5: 18.0, scale4: 20.0, scale3: 22.5, scale2: 24.5, scale1: 29.0 },
+          senior: { scale5: 18.5, scale4: 21.0, scale3: 23.0, scale2: 25.0, scale1: 29.0 },
+          master: { scale5: 19.0, scale4: 22.0, scale3: 24.0, scale2: 26.0, scale1: 29.0 },
+        },
+      },
+    },
+    {
+      testName: "Persen Lemak Tubuh",
+      unit: "%",
+      inverse: true,
+      description: "Persentase lemak tubuh (skinfold/bioimpedance)",
+      norms: {
+        male: {
+          youth: { scale5: 10, scale4: 14, scale3: 18, scale2: 22, scale1: 28 },
+          junior: { scale5: 8, scale4: 12, scale3: 16, scale2: 20, scale1: 26 },
+          senior: { scale5: 10, scale4: 14, scale3: 18, scale2: 22, scale1: 28 },
+          master: { scale5: 14, scale4: 18, scale3: 22, scale2: 26, scale1: 32 },
+        },
+        female: {
+          youth: { scale5: 16, scale4: 20, scale3: 24, scale2: 28, scale1: 34 },
+          junior: { scale5: 14, scale4: 18, scale3: 22, scale2: 26, scale1: 32 },
+          senior: { scale5: 16, scale4: 20, scale3: 24, scale2: 28, scale1: 34 },
+          master: { scale5: 20, scale4: 24, scale3: 28, scale2: 32, scale1: 38 },
+        },
+      },
+    },
+    {
+      testName: "Lingkar Pinggang",
+      unit: "cm",
+      inverse: true,
+      description: "Lingkar pinggang (waist circumference)",
+      norms: {
+        male: {
+          youth: { scale5: 65, scale4: 72, scale3: 80, scale2: 88, scale1: 95 },
+          junior: { scale5: 70, scale4: 77, scale3: 84, scale2: 91, scale1: 100 },
+          senior: { scale5: 78, scale4: 84, scale3: 90, scale2: 96, scale1: 102 },
+          master: { scale5: 82, scale4: 88, scale3: 94, scale2: 100, scale1: 108 },
+        },
+        female: {
+          youth: { scale5: 58, scale4: 64, scale3: 70, scale2: 76, scale1: 84 },
+          junior: { scale5: 62, scale4: 68, scale3: 74, scale2: 80, scale1: 88 },
+          senior: { scale5: 68, scale4: 74, scale3: 80, scale2: 86, scale1: 92 },
+          master: { scale5: 72, scale4: 78, scale3: 84, scale2: 90, scale1: 98 },
+        },
+      },
+    },
+    {
+      testName: "Rasio Pinggang-Pinggul",
+      unit: "ratio",
+      inverse: true,
+      description: "Waist-to-Hip Ratio (WHR)",
+      norms: {
+        male: {
+          youth: { scale5: 0.80, scale4: 0.85, scale3: 0.90, scale2: 0.95, scale1: 1.00 },
+          junior: { scale5: 0.82, scale4: 0.87, scale3: 0.92, scale2: 0.96, scale1: 1.00 },
+          senior: { scale5: 0.85, scale4: 0.90, scale3: 0.95, scale2: 0.98, scale1: 1.02 },
+          master: { scale5: 0.88, scale4: 0.92, scale3: 0.96, scale2: 1.00, scale1: 1.05 },
+        },
+        female: {
+          youth: { scale5: 0.70, scale4: 0.75, scale3: 0.80, scale2: 0.85, scale1: 0.90 },
+          junior: { scale5: 0.72, scale4: 0.77, scale3: 0.82, scale2: 0.86, scale1: 0.90 },
+          senior: { scale5: 0.75, scale4: 0.80, scale3: 0.85, scale2: 0.88, scale1: 0.92 },
+          master: { scale5: 0.78, scale4: 0.82, scale3: 0.86, scale2: 0.90, scale1: 0.95 },
+        },
+      },
+    },
+  ],
 };
 
+// List of available categories
 export const CATEGORIES = [
   { value: "daya_tahan", label: "Daya Tahan" },
   { value: "kecepatan", label: "Kecepatan" },
@@ -890,6 +993,7 @@ export const CATEGORIES = [
   { value: "fleksibilitas", label: "Fleksibilitas" },
   { value: "power", label: "Power" },
   { value: "koordinasi", label: "Koordinasi & Keseimbangan" },
+  { value: "komposisi_tubuh", label: "Komposisi Tubuh" },
 ];
 
 // Function to get benchmark scale based on age and gender
