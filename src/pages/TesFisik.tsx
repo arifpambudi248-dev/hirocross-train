@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, TrendingUp, Award, FileDown, User, Calendar, Users, Dumbbell } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Award, FileDown, User, Calendar, Users, Dumbbell, Gauge } from "lucide-react";
 import { exportPhysicalTestsToPDF, type PhysicalTestExportData } from "@/lib/exportUtils";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip, ResponsiveContainer } from "recharts";
 import type { PhysicalTest } from "@/types/database";
@@ -29,6 +29,12 @@ import {
   type TestBenchmark,
 } from "@/lib/physicalTestBenchmarks";
 import { SPORT_CATEGORIES, getSportLabel, SPORT_BIOMOTOR_PRIORITY } from "@/lib/sportCategories";
+import { Speedometer, MiniSpeedometer } from "@/components/Speedometer";
+
+// Convert score (1-5) to percentage (0-100)
+const scoreToPercentage = (score: number): number => {
+  return ((score - 1) / 4) * 100;
+};
 
 export default function TesFisik() {
   const [tests, setTests] = useState<PhysicalTest[]>([]);
@@ -230,10 +236,11 @@ export default function TesFisik() {
       if (!benchmark) return null;
 
       const score = calculateScore(test.value, benchmark, athleteAge, athleteGender);
+      const percentage = scoreToPercentage(score);
       
       return {
         subject: test.test_name,
-        score: score * 20, // Convert 1-5 to 20-100 scale for visibility
+        score: percentage, // Now using percentage 0-100
         fullMark: 100,
       };
     }).filter(Boolean);
@@ -282,9 +289,11 @@ export default function TesFisik() {
                   const testScores = Array.from(latestTestsMap.values()).map(test => {
                     const benchmark = findBenchmark(test.test_name);
                     const score = benchmark ? calculateScore(test.value, benchmark, athleteAge, athleteGender) : 0;
+                    const percentage = scoreToPercentage(score);
                     return {
                       testName: test.test_name,
                       score,
+                      percentage,
                       value: test.value,
                       unit: test.unit,
                       category: test.category,
@@ -687,6 +696,70 @@ export default function TesFisik() {
           </CardContent>
         </Card>
 
+        {/* Overall Score Speedometer */}
+        {radarData.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gauge className="h-5 w-5 text-primary" />
+                Skor Kondisi Fisik Keseluruhan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
+                {/* Main Speedometer */}
+                <div className="flex flex-col items-center">
+                  {(() => {
+                    const avgScore = radarData.reduce((sum, d: any) => sum + (d.score / 20), 0) / radarData.length;
+                    const percentage = scoreToPercentage(avgScore);
+                    return (
+                      <>
+                        <Speedometer value={percentage} size={280} label="Rata-rata Skor Keseluruhan" />
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Berdasarkan {radarData.length} item tes
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
+                
+                {/* Category breakdown */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {CATEGORIES.map(category => {
+                    const categoryTests = tests.filter(t => t.category === category.value);
+                    if (categoryTests.length === 0) return null;
+                    
+                    const latestTests = new Map<string, PhysicalTest>();
+                    categoryTests.forEach(test => {
+                      const existing = latestTests.get(test.test_name);
+                      if (!existing || new Date(test.test_date) > new Date(existing.test_date)) {
+                        latestTests.set(test.test_name, test);
+                      }
+                    });
+                    
+                    const scores = Array.from(latestTests.values()).map(t => {
+                      const benchmark = findBenchmark(t.test_name);
+                      return benchmark ? calculateScore(t.value, benchmark, athleteAge, athleteGender) : null;
+                    }).filter((s): s is number => s !== null);
+                    
+                    if (scores.length === 0) return null;
+                    
+                    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+                    const percentage = scoreToPercentage(avgScore);
+                    
+                    return (
+                      <div key={category.value} className="flex flex-col items-center p-3 bg-secondary/30 rounded-lg">
+                        <MiniSpeedometer value={percentage} size={70} />
+                        <span className="text-xs font-medium mt-2 text-center">{category.label}</span>
+                      </div>
+                    );
+                  }).filter(Boolean)}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Radar Chart */}
         {radarData.length > 0 && (
           <Card className="mb-6">
@@ -708,7 +781,7 @@ export default function TesFisik() {
                     angle={90} 
                     domain={[0, 100]}
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    tickFormatter={(value) => `${value / 20}/5`}
+                    tickFormatter={(value) => `${value}%`}
                   />
                   <Radar 
                     name="Skor Atlet" 
@@ -724,12 +797,12 @@ export default function TesFisik() {
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                     }}
-                    formatter={(value: any) => [`${(value / 20).toFixed(1)}/5`, 'Skor']}
+                    formatter={(value: any) => [`${value.toFixed(0)}%`, 'Skor']}
                   />
                 </RadarChart>
               </ResponsiveContainer>
               <p className="text-center text-sm text-muted-foreground mt-4">
-                Grafik menampilkan {radarData.length} item tes yang telah dilakukan (skala 1-5)
+                Grafik menampilkan {radarData.length} item tes yang telah dilakukan (skala 0-100%)
               </p>
             </CardContent>
           </Card>

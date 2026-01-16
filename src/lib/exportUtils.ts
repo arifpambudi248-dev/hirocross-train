@@ -664,12 +664,16 @@ export interface PhysicalTestExportData {
   testScores?: { 
     testName: string; 
     score: number; 
+    percentage?: number; // Optional percentage field
     value: number; 
     unit: string;
     category?: string;
   }[];
   athleteAge?: number;
   athleteGender?: 'male' | 'female';
+  bodyWeight?: number;
+  height?: number;
+  bmi?: number;
 }
 
 // Category label mapping
@@ -681,6 +685,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   fleksibilitas: 'Fleksibilitas',
   power: 'Power/Daya Ledak',
   koordinasi: 'Koordinasi',
+  komposisi_tubuh: 'Komposisi Tubuh',
 };
 
 const getScoreCategoryLabel = (score: number): string => {
@@ -691,11 +696,24 @@ const getScoreCategoryLabel = (score: number): string => {
   return 'Sangat Kurang';
 };
 
+const getPercentageCategoryLabel = (percentage: number): string => {
+  if (percentage >= 80) return 'Excellent';
+  if (percentage >= 60) return 'Baik';
+  if (percentage >= 40) return 'Cukup';
+  if (percentage >= 20) return 'Kurang';
+  return 'Sangat Kurang';
+};
+
 const getAgeGroupLabel = (age: number): string => {
   if (age < 15) return '< 15 tahun (Youth)';
   if (age < 20) return '15-19 tahun (Junior)';
   if (age < 35) return '20-34 tahun (Senior)';
   return '≥ 35 tahun (Master)';
+};
+
+// Convert score (1-5) to percentage (0-100)
+const scoreToPercentage = (score: number): number => {
+  return ((score - 1) / 4) * 100;
 };
 
 export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
@@ -727,13 +745,14 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     yPos += 4;
   }
   
-  // Overall summary box
+  // Overall summary box with speedometer-style percentage
   if (data.testScores && data.testScores.length > 0) {
     const avgScore = data.testScores.reduce((sum, s) => sum + s.score, 0) / data.testScores.length;
+    const avgPercentage = scoreToPercentage(avgScore);
     
     // Summary box
     doc.setFillColor(245, 245, 245);
-    doc.roundedRect(14, yPos, pageWidth - 28, 25, 3, 3, 'F');
+    doc.roundedRect(14, yPos, pageWidth - 28, 35, 3, 3, 'F');
     
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
@@ -742,12 +761,46 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Total Tes Dilakukan: ${data.testScores.length}`, 20, yPos + 16);
-    doc.text(`Rata-rata Skor: ${avgScore.toFixed(2)}/5 (${getScoreCategoryLabel(avgScore)})`, 100, yPos + 16);
     
-    yPos += 32;
+    // Draw speedometer-style indicator
+    const centerX = pageWidth / 2 + 30;
+    const gaugeY = yPos + 20;
+    
+    // Gauge arc background
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    
+    // Color based on percentage
+    let gaugeColor: [number, number, number];
+    if (avgPercentage >= 80) gaugeColor = [34, 197, 94];
+    else if (avgPercentage >= 60) gaugeColor = [59, 130, 246];
+    else if (avgPercentage >= 40) gaugeColor = [250, 204, 21];
+    else if (avgPercentage >= 20) gaugeColor = [249, 115, 22];
+    else gaugeColor = [239, 68, 68];
+    
+    doc.setFillColor(gaugeColor[0], gaugeColor[1], gaugeColor[2]);
+    doc.circle(centerX, gaugeY, 12, 'F');
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(`${avgPercentage.toFixed(0)}%`, centerX, gaugeY + 3, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(getPercentageCategoryLabel(avgPercentage), centerX, gaugeY + 18, { align: 'center' });
+    
+    // BMI info if available
+    if (data.bmi) {
+      doc.setFontSize(10);
+      doc.text(`BMI/IMT: ${data.bmi.toFixed(1)} kg/m²`, 20, yPos + 24);
+    }
+    
+    yPos += 42;
   }
   
-  // Performance summary table with norms
+  // Performance summary table with norms and percentage
   if (data.testScores && data.testScores.length > 0) {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -774,42 +827,41 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
           fillColor: [240, 240, 240] as [number, number, number],
           halign: 'left' as const
         }
-      }, '', '', '', '']);
+      }, '', '', '', '', '']);
       
       // Add test rows
       scores.forEach(s => {
-        let scoreColor: [number, number, number];
-        if (s.score >= 4) scoreColor = [34, 197, 94];  // green
-        else if (s.score >= 3) scoreColor = [250, 204, 21]; // yellow
-        else scoreColor = [239, 68, 68]; // red
+        const percentage = s.percentage !== undefined ? s.percentage : scoreToPercentage(s.score);
         
         scoreData.push([
           s.testName,
           `${s.value}`,
           s.unit,
-          s.score.toString(),
-          getScoreCategoryLabel(s.score),
+          s.score.toFixed(1),
+          `${percentage.toFixed(0)}%`,
+          getPercentageCategoryLabel(percentage),
         ]);
       });
     });
     
     autoTable(doc, {
       startY: yPos,
-      head: [['Nama Tes', 'Nilai', 'Satuan', 'Skor', 'Kategori']],
+      head: [['Nama Tes', 'Nilai', 'Satuan', 'Skor', 'Persentase', 'Kategori']],
       body: scoreData,
       theme: 'grid',
       headStyles: { fillColor: BRAND_RED, textColor: 255 },
-      styles: { fontSize: 9, cellPadding: 3 },
+      styles: { fontSize: 8, cellPadding: 2 },
       columnStyles: {
-        0: { cellWidth: 55 },
-        1: { halign: 'center' as const, cellWidth: 25 },
-        2: { halign: 'center' as const, cellWidth: 30 },
-        3: { halign: 'center' as const, cellWidth: 20 },
-        4: { halign: 'center' as const, cellWidth: 35 },
+        0: { cellWidth: 45 },
+        1: { halign: 'center' as const, cellWidth: 20 },
+        2: { halign: 'center' as const, cellWidth: 25 },
+        3: { halign: 'center' as const, cellWidth: 15 },
+        4: { halign: 'center' as const, cellWidth: 22 },
+        5: { halign: 'center' as const, cellWidth: 30 },
       },
       didParseCell: function(hookData: { row: { index: number }; column: { index: number }; cell: { styles: any } }) {
-        // Color code the score column
-        if (hookData.row.index >= 0 && hookData.column.index === 4) {
+        // Color code the percentage column
+        if (hookData.row.index >= 0 && hookData.column.index === 5) {
           const cellText = String((hookData.cell as any).raw || '');
           if (cellText === 'Excellent' || cellText === 'Baik') {
             hookData.cell.styles.textColor = [22, 163, 74];
@@ -831,20 +883,20 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     yPos = 20;
   }
   
-  // Norms reference legend
+  // Norms reference legend with percentage
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Keterangan Skala Penilaian:', 14, yPos);
+  doc.text('Keterangan Skala Penilaian (Persentase):', 14, yPos);
   yPos += 6;
   
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   const normLegend = [
-    ['5 - Excellent', 'Performa sangat baik, di atas rata-rata populasi'],
-    ['4 - Baik', 'Performa baik, sesuai standar atlet'],
-    ['3 - Cukup', 'Performa rata-rata, perlu peningkatan'],
-    ['2 - Kurang', 'Performa di bawah rata-rata, perlu latihan intensif'],
-    ['1 - Sangat Kurang', 'Performa rendah, perlu evaluasi program latihan'],
+    ['80-100% - Excellent', 'Performa sangat baik, di atas rata-rata populasi'],
+    ['60-79% - Baik', 'Performa baik, sesuai standar atlet'],
+    ['40-59% - Cukup', 'Performa rata-rata, perlu peningkatan'],
+    ['20-39% - Kurang', 'Performa di bawah rata-rata, perlu latihan intensif'],
+    ['0-19% - Sangat Kurang', 'Performa rendah, perlu evaluasi program latihan'],
   ];
   
   autoTable(doc, {
@@ -853,8 +905,8 @@ export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
     theme: 'plain',
     styles: { fontSize: 8, cellPadding: 2 },
     columnStyles: {
-      0: { cellWidth: 35, fontStyle: 'bold' },
-      1: { cellWidth: 120 },
+      0: { cellWidth: 40, fontStyle: 'bold' },
+      1: { cellWidth: 115 },
     },
   });
   
