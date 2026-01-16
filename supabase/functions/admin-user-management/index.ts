@@ -6,6 +6,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Password validation matching client-side rules
+function validatePassword(password: string): { valid: boolean; message: string } {
+  if (!password || password.length < 8) {
+    return { valid: false, message: "Password harus minimal 8 karakter" };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: "Password harus mengandung huruf kapital" };
+  }
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, message: "Password harus mengandung huruf kecil" };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: "Password harus mengandung angka" };
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    return { valid: false, message: "Password harus mengandung karakter spesial (!@#$%^&*)" };
+  }
+  return { valid: true, message: "" };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -153,9 +173,10 @@ serve(async (req) => {
           );
         }
 
-        if (new_password.length < 6) {
+        const passwordValidation = validatePassword(new_password);
+        if (!passwordValidation.valid) {
           return new Response(
-            JSON.stringify({ error: "Password must be at least 6 characters" }),
+            JSON.stringify({ error: passwordValidation.message }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
