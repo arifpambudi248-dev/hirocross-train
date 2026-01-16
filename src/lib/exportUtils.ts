@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import type { TrainingSession, ReadinessLog, PhysicalTest } from '@/types/database';
 
 // Brand color: HIROCROSS_TRAIN Red
@@ -137,80 +137,130 @@ export const exportToPDF = (data: ExportData) => {
   doc.save(`laporan-latihan-${data.athleteName}-${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-export const exportToExcel = (data: ExportData) => {
-  const workbook = XLSX.utils.book_new();
+export const exportToExcel = async (data: ExportData) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'HIROCROSS_TRAIN';
+  workbook.created = new Date();
   
   // Summary sheet
-  const summaryData = [
-    ['Laporan Latihan Atlet'],
-    ['Nama Atlet', data.athleteName],
-    ['Tanggal Laporan', new Date().toLocaleDateString('id-ID')],
-    [],
-    ['Metrik', 'Nilai'],
-    ['Beban Latihan 7 Hari', data.weeklyLoad.toFixed(0)],
-    ['Rata-rata Harian', data.avgDailyLoad.toFixed(0)],
-    ['Fitness (CTL)', data.latestFitness.toFixed(0)],
-    ['Fatigue (ATL)', data.latestFatigue.toFixed(0)],
-    ['Form (TSB)', data.latestForm.toFixed(0)],
-    ['ACWR', data.latestACWR.toFixed(2)],
-    ['Readiness Score', data.latestReadiness.toFixed(0)],
-    ['Readiness Zone', data.readinessZone],
+  const summarySheet = workbook.addWorksheet('Ringkasan');
+  summarySheet.columns = [
+    { header: 'Metrik', key: 'metric', width: 25 },
+    { header: 'Nilai', key: 'value', width: 30 },
   ];
   
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Ringkasan');
+  // Add title
+  summarySheet.insertRow(1, ['Laporan Latihan Atlet']);
+  summarySheet.insertRow(2, ['Nama Atlet', data.athleteName]);
+  summarySheet.insertRow(3, ['Tanggal Laporan', new Date().toLocaleDateString('id-ID')]);
+  summarySheet.insertRow(4, []);
+  
+  // Add metrics
+  summarySheet.addRow({ metric: 'Beban Latihan 7 Hari', value: data.weeklyLoad.toFixed(0) });
+  summarySheet.addRow({ metric: 'Rata-rata Harian', value: data.avgDailyLoad.toFixed(0) });
+  summarySheet.addRow({ metric: 'Fitness (CTL)', value: data.latestFitness.toFixed(0) });
+  summarySheet.addRow({ metric: 'Fatigue (ATL)', value: data.latestFatigue.toFixed(0) });
+  summarySheet.addRow({ metric: 'Form (TSB)', value: data.latestForm.toFixed(0) });
+  summarySheet.addRow({ metric: 'ACWR', value: data.latestACWR.toFixed(2) });
+  summarySheet.addRow({ metric: 'Readiness Score', value: data.latestReadiness.toFixed(0) });
+  summarySheet.addRow({ metric: 'Readiness Zone', value: data.readinessZone });
   
   // Training sessions sheet
   if (data.sessions.length > 0) {
-    const sessionData = data.sessions.map(s => ({
-      'Tanggal': s.date,
-      'Nama Sesi': s.session_name || '-',
-      'Durasi (min)': s.duration_min || 0,
-      'RPE': s.rpe || 0,
-      'Beban Auto': s.load_auto || 0,
-      'Beban Manual': s.load_manual || 0,
-      'Beban Final': s.load_final || 0,
-      'Catatan': s.notes || '',
-    }));
+    const sessionsSheet = workbook.addWorksheet('Sesi Latihan');
+    sessionsSheet.columns = [
+      { header: 'Tanggal', key: 'date', width: 15 },
+      { header: 'Nama Sesi', key: 'session_name', width: 20 },
+      { header: 'Durasi (min)', key: 'duration', width: 12 },
+      { header: 'RPE', key: 'rpe', width: 8 },
+      { header: 'Beban Auto', key: 'load_auto', width: 12 },
+      { header: 'Beban Manual', key: 'load_manual', width: 12 },
+      { header: 'Beban Final', key: 'load_final', width: 12 },
+      { header: 'Catatan', key: 'notes', width: 30 },
+    ];
     
-    const sessionsSheet = XLSX.utils.json_to_sheet(sessionData);
-    XLSX.utils.book_append_sheet(workbook, sessionsSheet, 'Sesi Latihan');
+    data.sessions.forEach(s => {
+      sessionsSheet.addRow({
+        date: s.date,
+        session_name: s.session_name || '-',
+        duration: s.duration_min || 0,
+        rpe: s.rpe || 0,
+        load_auto: s.load_auto || 0,
+        load_manual: s.load_manual || 0,
+        load_final: s.load_final || 0,
+        notes: s.notes || '',
+      });
+    });
+    
+    // Style header
+    sessionsSheet.getRow(1).font = { bold: true };
   }
   
   // Readiness logs sheet
   if (data.readinessLogs.length > 0) {
-    const readinessData = data.readinessLogs.map(r => ({
-      'Tanggal': r.date,
-      'VJ': r.vj,
-      'RHR': r.rhr,
-      'VJ Score': r.vj_score,
-      'RHR Score': r.rhr_score,
-      'Readiness Score': r.readiness_score,
-      'Zona': r.readiness_zone,
-      'Catatan': r.notes || '',
-    }));
+    const readinessSheet = workbook.addWorksheet('Readiness');
+    readinessSheet.columns = [
+      { header: 'Tanggal', key: 'date', width: 15 },
+      { header: 'VJ', key: 'vj', width: 10 },
+      { header: 'RHR', key: 'rhr', width: 10 },
+      { header: 'VJ Score', key: 'vj_score', width: 10 },
+      { header: 'RHR Score', key: 'rhr_score', width: 10 },
+      { header: 'Readiness Score', key: 'readiness_score', width: 15 },
+      { header: 'Zona', key: 'zone', width: 15 },
+      { header: 'Catatan', key: 'notes', width: 30 },
+    ];
     
-    const readinessSheet = XLSX.utils.json_to_sheet(readinessData);
-    XLSX.utils.book_append_sheet(workbook, readinessSheet, 'Readiness');
+    data.readinessLogs.forEach(r => {
+      readinessSheet.addRow({
+        date: r.date,
+        vj: r.vj,
+        rhr: r.rhr,
+        vj_score: r.vj_score,
+        rhr_score: r.rhr_score,
+        readiness_score: r.readiness_score,
+        zone: r.readiness_zone,
+        notes: r.notes || '',
+      });
+    });
+    
+    readinessSheet.getRow(1).font = { bold: true };
   }
   
   // Physical tests sheet
   if (data.physicalTests.length > 0) {
-    const testsData = data.physicalTests.map(t => ({
-      'Tanggal': t.test_date,
-      'Kategori': t.category,
-      'Nama Tes': t.test_name,
-      'Nilai': t.value,
-      'Satuan': t.unit,
-      'Catatan': t.notes || '',
-    }));
+    const testsSheet = workbook.addWorksheet('Tes Fisik');
+    testsSheet.columns = [
+      { header: 'Tanggal', key: 'date', width: 15 },
+      { header: 'Kategori', key: 'category', width: 15 },
+      { header: 'Nama Tes', key: 'test_name', width: 25 },
+      { header: 'Nilai', key: 'value', width: 12 },
+      { header: 'Satuan', key: 'unit', width: 10 },
+      { header: 'Catatan', key: 'notes', width: 30 },
+    ];
     
-    const testsSheet = XLSX.utils.json_to_sheet(testsData);
-    XLSX.utils.book_append_sheet(workbook, testsSheet, 'Tes Fisik');
+    data.physicalTests.forEach(t => {
+      testsSheet.addRow({
+        date: t.test_date,
+        category: t.category,
+        test_name: t.test_name,
+        value: t.value,
+        unit: t.unit,
+        notes: t.notes || '',
+      });
+    });
+    
+    testsSheet.getRow(1).font = { bold: true };
   }
   
-  // Save
-  XLSX.writeFile(workbook, `laporan-latihan-${data.athleteName}-${new Date().toISOString().split('T')[0]}.xlsx`);
+  // Save file
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `laporan-latihan-${data.athleteName}-${new Date().toISOString().split('T')[0]}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 export interface AthleteComparisonData {
@@ -252,24 +302,47 @@ export const exportComparisonToPDF = (athletes: AthleteComparisonData[]) => {
   doc.save(`perbandingan-atlet-${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-export const exportComparisonToExcel = (athletes: AthleteComparisonData[]) => {
-  const workbook = XLSX.utils.book_new();
+export const exportComparisonToExcel = async (athletes: AthleteComparisonData[]) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'HIROCROSS_TRAIN';
+  workbook.created = new Date();
   
-  const comparisonData = athletes.map(a => ({
-    'Nama Atlet': a.athleteName,
-    'Beban 7 Hari': a.weeklyLoad.toFixed(0),
-    'Fitness (CTL)': a.fitness.toFixed(0),
-    'Fatigue (ATL)': a.fatigue.toFixed(0),
-    'Form (TSB)': a.form.toFixed(0),
-    'ACWR': a.acwr.toFixed(2),
-    'Readiness': a.readiness.toFixed(0),
-    'Zona Readiness': a.readinessZone,
-  }));
+  const sheet = workbook.addWorksheet('Perbandingan');
+  sheet.columns = [
+    { header: 'Nama Atlet', key: 'name', width: 25 },
+    { header: 'Beban 7 Hari', key: 'weeklyLoad', width: 12 },
+    { header: 'Fitness (CTL)', key: 'fitness', width: 12 },
+    { header: 'Fatigue (ATL)', key: 'fatigue', width: 12 },
+    { header: 'Form (TSB)', key: 'form', width: 12 },
+    { header: 'ACWR', key: 'acwr', width: 10 },
+    { header: 'Readiness', key: 'readiness', width: 12 },
+    { header: 'Zona Readiness', key: 'zone', width: 15 },
+  ];
   
-  const sheet = XLSX.utils.json_to_sheet(comparisonData);
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Perbandingan');
+  athletes.forEach(a => {
+    sheet.addRow({
+      name: a.athleteName,
+      weeklyLoad: a.weeklyLoad.toFixed(0),
+      fitness: a.fitness.toFixed(0),
+      fatigue: a.fatigue.toFixed(0),
+      form: a.form.toFixed(0),
+      acwr: a.acwr.toFixed(2),
+      readiness: a.readiness.toFixed(0),
+      zone: a.readinessZone,
+    });
+  });
   
-  XLSX.writeFile(workbook, `perbandingan-atlet-${new Date().toISOString().split('T')[0]}.xlsx`);
+  sheet.getRow(1).font = { bold: true };
+  
+  // Save file
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `perbandingan-atlet-${new Date().toISOString().split('T')[0]}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 // Session Exercise Types
