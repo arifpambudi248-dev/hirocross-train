@@ -820,11 +820,28 @@ export default function TesFisik() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={500}>
-                <RadarChart data={radarData}>
+                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
                   <PolarGrid stroke="hsl(var(--border))" />
                   <PolarAngleAxis 
                     dataKey="subject" 
-                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }}
+                    tick={({ payload, x, y, textAnchor, ...rest }) => {
+                      // Truncate long labels
+                      const label = payload.value.length > 18 
+                        ? payload.value.substring(0, 16) + '..' 
+                        : payload.value;
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          textAnchor={textAnchor}
+                          fill="hsl(var(--foreground))"
+                          fontSize={10}
+                          {...rest}
+                        >
+                          {label}
+                        </text>
+                      );
+                    }}
                   />
                   <PolarRadiusAxis 
                     angle={90} 
