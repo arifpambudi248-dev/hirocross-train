@@ -660,6 +660,7 @@ export const exportReadinessToPDF = (data: ReadinessExportData) => {
 // Physical Tests Export with comprehensive norms
 export interface PhysicalTestExportData {
   athleteName: string;
+  athleteAvatarUrl?: string;
   tests: PhysicalTest[];
   testScores?: { 
     testName: string; 
@@ -674,6 +675,7 @@ export interface PhysicalTestExportData {
   bodyWeight?: number;
   height?: number;
   bmi?: number;
+  sport?: string;
 }
 
 // Category label mapping
@@ -894,33 +896,49 @@ const drawRadarChart = (
   doc.setTextColor(0, 0, 0);
 };
 
-export const exportPhysicalTestsToPDF = (data: PhysicalTestExportData) => {
+export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   
   let yPos = addPDFHeader(doc, 'Laporan Tes Kondisi Fisik', data.athleteName);
   
-  // Info section - tanggal laporan
+  // Athlete profile section with avatar placeholder
+  doc.setFillColor(250, 250, 250);
+  doc.roundedRect(14, yPos, pageWidth - 28, 35, 2, 2, 'F');
+  
+  // Avatar placeholder circle
+  doc.setFillColor(220, 38, 38);
+  doc.circle(32, yPos + 17, 12, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.athleteName.charAt(0).toUpperCase(), 32, yPos + 21, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  
+  // Athlete info next to avatar
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.athleteName, 50, yPos + 12);
+  
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
+  const genderLabel = data.athleteGender === 'male' ? 'Laki-laki' : data.athleteGender === 'female' ? 'Perempuan' : '-';
+  const ageLabel = data.athleteAge ? `${data.athleteAge} tahun` : '-';
+  const sportLabel = data.sport ? CATEGORY_LABELS[data.sport] || data.sport : '-';
+  doc.text(`Usia: ${ageLabel}  |  Gender: ${genderLabel}  |  Olahraga: ${sportLabel}`, 50, yPos + 20);
+  
+  // Report date
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
   doc.text(`Tanggal Laporan: ${new Date().toLocaleDateString('id-ID', { 
     weekday: 'long', 
     year: 'numeric', 
     month: 'long', 
     day: 'numeric' 
-  })}`, 14, yPos);
-  yPos += 8;
+  })}`, 50, yPos + 28);
+  doc.setTextColor(0, 0, 0);
   
-  // Athlete info section with proper spacing
-  if (data.athleteAge || data.athleteGender) {
-    const genderLabel = data.athleteGender === 'male' ? 'Laki-laki' : data.athleteGender === 'female' ? 'Perempuan' : '-';
-    const ageLabel = data.athleteAge ? `${data.athleteAge} tahun` : '-';
-    const ageGroupLabel = data.athleteAge ? getAgeGroupLabel(data.athleteAge) : '-';
-    
-    doc.setFontSize(9);
-    doc.text(`Usia: ${ageLabel}  |  Jenis Kelamin: ${genderLabel}  |  Kelompok Usia: ${ageGroupLabel}`, 14, yPos);
-    yPos += 10;
-  }
+  yPos += 42;
   
   // BMI Section with complete calculation display
   if (data.bodyWeight && data.height) {

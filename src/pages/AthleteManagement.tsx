@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, UserPlus, Edit, Trash2, FileDown, Users, Mail, Calendar, Check, X, UserCheck, Search, Filter, Scale, Ruler } from "lucide-react";
+import { Loader2, UserPlus, Edit, Trash2, FileDown, Users, Mail, Calendar, Check, X, UserCheck, Search, Filter, Scale, Ruler, CheckSquare, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
@@ -60,7 +61,9 @@ export default function AthleteManagement() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null);
+  const [selectedAthleteIds, setSelectedAthleteIds] = useState<Set<string>>(new Set());
 
   // Form states
   const [newAthleteEmail, setNewAthleteEmail] = useState("");
@@ -77,6 +80,10 @@ export default function AthleteManagement() {
   const [editSport, setEditSport] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState<string | null>(null);
+  
+  // Bulk edit states
+  const [bulkSport, setBulkSport] = useState("none");
+  const [bulkGender, setBulkGender] = useState("none");
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -428,6 +435,69 @@ export default function AthleteManagement() {
       sonnerToast.error("Gagal update data atlet");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleBulkEdit = async () => {
+    if (selectedAthleteIds.size === 0) {
+      sonnerToast.error("Pilih atlet yang akan diedit");
+      return;
+    }
+
+    const updates: any = {};
+    if (bulkSport !== "none") {
+      updates.sport = bulkSport === "clear" ? null : bulkSport;
+    }
+    if (bulkGender !== "none") {
+      updates.gender = bulkGender;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      sonnerToast.error("Pilih minimal satu field untuk diupdate");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      
+      const promises = Array.from(selectedAthleteIds).map(athleteId =>
+        supabase
+          .from("profiles")
+          .update(updates)
+          .eq("id", athleteId)
+      );
+      
+      await Promise.all(promises);
+
+      sonnerToast.success(`${selectedAthleteIds.size} atlet berhasil diupdate`);
+      setBulkEditDialogOpen(false);
+      setSelectedAthleteIds(new Set());
+      setBulkSport("none");
+      setBulkGender("none");
+      loadAthletes();
+    } catch (error) {
+      console.error("Error bulk updating athletes:", error);
+      sonnerToast.error("Gagal update data atlet");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleAthleteSelection = (athleteId: string) => {
+    const newSelection = new Set(selectedAthleteIds);
+    if (newSelection.has(athleteId)) {
+      newSelection.delete(athleteId);
+    } else {
+      newSelection.add(athleteId);
+    }
+    setSelectedAthleteIds(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedAthleteIds.size === filteredAthletes.length) {
+      setSelectedAthleteIds(new Set());
+    } else {
+      setSelectedAthleteIds(new Set(filteredAthletes.map(a => a.id)));
     }
   };
 
@@ -956,7 +1026,7 @@ export default function AthleteManagement() {
                       <Filter className="h-4 w-4 mr-2" />
                       <SelectValue placeholder="Urutkan" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-popover">
                       <SelectItem value="name">Nama</SelectItem>
                       <SelectItem value="date">Tanggal Assign</SelectItem>
                       <SelectItem value="age">Usia</SelectItem>
@@ -972,6 +1042,33 @@ export default function AthleteManagement() {
                   </Button>
                 </div>
               </div>
+              
+              {/* Bulk selection bar */}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    checked={selectedAthleteIds.size === filteredAthletes.length && filteredAthletes.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {selectedAthleteIds.size > 0 
+                      ? `${selectedAthleteIds.size} atlet terpilih` 
+                      : "Pilih semua"}
+                  </span>
+                </div>
+                {selectedAthleteIds.size > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBulkEditDialogOpen(true)}
+                    className="gap-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit {selectedAthleteIds.size} Atlet
+                  </Button>
+                )}
+              </div>
+              
               {searchQuery && (
                 <p className="text-sm text-muted-foreground mt-2">
                   Menampilkan {filteredAthletes.length} dari {athletes.length} atlet
@@ -1105,9 +1202,14 @@ export default function AthleteManagement() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredAthletes.map((athlete) => (
-              <Card key={athlete.id} className="overflow-hidden">
+              <Card key={athlete.id} className={`overflow-hidden ${selectedAthleteIds.has(athlete.id) ? 'ring-2 ring-primary' : ''}`}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedAthleteIds.has(athlete.id)}
+                      onCheckedChange={() => toggleAthleteSelection(athlete.id)}
+                      className="mt-1"
+                    />
                     <Avatar className="h-12 w-12">
                       {athlete.avatar_url ? (
                         <AvatarImage src={athlete.avatar_url} alt={athlete.athlete_name} />
@@ -1368,6 +1470,64 @@ export default function AthleteManagement() {
                   </>
                 ) : (
                   "Simpan Perubahan"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Edit Dialog */}
+        <Dialog open={bulkEditDialogOpen} onOpenChange={setBulkEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk Edit {selectedAthleteIds.size} Atlet</DialogTitle>
+              <DialogDescription>
+                Update field yang sama untuk beberapa atlet sekaligus
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Cabang Olahraga</Label>
+                <Select value={bulkSport} onValueChange={setBulkSport}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Pilih olahraga" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover max-h-60">
+                    <SelectItem value="none">-- Tidak diubah --</SelectItem>
+                    <SelectItem value="clear">Hapus olahraga</SelectItem>
+                    {SPORT_CATEGORIES.map((sport) => (
+                      <SelectItem key={sport.value} value={sport.value}>
+                        {sport.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Jenis Kelamin</Label>
+                <Select value={bulkGender} onValueChange={setBulkGender}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Pilih gender" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    <SelectItem value="none">-- Tidak diubah --</SelectItem>
+                    <SelectItem value="male">Laki-laki</SelectItem>
+                    <SelectItem value="female">Perempuan</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={handleBulkEdit}
+                disabled={isSaving || (bulkSport === "none" && bulkGender === "none")}
+                className="w-full"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  `Update ${selectedAthleteIds.size} Atlet`
                 )}
               </Button>
             </div>
