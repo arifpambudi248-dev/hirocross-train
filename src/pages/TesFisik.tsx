@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, TrendingUp, Award, FileDown, User, Calendar, Users, Dumbbell, Gauge } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Award, FileDown, User, Calendar, Users, Dumbbell, Gauge, Scale, Ruler } from "lucide-react";
 import { exportPhysicalTestsToPDF, type PhysicalTestExportData } from "@/lib/exportUtils";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip, ResponsiveContainer } from "recharts";
 import type { PhysicalTest } from "@/types/database";
@@ -701,6 +701,86 @@ export default function TesFisik() {
             </div>
           </CardContent>
         </Card>
+
+        {/* BMI/IMT Card with Speedometer */}
+        {athleteBodyWeight && athleteHeight && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Scale className="h-5 w-5 text-primary" />
+                Data Antropometri & BMI/IMT
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const heightInMeters = athleteHeight / 100;
+                const bmi = athleteBodyWeight / Math.pow(heightInMeters, 2);
+                
+                // BMI category and percentage
+                let bmiCategory: string;
+                let bmiPercentage: number;
+                if (bmi < 18.5) {
+                  bmiCategory = 'Kurus (Underweight)';
+                  bmiPercentage = Math.max(0, (bmi / 18.5) * 40); // 0-40%
+                } else if (bmi < 25) {
+                  bmiCategory = 'Normal';
+                  bmiPercentage = 40 + ((bmi - 18.5) / (25 - 18.5)) * 40; // 40-80%
+                } else if (bmi < 30) {
+                  bmiCategory = 'Gemuk (Overweight)';
+                  bmiPercentage = 80 - ((bmi - 25) / (30 - 25)) * 20; // 80-60%
+                } else {
+                  bmiCategory = 'Obesitas';
+                  bmiPercentage = Math.max(20, 60 - ((bmi - 30) / 10) * 40); // 60-20%
+                }
+                
+                return (
+                  <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
+                    {/* BMI Speedometer */}
+                    <div className="flex flex-col items-center">
+                      <Speedometer value={bmiPercentage} size={200} label="BMI/IMT" />
+                      <div className="mt-4 text-center">
+                        <p className="text-2xl font-bold">{bmi.toFixed(1)} kg/m²</p>
+                        <Badge className={`mt-2 ${
+                          bmiCategory === 'Normal' ? 'bg-green-500' :
+                          bmiCategory.includes('Kurus') || bmiCategory.includes('Gemuk') ? 'bg-orange-500' :
+                          'bg-red-500'
+                        }`}>
+                          {bmiCategory}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    {/* Data details */}
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="flex flex-col items-center p-4 bg-secondary/30 rounded-lg">
+                        <Scale className="h-8 w-8 text-primary mb-2" />
+                        <span className="text-sm text-muted-foreground">Berat Badan</span>
+                        <span className="text-xl font-bold">{athleteBodyWeight} kg</span>
+                      </div>
+                      <div className="flex flex-col items-center p-4 bg-secondary/30 rounded-lg">
+                        <Ruler className="h-8 w-8 text-primary mb-2" />
+                        <span className="text-sm text-muted-foreground">Tinggi Badan</span>
+                        <span className="text-xl font-bold">{athleteHeight} cm</span>
+                      </div>
+                      <div className="col-span-2 p-4 bg-secondary/30 rounded-lg">
+                        <p className="text-sm text-muted-foreground text-center mb-2">Rumus Perhitungan BMI</p>
+                        <p className="text-center font-mono text-sm">
+                          BMI = {athleteBodyWeight} ÷ ({heightInMeters.toFixed(2)}²) = <strong>{bmi.toFixed(2)}</strong>
+                        </p>
+                        <div className="flex justify-center gap-2 mt-3 flex-wrap text-xs text-muted-foreground">
+                          <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded">{"<18.5: Kurus"}</span>
+                          <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 rounded">18.5-24.9: Normal</span>
+                          <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded">25-29.9: Gemuk</span>
+                          <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 rounded">≥30: Obesitas</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Overall Score Speedometer */}
         {radarData.length > 0 && (
