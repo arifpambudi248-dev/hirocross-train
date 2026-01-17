@@ -810,7 +810,7 @@ const drawMiniSpeedometer = (
   doc.setTextColor(0, 0, 0);
 };
 
-// Helper function to draw radar chart
+// Helper function to draw radar chart with improved label positioning
 const drawRadarChart = (
   doc: jsPDF,
   centerX: number,
@@ -830,7 +830,8 @@ const drawRadarChart = (
     const r = (value / 100) * radius;
     return {
       x: centerX + r * Math.cos(toRadians(angle)),
-      y: centerY + r * Math.sin(toRadians(angle))
+      y: centerY + r * Math.sin(toRadians(angle)),
+      angle
     };
   };
   
@@ -849,42 +850,92 @@ const drawRadarChart = (
     doc.line(centerX, centerY, endPoint.x, endPoint.y);
   }
   
-  // Draw axis labels
-  doc.setFontSize(7);
+  // Draw axis labels with smart positioning to prevent overlap
+  doc.setFontSize(6);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(60, 60, 60);
+  
   categoryScores.forEach((cat, i) => {
-    const labelPoint = getPoint(i, 120);
+    const labelPoint = getPoint(i, 130); // Increase distance for labels
     const label = CATEGORY_LABELS[cat.category] || cat.category;
-    doc.text(label, labelPoint.x, labelPoint.y, { align: 'center' });
+    
+    // Determine text alignment based on position
+    let align: 'left' | 'center' | 'right' = 'center';
+    let xOffset = 0;
+    let yOffset = 0;
+    
+    const normalizedAngle = ((labelPoint.angle % 360) + 360) % 360;
+    
+    // Right side labels (roughly -60 to 60 degrees normalized)
+    if (normalizedAngle > 300 || normalizedAngle < 60) {
+      if (normalizedAngle > 330 || normalizedAngle < 30) {
+        // Top area - center align
+        align = 'center';
+        yOffset = -2;
+      } else if (normalizedAngle >= 30 && normalizedAngle < 60) {
+        // Top-right - left align
+        align = 'left';
+        xOffset = 2;
+      } else {
+        // Bottom-right (300-330)
+        align = 'left';
+        xOffset = 2;
+      }
+    } 
+    // Bottom labels (60 to 120)
+    else if (normalizedAngle >= 60 && normalizedAngle <= 120) {
+      align = 'center';
+      yOffset = 3;
+    }
+    // Left side labels (120 to 240)
+    else if (normalizedAngle > 120 && normalizedAngle < 240) {
+      align = 'right';
+      xOffset = -2;
+    }
+    // Top-left (240 to 300)
+    else {
+      align = 'right';
+      xOffset = -2;
+    }
+    
+    // Truncate label if too long
+    let displayLabel = label;
+    const maxWidth = 25;
+    while (doc.getTextWidth(displayLabel) > maxWidth && displayLabel.length > 4) {
+      displayLabel = displayLabel.slice(0, -1);
+    }
+    if (displayLabel.length < label.length) {
+      displayLabel = displayLabel.trim() + '..';
+    }
+    
+    doc.text(displayLabel, labelPoint.x + xOffset, labelPoint.y + yOffset, { align });
   });
   
   // Draw filled polygon for scores
   const points = categoryScores.map((cat, i) => getPoint(i, cat.percentage));
   
-  // Fill polygon
-  doc.setFillColor(220, 38, 38, 0.2);
+  // Draw polygon outline and fill
+  doc.setFillColor(220, 38, 38);
   doc.setDrawColor(220, 38, 38);
   doc.setLineWidth(1);
   
   if (points.length > 0) {
-    // Create path for polygon fill
-    const pathData = points.map((p, i) => 
-      i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
-    ).join(' ') + ' Z';
-    
-    // Draw filled polygon manually
-    doc.setFillColor(220, 38, 38);
-    doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
-    
     // Draw lines between points
+    doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
     for (let i = 0; i < points.length; i++) {
       const p1 = points[i];
       const p2 = points[(i + 1) % points.length];
       doc.line(p1.x, p1.y, p2.x, p2.y);
     }
-    
     doc.setGState(new (doc as any).GState({ opacity: 1 }));
+    
+    // Draw border lines with full opacity
+    doc.setLineWidth(0.8);
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length];
+      doc.line(p1.x, p1.y, p2.x, p2.y);
+    }
     
     // Draw points
     doc.setFillColor(220, 38, 38);
@@ -892,6 +943,93 @@ const drawRadarChart = (
       doc.circle(p.x, p.y, 1.5, 'F');
     });
   }
+  
+  doc.setTextColor(0, 0, 0);
+};
+
+// Helper function to draw BMI speedometer
+const drawBMISpeedometer = (
+  doc: jsPDF,
+  centerX: number,
+  centerY: number,
+  bmiValue: number,
+  radius: number = 18
+) => {
+  const arcWidth = 3;
+  const startAngle = 135;
+  const endAngle = 405;
+  const sweepAngle = endAngle - startAngle;
+  
+  const toRadians = (deg: number) => (deg * Math.PI) / 180;
+  const polarToXY = (angle: number, r: number) => ({
+    x: centerX + r * Math.cos(toRadians(angle)),
+    y: centerY + r * Math.sin(toRadians(angle))
+  });
+  
+  // BMI percentage (18.5-30 range mapped to 0-100%)
+  // < 18.5 = low, 18.5-24.9 = normal (optimal), 25-29.9 = overweight, >= 30 = obese
+  let bmiPercentage: number;
+  if (bmiValue < 18.5) {
+    bmiPercentage = Math.max(5, (bmiValue / 18.5) * 30);
+  } else if (bmiValue < 25) {
+    bmiPercentage = 30 + ((bmiValue - 18.5) / 6.5) * 50; // 30-80%
+  } else if (bmiValue < 30) {
+    bmiPercentage = 80 - ((bmiValue - 25) / 5) * 30; // 80-50%
+  } else {
+    bmiPercentage = Math.max(10, 50 - ((bmiValue - 30) / 10) * 40); // 50-10%
+  }
+  
+  // Draw gradient arc
+  const segments = [
+    { start: 0, end: 20, color: [239, 68, 68] as [number, number, number] },
+    { start: 20, end: 40, color: [249, 115, 22] as [number, number, number] },
+    { start: 40, end: 60, color: [250, 204, 21] as [number, number, number] },
+    { start: 60, end: 80, color: [59, 130, 246] as [number, number, number] },
+    { start: 80, end: 100, color: [34, 197, 94] as [number, number, number] },
+  ];
+  
+  doc.setLineWidth(arcWidth);
+  segments.forEach(seg => {
+    const segStartAngle = startAngle + (seg.start / 100) * sweepAngle;
+    const segEndAngle = startAngle + (seg.end / 100) * sweepAngle;
+    
+    const steps = 8;
+    for (let i = 0; i < steps; i++) {
+      const a1 = segStartAngle + (i / steps) * (segEndAngle - segStartAngle);
+      const a2 = segStartAngle + ((i + 1) / steps) * (segEndAngle - segStartAngle);
+      const p1 = polarToXY(a1, radius);
+      const p2 = polarToXY(a2, radius);
+      
+      doc.setDrawColor(seg.color[0], seg.color[1], seg.color[2]);
+      doc.line(p1.x, p1.y, p2.x, p2.y);
+    }
+  });
+  
+  // Draw needle
+  const needleAngle = startAngle + (bmiPercentage / 100) * sweepAngle;
+  const needleLength = radius * 0.6;
+  const needleEnd = polarToXY(needleAngle, needleLength);
+  
+  let needleColor: [number, number, number];
+  if (bmiPercentage >= 70) needleColor = [34, 197, 94]; // Green (normal)
+  else if (bmiPercentage >= 50) needleColor = [59, 130, 246]; // Blue
+  else if (bmiPercentage >= 30) needleColor = [250, 204, 21]; // Yellow
+  else if (bmiPercentage >= 15) needleColor = [249, 115, 22]; // Orange
+  else needleColor = [239, 68, 68]; // Red
+  
+  doc.setDrawColor(needleColor[0], needleColor[1], needleColor[2]);
+  doc.setLineWidth(1.2);
+  doc.line(centerX, centerY, needleEnd.x, needleEnd.y);
+  
+  // Center dot
+  doc.setFillColor(60, 60, 60);
+  doc.circle(centerX, centerY, 1.5, 'F');
+  
+  // BMI value text
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(needleColor[0], needleColor[1], needleColor[2]);
+  doc.text(`${bmiValue.toFixed(1)}`, centerX, centerY + radius + 6, { align: 'center' });
   
   doc.setTextColor(0, 0, 0);
 };
@@ -906,13 +1044,19 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   doc.setFillColor(250, 250, 250);
   doc.roundedRect(14, yPos, pageWidth - 28, 35, 2, 2, 'F');
   
-  // Avatar placeholder circle
+  // Avatar placeholder circle with initials
   doc.setFillColor(220, 38, 38);
   doc.circle(32, yPos + 17, 12, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text(data.athleteName.charAt(0).toUpperCase(), 32, yPos + 21, { align: 'center' });
+  // Get first letters of name words (up to 2)
+  const initials = data.athleteName
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase())
+    .slice(0, 2)
+    .join('');
+  doc.text(initials || data.athleteName.charAt(0).toUpperCase(), 32, yPos + 21, { align: 'center' });
   doc.setTextColor(0, 0, 0);
   
   // Athlete info next to avatar
@@ -925,7 +1069,7 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   const genderLabel = data.athleteGender === 'male' ? 'Laki-laki' : data.athleteGender === 'female' ? 'Perempuan' : '-';
   const ageLabel = data.athleteAge ? `${data.athleteAge} tahun` : '-';
   const sportLabel = data.sport ? CATEGORY_LABELS[data.sport] || data.sport : '-';
-  doc.text(`Usia: ${ageLabel}  |  Gender: ${genderLabel}  |  Olahraga: ${sportLabel}`, 50, yPos + 20);
+  doc.text(`Usia: ${ageLabel}   Gender: ${genderLabel}   Olahraga: ${sportLabel}`, 50, yPos + 20);
   
   // Report date
   doc.setFontSize(8);
@@ -940,7 +1084,7 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   
   yPos += 42;
   
-  // BMI Section with complete calculation display
+  // BMI Section with Speedometer visualization
   if (data.bodyWeight && data.height) {
     const heightInMeters = data.height / 100;
     const calculatedBmi = data.bmi || (data.bodyWeight / Math.pow(heightInMeters, 2));
@@ -949,22 +1093,22 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     let bmiCategory: string;
     let bmiColor: [number, number, number];
     if (calculatedBmi < 18.5) {
-      bmiCategory = 'Kurus (Underweight)';
+      bmiCategory = 'Kurus';
       bmiColor = [249, 115, 22]; // Orange
     } else if (calculatedBmi < 25) {
       bmiCategory = 'Normal';
       bmiColor = [34, 197, 94]; // Green
     } else if (calculatedBmi < 30) {
-      bmiCategory = 'Gemuk (Overweight)';
+      bmiCategory = 'Gemuk';
       bmiColor = [249, 115, 22]; // Orange
     } else {
       bmiCategory = 'Obesitas';
       bmiColor = [239, 68, 68]; // Red
     }
     
-    // Draw BMI box with proper height
+    // Draw BMI box with speedometer - increased height
     doc.setFillColor(245, 245, 245);
-    doc.roundedRect(14, yPos, pageWidth - 28, 28, 2, 2, 'F');
+    doc.roundedRect(14, yPos, pageWidth - 28, 42, 2, 2, 'F');
     
     // Title
     doc.setFontSize(10);
@@ -972,36 +1116,39 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     doc.setTextColor(60, 60, 60);
     doc.text('DATA ANTROPOMETRI & BMI/IMT', 18, yPos + 7);
     
-    // Body measurements row
+    // Draw BMI Speedometer on the left
+    drawBMISpeedometer(doc, 40, yPos + 27, calculatedBmi, 14);
+    
+    // Body measurements and BMI info
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Berat Badan: ${data.bodyWeight} kg`, 18, yPos + 15);
-    doc.text(`Tinggi Badan: ${data.height} cm`, 65, yPos + 15);
+    doc.text(`Berat Badan: ${data.bodyWeight} kg`, 65, yPos + 18);
+    doc.text(`Tinggi Badan: ${data.height} cm`, 115, yPos + 18);
     
     // BMI calculation formula
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
-    doc.text(`Rumus: ${data.bodyWeight} ÷ (${heightInMeters.toFixed(2)}²) = ${calculatedBmi.toFixed(2)}`, 120, yPos + 15);
+    doc.text(`Rumus: ${data.bodyWeight} ÷ (${heightInMeters.toFixed(2)}²) = ${calculatedBmi.toFixed(2)}`, 65, yPos + 26);
     
     // BMI result with color
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(bmiColor[0], bmiColor[1], bmiColor[2]);
-    doc.text(`BMI/IMT: ${calculatedBmi.toFixed(1)} kg/m²`, 18, yPos + 23);
+    doc.text(`BMI/IMT: ${calculatedBmi.toFixed(1)} kg/m²`, 65, yPos + 35);
     
     // Category label
     doc.setFontSize(9);
-    doc.text(`Kategori: ${bmiCategory}`, 75, yPos + 23);
+    doc.text(`Kategori: ${bmiCategory}`, 120, yPos + 35);
     
     // BMI range reference
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6);
     doc.setTextColor(100, 100, 100);
-    doc.text('Normal: 18.5-24.9 | Kurus: <18.5 | Gemuk: 25-29.9 | Obesitas: ≥30', 140, yPos + 23);
+    doc.text('Normal: 18.5 - 24.9  |  Kurus: < 18.5  |  Gemuk: 25 - 29.9  |  Obesitas: ≥ 30', 65, yPos + 41);
     
     doc.setTextColor(0, 0, 0);
-    yPos += 34;
+    yPos += 48;
   } else {
     yPos += 4;
   }
