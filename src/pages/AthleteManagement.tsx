@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, UserPlus, Edit, Trash2, FileDown, Users, Mail, Calendar, Check, X, UserCheck, Search, Filter } from "lucide-react";
+import { Loader2, UserPlus, Edit, Trash2, FileDown, Users, Mail, Calendar, Check, X, UserCheck, Search, Filter, Scale, Ruler } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { SPORT_CATEGORIES, getSportLabel } from "@/lib/sportCategories";
 
 interface Athlete {
   id: string;
@@ -22,6 +23,10 @@ interface Athlete {
   age: number | null;
   baseline_rhr: number | null;
   baseline_vj: number | null;
+  body_weight: number | null;
+  height: number | null;
+  gender: string | null;
+  sport: string | null;
   avatar_url: string | null;
   email?: string;
   assigned_at?: string;
@@ -66,6 +71,10 @@ export default function AthleteManagement() {
   const [editAge, setEditAge] = useState("");
   const [editRHR, setEditRHR] = useState("");
   const [editVJ, setEditVJ] = useState("");
+  const [editBodyWeight, setEditBodyWeight] = useState("");
+  const [editHeight, setEditHeight] = useState("");
+  const [editGender, setEditGender] = useState("male");
+  const [editSport, setEditSport] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState<string | null>(null);
 
@@ -159,7 +168,7 @@ export default function AthleteManagement() {
         // Get athlete profiles
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("*")
+          .select("id, athlete_name, age, baseline_rhr, baseline_vj, body_weight, height, gender, sport, avatar_url")
           .in("id", athleteIds);
 
         if (profiles) {
@@ -380,6 +389,19 @@ export default function AthleteManagement() {
   const handleEditAthlete = async () => {
     if (!selectedAthlete) return;
 
+    const bodyWeight = editBodyWeight ? parseFloat(editBodyWeight) : null;
+    const height = editHeight ? parseFloat(editHeight) : null;
+
+    if (bodyWeight && (bodyWeight < 20 || bodyWeight > 200)) {
+      sonnerToast.error("Berat badan harus antara 20-200 kg");
+      return;
+    }
+
+    if (height && (height < 100 || height > 250)) {
+      sonnerToast.error("Tinggi badan harus antara 100-250 cm");
+      return;
+    }
+
     try {
       setIsSaving(true);
       const { error } = await supabase
@@ -388,7 +410,11 @@ export default function AthleteManagement() {
           athlete_name: editName,
           age: editAge ? parseInt(editAge) : null,
           baseline_rhr: editRHR ? parseFloat(editRHR) : null,
-          baseline_vj: editVJ ? parseFloat(editVJ) : null
+          baseline_vj: editVJ ? parseFloat(editVJ) : null,
+          body_weight: bodyWeight,
+          height: height,
+          gender: editGender || null,
+          sport: editSport || null
         })
         .eq("id", selectedAthlete.id);
 
@@ -1110,6 +1136,36 @@ export default function AthleteManagement() {
                         <p className="font-semibold">{athlete.age} tahun</p>
                       </div>
                     )}
+                    {athlete.gender && (
+                      <div>
+                        <span className="text-muted-foreground">Gender:</span>
+                        <p className="font-semibold">{athlete.gender === 'male' ? 'Laki-laki' : 'Perempuan'}</p>
+                      </div>
+                    )}
+                    {athlete.body_weight && (
+                      <div>
+                        <span className="text-muted-foreground">Berat:</span>
+                        <p className="font-semibold">{athlete.body_weight} kg</p>
+                      </div>
+                    )}
+                    {athlete.height && (
+                      <div>
+                        <span className="text-muted-foreground">Tinggi:</span>
+                        <p className="font-semibold">{athlete.height} cm</p>
+                      </div>
+                    )}
+                    {athlete.body_weight && athlete.height && (
+                      <div>
+                        <span className="text-muted-foreground">BMI:</span>
+                        <p className="font-semibold">{(athlete.body_weight / Math.pow(athlete.height / 100, 2)).toFixed(1)} kg/m²</p>
+                      </div>
+                    )}
+                    {athlete.sport && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Olahraga:</span>
+                        <p className="font-semibold">{getSportLabel(athlete.sport)}</p>
+                      </div>
+                    )}
                     {athlete.baseline_rhr && (
                       <div>
                         <span className="text-muted-foreground">RHR:</span>
@@ -1135,6 +1191,10 @@ export default function AthleteManagement() {
                         setEditAge(athlete.age?.toString() || "");
                         setEditRHR(athlete.baseline_rhr?.toString() || "");
                         setEditVJ(athlete.baseline_vj?.toString() || "");
+                        setEditBodyWeight(athlete.body_weight?.toString() || "");
+                        setEditHeight(athlete.height?.toString() || "");
+                        setEditGender(athlete.gender || "male");
+                        setEditSport(athlete.sport || "");
                         setEditDialogOpen(true);
                       }}
                     >
@@ -1171,7 +1231,7 @@ export default function AthleteManagement() {
 
         {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Data Atlet</DialogTitle>
               <DialogDescription>
@@ -1187,33 +1247,115 @@ export default function AthleteManagement() {
                   onChange={(e) => setEditName(e.target.value)}
                 />
               </div>
-              <div>
-                <Label htmlFor="edit-age">Usia (tahun)</Label>
-                <Input
-                  id="edit-age"
-                  type="number"
-                  value={editAge}
-                  onChange={(e) => setEditAge(e.target.value)}
-                />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-age">Usia (tahun)</Label>
+                  <Input
+                    id="edit-age"
+                    type="number"
+                    value={editAge}
+                    onChange={(e) => setEditAge(e.target.value)}
+                    placeholder="Contoh: 25"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-gender">Jenis Kelamin</Label>
+                  <Select value={editGender} onValueChange={setEditGender}>
+                    <SelectTrigger id="edit-gender">
+                      <SelectValue placeholder="Pilih gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Laki-laki</SelectItem>
+                      <SelectItem value="female">Perempuan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="edit-rhr">Baseline RHR (bpm)</Label>
-                <Input
-                  id="edit-rhr"
-                  type="number"
-                  value={editRHR}
-                  onChange={(e) => setEditRHR(e.target.value)}
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-weight" className="flex items-center gap-1">
+                    <Scale className="h-3 w-3" />
+                    Berat Badan (kg)
+                  </Label>
+                  <Input
+                    id="edit-weight"
+                    type="number"
+                    step="0.1"
+                    value={editBodyWeight}
+                    onChange={(e) => setEditBodyWeight(e.target.value)}
+                    placeholder="Contoh: 70"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-height" className="flex items-center gap-1">
+                    <Ruler className="h-3 w-3" />
+                    Tinggi Badan (cm)
+                  </Label>
+                  <Input
+                    id="edit-height"
+                    type="number"
+                    step="0.1"
+                    value={editHeight}
+                    onChange={(e) => setEditHeight(e.target.value)}
+                    placeholder="Contoh: 175"
+                  />
+                </div>
               </div>
+
+              {/* BMI Preview */}
+              {editBodyWeight && editHeight && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">BMI/IMT:</span>
+                    <span className="font-bold">
+                      {(parseFloat(editBodyWeight) / Math.pow(parseFloat(editHeight) / 100, 2)).toFixed(1)} kg/m²
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div>
-                <Label htmlFor="edit-vj">Baseline VJ (cm)</Label>
-                <Input
-                  id="edit-vj"
-                  type="number"
-                  value={editVJ}
-                  onChange={(e) => setEditVJ(e.target.value)}
-                />
+                <Label htmlFor="edit-sport">Cabang Olahraga</Label>
+                <Select value={editSport} onValueChange={setEditSport}>
+                  <SelectTrigger id="edit-sport">
+                    <SelectValue placeholder="Pilih cabang olahraga" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    <SelectItem value="">-- Tidak dipilih --</SelectItem>
+                    {SPORT_CATEGORIES.map((sport) => (
+                      <SelectItem key={sport.value} value={sport.value}>
+                        {sport.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-rhr">Baseline RHR (bpm)</Label>
+                  <Input
+                    id="edit-rhr"
+                    type="number"
+                    value={editRHR}
+                    onChange={(e) => setEditRHR(e.target.value)}
+                    placeholder="Contoh: 60"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-vj">Baseline VJ (cm)</Label>
+                  <Input
+                    id="edit-vj"
+                    type="number"
+                    value={editVJ}
+                    onChange={(e) => setEditVJ(e.target.value)}
+                    placeholder="Contoh: 40"
+                  />
+                </div>
+              </div>
+              
               <Button
                 onClick={handleEditAthlete}
                 disabled={isSaving}
