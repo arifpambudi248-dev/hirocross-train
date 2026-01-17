@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,6 +56,8 @@ export default function TesFisik() {
   const [athleteSport, setAthleteSport] = useState<string | null>(null);
   const [athleteBodyWeight, setAthleteBodyWeight] = useState<number | null>(null);
   const [athleteHeight, setAthleteHeight] = useState<number | null>(null);
+  const [athleteAvatarUrl, setAthleteAvatarUrl] = useState<string | null>(null);
+  const [athleteName, setAthleteName] = useState<string>("");
   
   // Grouping view mode
   const [groupBy, setGroupBy] = useState<'category' | 'gender' | 'sport'>('category');
@@ -107,7 +110,7 @@ export default function TesFisik() {
           const athleteIds = assignments.map(a => a.athlete_id);
           const { data: profilesData } = await supabase
             .from("profiles")
-            .select("id, athlete_name, age, gender, sport")
+            .select("id, athlete_name, age, gender, sport, avatar_url")
             .in("id", athleteIds)
             .order("athlete_name");
           
@@ -125,16 +128,18 @@ export default function TesFisik() {
   const loadAthleteProfile = async (uid: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("age, gender, sport, body_weight, height")
+      .select("athlete_name, age, gender, sport, body_weight, height, avatar_url")
       .eq("id", uid)
       .single();
     
     if (data) {
+      setAthleteName(data.athlete_name || "");
       if (data.age) setAthleteAge(data.age);
       if (data.gender) setAthleteGender(data.gender as Gender);
       if (data.sport) setAthleteSport(data.sport);
       setAthleteBodyWeight(data.body_weight);
       setAthleteHeight(data.height);
+      setAthleteAvatarUrl(data.avatar_url);
     }
   };
 
@@ -279,8 +284,8 @@ export default function TesFisik() {
               <Button
                 variant="outline"
                 className="gap-2"
-                onClick={() => {
-                  const athleteNameData = athletes.find(a => a.id === selectedAthleteId)?.athlete_name || 'Atlet';
+                onClick={async () => {
+                  const athleteNameData = athletes.find(a => a.id === selectedAthleteId)?.athlete_name || athleteName || 'Atlet';
                   // Calculate scores for latest tests with category info
                   const latestTestsMap = new Map<string, PhysicalTest>();
                   tests.forEach(test => {
@@ -306,14 +311,16 @@ export default function TesFisik() {
                   
                   const exportData: PhysicalTestExportData = {
                     athleteName: athleteNameData,
+                    athleteAvatarUrl: athleteAvatarUrl || undefined,
                     tests,
                     testScores,
                     athleteAge,
                     athleteGender,
                     bodyWeight: athleteBodyWeight || undefined,
                     height: athleteHeight || undefined,
+                    sport: athleteSport || undefined,
                   };
-                  exportPhysicalTestsToPDF(exportData);
+                  await exportPhysicalTestsToPDF(exportData);
                   toast.success('PDF berhasil diekspor');
                 }}
               >
@@ -539,135 +546,91 @@ export default function TesFisik() {
           </div>
         </div>
 
-        {/* Athlete Selector for Coach + Age/Gender/Sport Display */}
-        {isCoach && athletes.length > 0 && (
+        {/* Athlete Profile Card */}
+        {selectedAthleteId && (
           <Card className="mb-6">
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <Label>Pilih Atlet</Label>
-                  <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
-                    <SelectTrigger className="bg-background mt-2">
-                      <SelectValue placeholder="Pilih atlet..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover z-50">
-                      {athletes.map((athlete) => (
-                        <SelectItem key={athlete.id} value={athlete.id}>
-                          <div className="flex items-center gap-2">
-                            <span>{athlete.athlete_name}</span>
-                            {athlete.gender && (
-                              <Badge variant="outline" className="text-xs">
-                                {athlete.gender === 'male' ? 'L' : 'P'}
-                              </Badge>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                {/* Avatar and Name */}
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={athleteAvatarUrl || undefined} alt={athleteName} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">
+                      {athleteName?.charAt(0)?.toUpperCase() || 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h2 className="text-xl font-bold">{athleteName || 'Atlet'}</h2>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>{athleteGender === 'male' ? 'Laki-laki' : 'Perempuan'}</span>
+                      <span>•</span>
+                      <span>{athleteAge} tahun</span>
+                      {athleteSport && (
+                        <>
+                          <span>•</span>
+                          <Badge variant="outline">{getSportLabel(athleteSport)}</Badge>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Usia
-                  </Label>
-                  <Input
-                    type="number"
-                    min="5"
-                    max="80"
-                    value={athleteAge}
-                    onChange={(e) => setAthleteAge(parseInt(e.target.value) || 25)}
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {getAgeGroupLabel(getAgeGroup(athleteAge))}
-                  </p>
-                </div>
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Jenis Kelamin
-                  </Label>
-                  <Select
-                    value={athleteGender}
-                    onValueChange={(v) => setAthleteGender(v as Gender)}
-                  >
-                    <SelectTrigger className="bg-background mt-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover z-50">
-                      <SelectItem value="male">Laki-laki</SelectItem>
-                      <SelectItem value="female">Perempuan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <Dumbbell className="h-4 w-4" />
-                    Cabang Olahraga
-                  </Label>
-                  <p className="mt-2 text-sm font-medium py-2 px-3 bg-secondary rounded-md">
-                    {getSportLabel(athleteSport)}
-                  </p>
-                </div>
+                
+                {/* Coach selector if coach */}
+                {isCoach && athletes.length > 0 && (
+                  <div className="ml-auto">
+                    <Label className="text-xs text-muted-foreground">Pilih Atlet</Label>
+                    <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
+                      <SelectTrigger className="bg-background mt-1 w-[200px]">
+                        <SelectValue placeholder="Pilih atlet..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover z-50">
+                        {athletes.map((athlete) => (
+                          <SelectItem key={athlete.id} value={athlete.id}>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={athlete.avatar_url || undefined} />
+                                <AvatarFallback className="text-xs">
+                                  {athlete.athlete_name?.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{athlete.athlete_name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
+              
+              {/* Body stats if available */}
+              {(athleteBodyWeight || athleteHeight) && (
+                <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t">
+                  {athleteBodyWeight && (
+                    <div className="flex items-center gap-2">
+                      <Scale className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">Berat: <strong>{athleteBodyWeight} kg</strong></span>
+                    </div>
+                  )}
+                  {athleteHeight && (
+                    <div className="flex items-center gap-2">
+                      <Ruler className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">Tinggi: <strong>{athleteHeight} cm</strong></span>
+                    </div>
+                  )}
+                  {athleteBodyWeight && athleteHeight && (
+                    <div className="flex items-center gap-2">
+                      <Gauge className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">BMI: <strong>{(athleteBodyWeight / Math.pow(athleteHeight / 100, 2)).toFixed(1)} kg/m²</strong></span>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
 
-        {/* Age/Gender/Sport for non-coach */}
-        {!isCoach && (
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Usia untuk Norma
-                  </Label>
-                  <Input
-                    type="number"
-                    min="5"
-                    max="80"
-                    value={athleteAge}
-                    onChange={(e) => setAthleteAge(parseInt(e.target.value) || 25)}
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {getAgeGroupLabel(getAgeGroup(athleteAge))}
-                  </p>
-                </div>
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Jenis Kelamin
-                  </Label>
-                  <Select
-                    value={athleteGender}
-                    onValueChange={(v) => setAthleteGender(v as Gender)}
-                  >
-                    <SelectTrigger className="bg-background mt-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover z-50">
-                      <SelectItem value="male">Laki-laki</SelectItem>
-                      <SelectItem value="female">Perempuan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <Dumbbell className="h-4 w-4" />
-                    Cabang Olahraga
-                  </Label>
-                  <p className="mt-2 text-sm font-medium py-2 px-3 bg-secondary rounded-md">
-                    {getSportLabel(athleteSport)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
 
         {/* Grouping Controls */}
         <Card className="mb-6">
