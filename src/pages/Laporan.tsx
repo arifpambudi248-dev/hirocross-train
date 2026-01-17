@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FileDown, Users, Activity, Zap, TrendingUp } from "lucide-react";
+import { FileDown, Users, Activity, Zap, TrendingUp, User } from "lucide-react";
 import { 
   LineChart, 
   Line, 
@@ -51,8 +52,9 @@ export default function Laporan() {
   
   // Coach-specific state
   const [isCoach, setIsCoach] = useState(false);
-  const [athletes, setAthletes] = useState<{ id: string; athlete_name: string }[]>([]);
+  const [athletes, setAthletes] = useState<{ id: string; athlete_name: string; avatar_url?: string | null }[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
+  const [athleteAvatarUrl, setAthleteAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -93,13 +95,14 @@ export default function Laporan() {
         const athleteIds = assignments.map(a => a.athlete_id);
         const { data: profilesData } = await supabase
           .from("profiles")
-          .select("id, athlete_name")
+          .select("id, athlete_name, avatar_url")
           .in("id", athleteIds)
           .order("athlete_name");
         
         if (profilesData && profilesData.length > 0) {
           setAthletes(profilesData);
           setSelectedAthleteId(profilesData[0].id);
+          setAthleteAvatarUrl(profilesData[0].avatar_url);
           await loadAthleteData(profilesData[0].id);
         } else {
           setLoading(false);
@@ -119,7 +122,7 @@ export default function Laporan() {
     // Load profile
     const { data: profile } = await supabase
       .from("profiles")
-      .select("athlete_name, age, body_weight")
+      .select("athlete_name, age, body_weight, avatar_url")
       .eq("id", athleteId)
       .single();
     
@@ -127,6 +130,7 @@ export default function Laporan() {
       setAthleteName(profile.athlete_name);
       setAthleteAge(profile.age);
       setAthleteBodyWeight((profile as any).body_weight);
+      setAthleteAvatarUrl(profile.avatar_url);
     }
 
     // Load all data in parallel
@@ -368,20 +372,44 @@ export default function Laporan() {
       <div className="container mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-bold text-foreground">Laporan Komprehensif</h1>
+            {/* Athlete Avatar and Name */}
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12 border-2 border-primary/20">
+                <AvatarImage src={athleteAvatarUrl || undefined} alt={athleteName} />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {athleteName ? athleteName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : <User className="h-5 w-5" />}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Laporan Komprehensif</h1>
+                <p className="text-sm text-muted-foreground">{athleteName}</p>
+              </div>
+            </div>
             
             {/* Athlete selector for coaches */}
             {isCoach && athletes.length > 0 && (
               <Select value={selectedAthleteId} onValueChange={(val) => {
                 setSelectedAthleteId(val);
+                const selectedAthlete = athletes.find(a => a.id === val);
+                if (selectedAthlete) {
+                  setAthleteAvatarUrl(selectedAthlete.avatar_url || null);
+                }
               }}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-56">
                   <SelectValue placeholder="Pilih atlet..." />
                 </SelectTrigger>
                 <SelectContent>
                   {athletes.map((athlete) => (
                     <SelectItem key={athlete.id} value={athlete.id}>
-                      {athlete.athlete_name}
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={athlete.avatar_url || undefined} alt={athlete.athlete_name} />
+                          <AvatarFallback className="text-xs">
+                            {athlete.athlete_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        {athlete.athlete_name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
