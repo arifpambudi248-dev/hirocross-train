@@ -1318,12 +1318,12 @@ export default function AthleteManagement() {
 
               <div>
                 <Label htmlFor="edit-sport">Cabang Olahraga</Label>
-                <Select value={editSport} onValueChange={setEditSport}>
+                <Select value={editSport || "none"} onValueChange={(v) => setEditSport(v === "none" ? "" : v)}>
                   <SelectTrigger id="edit-sport">
                     <SelectValue placeholder="Pilih cabang olahraga" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    <SelectItem value="">-- Tidak dipilih --</SelectItem>
+                  <SelectContent className="max-h-60 bg-popover">
+                    <SelectItem value="none">-- Tidak dipilih --</SelectItem>
                     {SPORT_CATEGORIES.map((sport) => (
                       <SelectItem key={sport.value} value={sport.value}>
                         {sport.label}
