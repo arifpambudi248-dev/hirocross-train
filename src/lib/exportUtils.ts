@@ -1034,55 +1034,216 @@ const drawBMISpeedometer = (
   doc.setTextColor(0, 0, 0);
 };
 
+// Helper function to load image as base64
+const loadImageAsBase64 = async (url: string): Promise<string | null> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+};
+
+// Helper function to draw detailed radar chart with test names
+const drawDetailedRadarChart = (
+  doc: jsPDF,
+  centerX: number,
+  centerY: number,
+  testScores: { testName: string; percentage: number; value: number; unit: string }[],
+  radius: number = 45
+) => {
+  const n = testScores.length;
+  if (n < 3) return;
+  
+  const toRadians = (deg: number) => (deg * Math.PI) / 180;
+  const angleStep = 360 / n;
+  
+  const getPoint = (index: number, value: number) => {
+    const angle = -90 + index * angleStep;
+    const r = (value / 100) * radius;
+    return {
+      x: centerX + r * Math.cos(toRadians(angle)),
+      y: centerY + r * Math.sin(toRadians(angle)),
+      angle
+    };
+  };
+  
+  // Draw grid circles with percentage labels
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.2);
+  [20, 40, 60, 80, 100].forEach(level => {
+    const r = (level / 100) * radius;
+    doc.circle(centerX, centerY, r);
+  });
+  
+  // Draw grid lines from center to each axis
+  doc.setDrawColor(180, 180, 180);
+  for (let i = 0; i < n; i++) {
+    const endPoint = getPoint(i, 100);
+    doc.line(centerX, centerY, endPoint.x, endPoint.y);
+  }
+  
+  // Draw axis labels with test names and values
+  doc.setFontSize(5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(40, 40, 40);
+  
+  testScores.forEach((test, i) => {
+    const labelPoint = getPoint(i, 120);
+    
+    // Truncate label if too long
+    let displayLabel = test.testName;
+    const maxWidth = 22;
+    while (doc.getTextWidth(displayLabel) > maxWidth && displayLabel.length > 6) {
+      displayLabel = displayLabel.slice(0, -1);
+    }
+    if (displayLabel.length < test.testName.length) {
+      displayLabel = displayLabel.trim() + '..';
+    }
+    
+    // Determine text alignment based on position
+    let align: 'left' | 'center' | 'right' = 'center';
+    const normalizedAngle = ((labelPoint.angle % 360) + 360) % 360;
+    
+    if (normalizedAngle > 300 || normalizedAngle < 60) {
+      align = normalizedAngle > 330 || normalizedAngle < 30 ? 'center' : 'left';
+    } else if (normalizedAngle >= 60 && normalizedAngle <= 120) {
+      align = 'center';
+    } else {
+      align = 'right';
+    }
+    
+    doc.text(displayLabel, labelPoint.x, labelPoint.y, { align });
+    
+    // Add value below label
+    doc.setFontSize(4);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${test.value} ${test.unit}`, labelPoint.x, labelPoint.y + 3, { align });
+    doc.setFontSize(5);
+    doc.setTextColor(40, 40, 40);
+  });
+  
+  // Draw filled polygon for scores
+  const points = testScores.map((test, i) => getPoint(i, test.percentage));
+  
+  // Draw polygon with semi-transparent fill
+  doc.setFillColor(220, 38, 38);
+  doc.setDrawColor(220, 38, 38);
+  doc.setLineWidth(0.8);
+  
+  if (points.length > 0) {
+    // Draw lines with semi-transparency
+    doc.setGState(new (doc as any).GState({ opacity: 0.25 }));
+    // Create polygon path
+    const path = points.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ') + ' Z';
+    
+    // Draw filled area using lines
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length];
+      doc.line(p1.x, p1.y, p2.x, p2.y);
+    }
+    doc.setGState(new (doc as any).GState({ opacity: 1 }));
+    
+    // Draw border with full opacity
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length];
+      doc.line(p1.x, p1.y, p2.x, p2.y);
+    }
+    
+    // Draw data points
+    doc.setFillColor(220, 38, 38);
+    points.forEach(p => {
+      doc.circle(p.x, p.y, 1.2, 'F');
+    });
+  }
+  
+  doc.setTextColor(0, 0, 0);
+};
+
 export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   
   let yPos = addPDFHeader(doc, 'Laporan Tes Kondisi Fisik', data.athleteName);
   
-  // Athlete profile section with avatar placeholder
+  // Athlete profile section
   doc.setFillColor(250, 250, 250);
-  doc.roundedRect(14, yPos, pageWidth - 28, 35, 2, 2, 'F');
+  doc.roundedRect(14, yPos, pageWidth - 28, 38, 2, 2, 'F');
   
-  // Avatar placeholder circle with initials
-  doc.setFillColor(220, 38, 38);
-  doc.circle(32, yPos + 17, 12, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  // Get first letters of name words (up to 2)
-  const initials = data.athleteName
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase())
-    .slice(0, 2)
-    .join('');
-  doc.text(initials || data.athleteName.charAt(0).toUpperCase(), 32, yPos + 21, { align: 'center' });
-  doc.setTextColor(0, 0, 0);
+  // Try to load avatar image
+  let avatarLoaded = false;
+  if (data.athleteAvatarUrl) {
+    try {
+      const imageData = await loadImageAsBase64(data.athleteAvatarUrl);
+      if (imageData) {
+        // Draw circular mask effect by using a clip
+        doc.addImage(imageData, 'JPEG', 20, yPos + 5, 28, 28);
+        avatarLoaded = true;
+      }
+    } catch (e) {
+      console.error('Failed to load avatar:', e);
+    }
+  }
+  
+  // Fallback: Avatar placeholder circle with initials
+  if (!avatarLoaded) {
+    doc.setFillColor(220, 38, 38);
+    doc.circle(34, yPos + 19, 14, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    const initials = data.athleteName
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase())
+      .slice(0, 2)
+      .join('');
+    doc.text(initials || data.athleteName.charAt(0).toUpperCase(), 34, yPos + 23, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+  }
   
   // Athlete info next to avatar
-  doc.setFontSize(14);
+  const infoX = avatarLoaded ? 52 : 54;
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text(data.athleteName, 50, yPos + 12);
+  doc.text(data.athleteName, infoX, yPos + 14);
   
-  doc.setFontSize(9);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   const genderLabel = data.athleteGender === 'male' ? 'Laki-laki' : data.athleteGender === 'female' ? 'Perempuan' : '-';
   const ageLabel = data.athleteAge ? `${data.athleteAge} tahun` : '-';
   const sportLabel = data.sport ? CATEGORY_LABELS[data.sport] || data.sport : '-';
-  doc.text(`Usia: ${ageLabel}   Gender: ${genderLabel}   Olahraga: ${sportLabel}`, 50, yPos + 20);
+  doc.text(`${genderLabel}  •  ${ageLabel}  •  ${sportLabel}`, infoX, yPos + 22);
   
-  // Report date
+  // Body measurements on the right side if available
+  if (data.bodyWeight || data.height) {
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 80);
+    const bodyInfo = [];
+    if (data.bodyWeight) bodyInfo.push(`Berat: ${data.bodyWeight} kg`);
+    if (data.height) bodyInfo.push(`Tinggi: ${data.height} cm`);
+    doc.text(bodyInfo.join('  |  '), infoX, yPos + 30);
+    doc.setTextColor(0, 0, 0);
+  }
+  
+  // Report date on the far right
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Tanggal Laporan: ${new Date().toLocaleDateString('id-ID', { 
-    weekday: 'long', 
-    year: 'numeric', 
+  doc.text(`${new Date().toLocaleDateString('id-ID', { 
+    day: 'numeric',
     month: 'long', 
-    day: 'numeric' 
-  })}`, 50, yPos + 28);
+    year: 'numeric' 
+  })}`, pageWidth - 18, yPos + 14, { align: 'right' });
   doc.setTextColor(0, 0, 0);
   
-  yPos += 42;
+  yPos += 45;
   
   // BMI Section with Speedometer visualization
   if (data.bodyWeight && data.height) {
@@ -1153,7 +1314,7 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     yPos += 4;
   }
   
-  // Overall summary box with main speedometer
+  // Overall summary box with main speedometer and detailed radar chart
   if (data.testScores && data.testScores.length > 0) {
     const avgScore = data.testScores.reduce((sum, s) => sum + s.score, 0) / data.testScores.length;
     const avgPercentage = scoreToPercentage(avgScore);
@@ -1168,19 +1329,25 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       return acc;
     }, {} as Record<string, { total: number; count: number }>);
     
-    const categoryScores = Object.entries(scoresByCategory).map(([cat, data]) => ({
+    const categoryScores = Object.entries(scoresByCategory).map(([cat, catData]) => ({
       category: cat,
-      percentage: data.total / data.count
+      percentage: catData.total / catData.count
     }));
     
-    // Larger summary box
+    // SECTION 1: Overall Score with Speedometer
     doc.setFillColor(250, 250, 250);
-    doc.roundedRect(14, yPos, pageWidth - 28, 58, 3, 3, 'F');
+    doc.roundedRect(14, yPos, pageWidth - 28, 50, 3, 3, 'F');
     
-    // Draw main speedometer (larger, on left side)
+    // Title
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 38, 38);
+    doc.text('SKOR KONDISI FISIK KESELURUHAN', 20, yPos + 8);
+    
+    // Draw main speedometer (on left)
     const mainCenterX = 50;
-    const mainCenterY = yPos + 30;
-    const mainRadius = 20;
+    const mainCenterY = yPos + 32;
+    const mainRadius = 18;
     
     // Arc setup
     const startAngle = 135;
@@ -1220,21 +1387,9 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       }
     });
     
-    // Draw tick marks
-    doc.setLineWidth(0.5);
-    doc.setDrawColor(100, 100, 100);
-    [0, 20, 40, 60, 80, 100].forEach(tick => {
-      const tickAngle = startAngle + (tick / 100) * sweepAngle;
-      const innerR = mainRadius - arcWidth / 2 - 1;
-      const outerR = mainRadius - arcWidth / 2 - 4;
-      const inner = polarToXY(tickAngle, innerR);
-      const outer = polarToXY(tickAngle, outerR);
-      doc.line(inner.x, inner.y, outer.x, outer.y);
-    });
-    
     // Draw needle
     const needleAngle = startAngle + (avgPercentage / 100) * sweepAngle;
-    const needleLength = mainRadius * 0.6;
+    const needleLength = mainRadius * 0.65;
     const needleEnd = polarToXY(needleAngle, needleLength);
     
     let needleColor: [number, number, number];
@@ -1253,67 +1408,126 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     doc.circle(mainCenterX, mainCenterY, 2, 'F');
     
     // Percentage text
-    doc.setFontSize(14);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(needleColor[0], needleColor[1], needleColor[2]);
     doc.text(`${avgPercentage.toFixed(0)}%`, mainCenterX, mainCenterY + mainRadius + 8, { align: 'center' });
     
-    // Category label
+    // Category label below
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(80, 80, 80);
     doc.text(getPercentageCategoryLabel(avgPercentage), mainCenterX, mainCenterY + mainRadius + 13, { align: 'center' });
     
-    // Title for overall score
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(60, 60, 60);
-    doc.text('SKOR OVERALL', mainCenterX, yPos + 6, { align: 'center' });
+    // Mini speedometers for each category on the right
+    const miniStartX = 85;
+    const miniY = yPos + 28;
+    const miniSpacing = 32;
     
-    // Draw radar chart in middle
-    if (categoryScores.length >= 3) {
-      drawRadarChart(doc, 115, yPos + 32, categoryScores, 22);
+    categoryScores.slice(0, 4).forEach((cat, index) => {
+      const miniX = miniStartX + index * miniSpacing;
+      drawMiniSpeedometer(doc, miniX, miniY, cat.percentage, CATEGORY_LABELS[cat.category] || cat.category, 8);
+    });
+    
+    // Additional info
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Berdasarkan ${data.testScores.length} item tes`, 50, yPos + 48, { align: 'center' });
+    
+    doc.setTextColor(0, 0, 0);
+    yPos += 56;
+    
+    // SECTION 2: Detailed Radar Chart (Multi-Dimensional Performance Profile)
+    if (data.testScores.length >= 3) {
+      // Calculate box height based on content
+      const radarBoxHeight = 95;
       
-      // Radar chart title
+      doc.setFillColor(252, 252, 252);
+      doc.roundedRect(14, yPos, pageWidth - 28, radarBoxHeight, 3, 3, 'F');
+      
+      // Section title
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(220, 38, 38);
+      doc.text('PROFIL PERFORMA MULTI-DIMENSI', 20, yPos + 8);
+      
+      // Prepare test scores for detailed radar (limit to prevent overcrowding)
+      const radarTestScores = data.testScores.slice(0, 12).map(s => ({
+        testName: s.testName,
+        percentage: s.percentage !== undefined ? s.percentage : scoreToPercentage(s.score),
+        value: s.value,
+        unit: s.unit
+      }));
+      
+      // Draw detailed radar chart on left side
+      drawDetailedRadarChart(doc, 60, yPos + 55, radarTestScores, 38);
+      
+      // Test results list on the right
+      const listX = 115;
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(60, 60, 60);
-      doc.text('RADAR PERFORMA', 115, yPos + 6, { align: 'center' });
+      doc.text('Hasil Tes:', listX, yPos + 18);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      
+      // Display test results in two columns
+      const colWidth = 40;
+      data.testScores.slice(0, 12).forEach((test, idx) => {
+        const col = idx < 6 ? 0 : 1;
+        const row = idx % 6;
+        const x = listX + col * colWidth;
+        const y = yPos + 25 + row * 11;
+        
+        // Test name (truncated)
+        let testName = test.testName;
+        while (doc.getTextWidth(testName) > 28 && testName.length > 5) {
+          testName = testName.slice(0, -1);
+        }
+        if (testName.length < test.testName.length) testName += '..';
+        
+        doc.setTextColor(40, 40, 40);
+        doc.text(testName, x, y);
+        
+        // Value and percentage
+        const pct = test.percentage !== undefined ? test.percentage : scoreToPercentage(test.score);
+        let valueColor: [number, number, number];
+        if (pct >= 80) valueColor = [34, 197, 94];
+        else if (pct >= 60) valueColor = [59, 130, 246];
+        else if (pct >= 40) valueColor = [202, 138, 4];
+        else valueColor = [220, 38, 38];
+        
+        doc.setTextColor(valueColor[0], valueColor[1], valueColor[2]);
+        doc.text(`${test.value} ${test.unit} (${pct.toFixed(0)}%)`, x, y + 5);
+      });
+      
+      yPos += radarBoxHeight + 6;
     }
     
-    // Info text on right
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(80, 80, 80);
-    doc.text(`Total: ${data.testScores.length} tes`, pageWidth - 35, yPos + 20);
-    doc.text(`${categoryScores.length} kategori`, pageWidth - 35, yPos + 27);
-    
-    doc.setTextColor(0, 0, 0);
-    yPos += 65;
-    
-    // Draw mini speedometers for each category
-    if (categoryScores.length > 0) {
-      // Calculate proper height based on number of rows with better spacing
-      const speedoPerRow = Math.min(categoryScores.length, 4);
-      const numRows = Math.ceil(categoryScores.length / speedoPerRow);
-      const speedoBoxHeight = numRows * 45 + 18;
+    // SECTION 3: Category Speedometers (if more than 4 categories)
+    if (categoryScores.length > 4) {
+      const remainingCategories = categoryScores.slice(4);
+      const speedoPerRow = Math.min(remainingCategories.length, 4);
+      const numRows = Math.ceil(remainingCategories.length / speedoPerRow);
+      const speedoBoxHeight = numRows * 35 + 15;
       
       doc.setFillColor(248, 248, 248);
       doc.roundedRect(14, yPos, pageWidth - 28, speedoBoxHeight, 2, 2, 'F');
       
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('Skor Per Kategori', 20, yPos + 8);
+      doc.setTextColor(60, 60, 60);
+      doc.text('Skor Kategori Lainnya', 20, yPos + 8);
       
-      // Draw mini speedometers in a grid (max 4 per row)
       const speedoWidth = (pageWidth - 40) / speedoPerRow;
       
-      categoryScores.forEach((cat, index) => {
+      remainingCategories.forEach((cat, index) => {
         const row = Math.floor(index / speedoPerRow);
         const col = index % speedoPerRow;
         const speedoCenterX = 27 + col * speedoWidth + speedoWidth / 2;
-        const speedoCenterY = yPos + 28 + row * 45;
+        const speedoCenterY = yPos + 22 + row * 35;
         
         drawMiniSpeedometer(
           doc, 
@@ -1321,11 +1535,11 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
           speedoCenterY, 
           cat.percentage, 
           CATEGORY_LABELS[cat.category] || cat.category,
-          10
+          9
         );
       });
       
-      yPos += speedoBoxHeight + 10;
+      yPos += speedoBoxHeight + 6;
     }
   }
   
