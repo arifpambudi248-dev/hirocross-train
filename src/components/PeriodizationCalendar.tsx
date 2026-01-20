@@ -823,6 +823,48 @@ export function PeriodizationCalendar({
                   );
                 })}
               </tr>
+
+              {/* Volume & Intensity Graph Row - Integrated into table */}
+              <tr>
+                <td colSpan={weeks.length + 1} className="bg-slate-100 dark:bg-slate-800 p-0 border border-slate-200 dark:border-slate-700">
+                  <div className="p-2 border-b border-slate-300 dark:border-slate-600">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">GRAFIK VOLUME & INTENSITAS</span>
+                  </div>
+                  <div className="flex">
+                    {/* Left label column */}
+                    <div className="min-w-[100px] flex flex-col justify-center p-2 bg-slate-200 dark:bg-slate-700 border-r border-slate-300 dark:border-slate-600">
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="w-3 h-3 bg-blue-400 rounded"></div>
+                        <span className="text-[9px] text-blue-700 dark:text-blue-300">Volume</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-red-400 rounded"></div>
+                        <span className="text-[9px] text-red-700 dark:text-red-300">Intensitas</span>
+                      </div>
+                    </div>
+                    {/* Graph cells aligned with weeks */}
+                    {weeks.map((week) => (
+                      <div 
+                        key={week.weekNumber} 
+                        className="min-w-[45px] h-24 flex items-end justify-center gap-0.5 p-1 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                      >
+                        {/* Volume bar */}
+                        <div 
+                          className="w-2 bg-blue-400 dark:bg-blue-500 rounded-t transition-all"
+                          style={{ height: `${(week.volume / 100) * 80}px` }}
+                          title={`Volume: ${week.volume}%`}
+                        />
+                        {/* Intensity bar */}
+                        <div 
+                          className="w-2 bg-red-400 dark:bg-red-500 rounded-t transition-all"
+                          style={{ height: `${(week.intensity / 100) * 80}px` }}
+                          title={`Intensitas: ${week.intensity}%`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

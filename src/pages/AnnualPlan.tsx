@@ -1336,6 +1336,19 @@ export default function AnnualPlan() {
                           planned_intensity: w.planned_intensity,
                         })),
                         biomotorConfig,
+                        trainingFocus: trainingFocus.map(tf => ({
+                          week_number: tf.week_number,
+                          focus_type: tf.focus_type,
+                          label: tf.label,
+                        })),
+                        weeklyTests: weeklyTests.map(wt => ({
+                          week_number: wt.week_number,
+                          test_name: wt.test_name,
+                        })),
+                        competitions: competitions.map(c => ({
+                          competition_name: c.competition_name,
+                          competition_date: c.competition_date,
+                        })),
                       };
                       exportAnnualPlanToPDF(exportData);
                       toast.success('PDF berhasil diekspor');
@@ -1846,118 +1859,7 @@ export default function AnnualPlan() {
                 isCoach={isCoach}
               />
 
-              {/* Volume & Intensity Chart */}
-              <div className="mt-6">
-                <h4 className="text-sm font-medium mb-4">Grafik Volume & Intensitas</h4>
-                <ResponsiveContainer width="100%" height={300}>
-                  <ComposedChart data={generatedWeeklyData} margin={{ top: 20, right: 20, left: 10, bottom: 10 }}>
-                    {/* Phase zone backgrounds for linear periodization */}
-                    {periodizationType === "linear" && phases.map((phase, idx) => {
-                      const phaseStart = new Date(phase.startDate);
-                      const phaseEnd = new Date(phase.endDate);
-                      const startD = new Date(startDate);
-                      const x1 = Math.max(1, Math.ceil(differenceInDays(phaseStart, startD) / 7) + 1);
-                      const x2 = Math.ceil(differenceInDays(phaseEnd, startD) / 7) + 1;
-                      
-                      let fill = "rgba(239, 68, 68, 0.15)";
-                      if (phase.name.includes("Khusus") || phase.name.includes("SPP")) {
-                        fill = "rgba(34, 197, 94, 0.15)";
-                      } else if (phase.name.includes("Pra")) {
-                        fill = "rgba(249, 115, 22, 0.15)";
-                      } else if (phase.name.includes("Kompetisi") && !phase.name.includes("Pra")) {
-                        fill = "rgba(168, 85, 247, 0.15)";
-                      }
-                      
-                      return (
-                        <ReferenceArea key={idx} x1={x1} x2={x2} fill={fill} fillOpacity={1} />
-                      );
-                    })}
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="week_number" 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                      tickFormatter={(val) => `M${val}`}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                      domain={[0, 100]}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                      formatter={(value: number, name: string) => [`${value}%`, name]}
-                      labelFormatter={(label) => `Minggu ${label}`}
-                    />
-                    <Legend />
-                    {/* Competition markers */}
-                    {competitions.map((comp, idx) => {
-                      const compDate = new Date(comp.competition_date);
-                      const startD = new Date(startDate);
-                      const weekNum = Math.ceil(differenceInDays(compDate, startD) / 7);
-                      if (weekNum > 0 && weekNum <= generatedWeeklyData.length) {
-                        return (
-                          <ReferenceLine 
-                            key={idx}
-                            x={weekNum} 
-                            stroke="hsl(var(--primary))"
-                            strokeDasharray="5 5"
-                          />
-                        );
-                      }
-                      return null;
-                    })}
-                    {/* Main competition marker */}
-                    {(() => {
-                      const compDate = new Date(competitionDate);
-                      const startD = new Date(startDate);
-                      const weekNum = Math.ceil(differenceInDays(compDate, startD) / 7);
-                      return (
-                        <ReferenceLine 
-                          x={weekNum} 
-                          stroke="hsl(var(--destructive))"
-                          strokeWidth={2}
-                          label={{ value: '🏆', position: 'top', fontSize: 14 }}
-                        />
-                      );
-                    })()}
-                    <Bar 
-                      dataKey="planned_volume" 
-                      fill="hsl(217, 91%, 60%)" 
-                      name="Volume (%)"
-                      opacity={0.8}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="planned_intensity" 
-                      stroke="hsl(0, 84%, 60%)" 
-                      strokeWidth={3}
-                      name="Intensitas (%)"
-                      dot={{ fill: 'hsl(0, 84%, 60%)', r: 3 }}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-                
-                {/* Legend */}
-                <div className="flex flex-wrap items-center justify-center gap-4 text-xs mt-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                    <span>Volume</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-500 rounded"></div>
-                    <span>Intensitas</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-0.5 bg-destructive"></div>
-                    <span>Kompetisi</span>
-                  </div>
-                </div>
-              </div>
+              {/* Graph is now integrated inside PeriodizationCalendar - no separate chart needed */}
 
               {/* Editable Table - Moved to bottom */}
               {isEditingWeeklyData && (
