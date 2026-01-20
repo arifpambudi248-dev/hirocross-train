@@ -785,18 +785,18 @@ const drawMiniSpeedometer = (
   doc.circle(centerX, centerY, 1.5, 'F');
   
   // Percentage text - positioned below arc
-  doc.setFontSize(9);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(needleColor[0], needleColor[1], needleColor[2]);
-  doc.text(`${percentage.toFixed(0)}%`, centerX, centerY + radius + 5, { align: 'center' });
+  doc.text(`${percentage.toFixed(0)}%`, centerX, centerY + radius + 6, { align: 'center' });
   
   // Label - truncate if too long
-  doc.setFontSize(6);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(60, 60, 60);
   
   // Truncate label to prevent overflow
-  const maxLabelWidth = 32;
+  const maxLabelWidth = 34;
   let displayLabel = label;
   while (doc.getTextWidth(displayLabel) > maxLabelWidth && displayLabel.length > 3) {
     displayLabel = displayLabel.slice(0, -1);
@@ -805,7 +805,7 @@ const drawMiniSpeedometer = (
     displayLabel = displayLabel.slice(0, -2) + '..';
   }
   
-  doc.text(displayLabel, centerX, centerY + radius + 10, { align: 'center' });
+  doc.text(displayLabel, centerX, centerY + radius + 12, { align: 'center' });
   
   doc.setTextColor(0, 0, 0);
 };
@@ -1211,31 +1211,33 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   
   // Athlete info next to avatar
   const infoX = avatarLoaded ? 52 : 54;
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text(data.athleteName, infoX, yPos + 14);
   
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 80);
   const genderLabel = data.athleteGender === 'male' ? 'Laki-laki' : data.athleteGender === 'female' ? 'Perempuan' : '-';
   const ageLabel = data.athleteAge ? `${data.athleteAge} tahun` : '-';
   const sportLabel = data.sport ? CATEGORY_LABELS[data.sport] || data.sport : '-';
-  doc.text(`${genderLabel}  •  ${ageLabel}  •  ${sportLabel}`, infoX, yPos + 22);
+  doc.text(`${genderLabel}  •  ${ageLabel}  •  ${sportLabel}`, infoX, yPos + 23);
+  doc.setTextColor(0, 0, 0);
   
   // Body measurements on the right side if available
   if (data.bodyWeight || data.height) {
-    doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
     const bodyInfo = [];
     if (data.bodyWeight) bodyInfo.push(`Berat: ${data.bodyWeight} kg`);
     if (data.height) bodyInfo.push(`Tinggi: ${data.height} cm`);
-    doc.text(bodyInfo.join('  |  '), infoX, yPos + 30);
+    doc.text(bodyInfo.join('  |  '), infoX, yPos + 32);
     doc.setTextColor(0, 0, 0);
   }
   
   // Report date on the far right
-  doc.setFontSize(8);
-  doc.setTextColor(100, 100, 100);
+  doc.setFontSize(10);
+  doc.setTextColor(120, 120, 120);
   doc.text(`${new Date().toLocaleDateString('id-ID', { 
     day: 'numeric',
     month: 'long', 
@@ -1272,41 +1274,41 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     doc.roundedRect(14, yPos, pageWidth - 28, 42, 2, 2, 'F');
     
     // Title
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(60, 60, 60);
-    doc.text('DATA ANTROPOMETRI & BMI/IMT', 18, yPos + 7);
+    doc.text('Data Antropometri & BMI/IMT', 18, yPos + 8);
     
     // Draw BMI Speedometer on the left
     drawBMISpeedometer(doc, 40, yPos + 27, calculatedBmi, 14);
     
     // Body measurements and BMI info
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.setTextColor(40, 40, 40);
     doc.text(`Berat Badan: ${data.bodyWeight} kg`, 65, yPos + 18);
-    doc.text(`Tinggi Badan: ${data.height} cm`, 115, yPos + 18);
+    doc.text(`Tinggi Badan: ${data.height} cm`, 120, yPos + 18);
     
     // BMI calculation formula
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setTextColor(100, 100, 100);
-    doc.text(`Rumus: ${data.bodyWeight} ÷ (${heightInMeters.toFixed(2)}²) = ${calculatedBmi.toFixed(2)}`, 65, yPos + 26);
+    doc.text(`Rumus: ${data.bodyWeight} ÷ (${heightInMeters.toFixed(2)}²) = ${calculatedBmi.toFixed(2)}`, 65, yPos + 27);
     
     // BMI result with color
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.setTextColor(bmiColor[0], bmiColor[1], bmiColor[2]);
-    doc.text(`BMI/IMT: ${calculatedBmi.toFixed(1)} kg/m²`, 65, yPos + 35);
+    doc.text(`BMI/IMT: ${calculatedBmi.toFixed(1)} kg/m²`, 65, yPos + 36);
     
     // Category label
-    doc.setFontSize(9);
-    doc.text(`Kategori: ${bmiCategory}`, 120, yPos + 35);
+    doc.setFontSize(11);
+    doc.text(`Kategori: ${bmiCategory}`, 125, yPos + 36);
     
     // BMI range reference
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Normal: 18.5 - 24.9  |  Kurus: < 18.5  |  Gemuk: 25 - 29.9  |  Obesitas: ≥ 30', 65, yPos + 41);
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text('Normal: 18.5 - 24.9  |  Kurus: < 18.5  |  Gemuk: 25 - 29.9  |  Obesitas: ≥ 30', 65, yPos + 42);
     
     doc.setTextColor(0, 0, 0);
     yPos += 48;
@@ -1339,10 +1341,10 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     doc.roundedRect(14, yPos, pageWidth - 28, 60, 3, 3, 'F');
     
     // Title
-    doc.setFontSize(11);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(220, 38, 38);
-    doc.text('SKOR KONDISI FISIK KESELURUHAN', 20, yPos + 8);
+    doc.text('Skor Kondisi Fisik Keseluruhan', 20, yPos + 10);
     
     // Draw main speedometer (on left)
     const mainCenterX = 50;
@@ -1408,32 +1410,32 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     doc.circle(mainCenterX, mainCenterY, 1.5, 'F');
     
     // Percentage text - positioned inside the speedometer arc
-    doc.setFontSize(14);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(needleColor[0], needleColor[1], needleColor[2]);
-    doc.text(`${avgPercentage.toFixed(0)}%`, mainCenterX, mainCenterY + mainRadius + 6, { align: 'center' });
+    doc.text(`${avgPercentage.toFixed(0)}%`, mainCenterX, mainCenterY + mainRadius + 7, { align: 'center' });
     
     // Category label below
-    doc.setFontSize(7);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(80, 80, 80);
-    doc.text(getPercentageCategoryLabel(avgPercentage), mainCenterX, mainCenterY + mainRadius + 11, { align: 'center' });
+    doc.text(getPercentageCategoryLabel(avgPercentage), mainCenterX, mainCenterY + mainRadius + 13, { align: 'center' });
     
     // Mini speedometers for each category on the right
     const miniStartX = 85;
-    const miniY = yPos + 30;
+    const miniY = yPos + 32;
     const miniSpacing = 32;
     
     categoryScores.slice(0, 4).forEach((cat, index) => {
       const miniX = miniStartX + index * miniSpacing;
-      drawMiniSpeedometer(doc, miniX, miniY, cat.percentage, CATEGORY_LABELS[cat.category] || cat.category, 7);
+      drawMiniSpeedometer(doc, miniX, miniY, cat.percentage, CATEGORY_LABELS[cat.category] || cat.category, 8);
     });
     
     // Additional info
-    doc.setFontSize(7);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 100, 100);
-    doc.text(`Berdasarkan ${data.testScores.length} item tes`, 50, yPos + 52, { align: 'center' });
+    doc.text(`Berdasarkan ${data.testScores.length} item tes`, 50, yPos + 54, { align: 'center' });
     
     doc.setTextColor(0, 0, 0);
     yPos += 66;
@@ -1447,10 +1449,10 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       doc.roundedRect(14, yPos, pageWidth - 28, radarBoxHeight, 3, 3, 'F');
       
       // Section title
-      doc.setFontSize(11);
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(220, 38, 38);
-      doc.text('PROFIL PERFORMA MULTI-DIMENSI', 20, yPos + 8);
+      doc.text('Profil Performa Multi-Dimensi', 20, yPos + 10);
       
       // Prepare test scores for detailed radar (limit to prevent overcrowding)
       const radarTestScores = data.testScores.slice(0, 12).map(s => ({
@@ -1465,25 +1467,25 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       
       // Test results list on the right
       const listX = 115;
-      doc.setFontSize(8);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(60, 60, 60);
-      doc.text('Hasil Tes:', listX, yPos + 18);
+      doc.text('Hasil Tes:', listX, yPos + 20);
       
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
+      doc.setFontSize(9);
       
       // Display test results in two columns
-      const colWidth = 40;
+      const colWidth = 42;
       data.testScores.slice(0, 12).forEach((test, idx) => {
         const col = idx < 6 ? 0 : 1;
         const row = idx % 6;
         const x = listX + col * colWidth;
-        const y = yPos + 25 + row * 11;
+        const y = yPos + 28 + row * 11;
         
         // Test name (truncated)
         let testName = test.testName;
-        while (doc.getTextWidth(testName) > 28 && testName.length > 5) {
+        while (doc.getTextWidth(testName) > 32 && testName.length > 5) {
           testName = testName.slice(0, -1);
         }
         if (testName.length < test.testName.length) testName += '..';
@@ -1516,10 +1518,10 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       doc.setFillColor(248, 248, 248);
       doc.roundedRect(14, yPos, pageWidth - 28, speedoBoxHeight, 2, 2, 'F');
       
-      doc.setFontSize(9);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(60, 60, 60);
-      doc.text('Skor Kategori Lainnya', 20, yPos + 10);
+      doc.text('Skor Kategori Lainnya', 20, yPos + 12);
       
       const speedoWidth = (pageWidth - 40) / speedoPerRow;
       
@@ -1551,10 +1553,10 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   
   // Performance summary table with norms and percentage
   if (data.testScores && data.testScores.length > 0) {
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Detail Hasil Tes dengan Norma', 14, yPos);
-    yPos += 8;
+    yPos += 10;
     
     // Group scores by category
     const scoresByCategory = data.testScores.reduce((acc, s) => {
