@@ -1503,7 +1503,7 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
         doc.text(`${test.value} ${test.unit} (${pct.toFixed(0)}%)`, x, y + 5);
       });
       
-      yPos += radarBoxHeight + 6;
+      yPos += radarBoxHeight + 10;
     }
     
     // SECTION 3: Category Speedometers (if more than 4 categories)
@@ -1511,7 +1511,7 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       const remainingCategories = categoryScores.slice(4);
       const speedoPerRow = Math.min(remainingCategories.length, 4);
       const numRows = Math.ceil(remainingCategories.length / speedoPerRow);
-      const speedoBoxHeight = numRows * 35 + 15;
+      const speedoBoxHeight = numRows * 40 + 20;
       
       doc.setFillColor(248, 248, 248);
       doc.roundedRect(14, yPos, pageWidth - 28, speedoBoxHeight, 2, 2, 'F');
@@ -1519,7 +1519,7 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(60, 60, 60);
-      doc.text('Skor Kategori Lainnya', 20, yPos + 8);
+      doc.text('Skor Kategori Lainnya', 20, yPos + 10);
       
       const speedoWidth = (pageWidth - 40) / speedoPerRow;
       
@@ -1527,7 +1527,7 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
         const row = Math.floor(index / speedoPerRow);
         const col = index % speedoPerRow;
         const speedoCenterX = 27 + col * speedoWidth + speedoWidth / 2;
-        const speedoCenterY = yPos + 22 + row * 35;
+        const speedoCenterY = yPos + 26 + row * 40;
         
         drawMiniSpeedometer(
           doc, 
@@ -1535,11 +1535,11 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
           speedoCenterY, 
           cat.percentage, 
           CATEGORY_LABELS[cat.category] || cat.category,
-          9
+          8
         );
       });
       
-      yPos += speedoBoxHeight + 6;
+      yPos += speedoBoxHeight + 10;
     }
   }
   
