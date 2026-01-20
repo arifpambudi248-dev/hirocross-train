@@ -1336,7 +1336,7 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     
     // SECTION 1: Overall Score with Speedometer
     doc.setFillColor(250, 250, 250);
-    doc.roundedRect(14, yPos, pageWidth - 28, 50, 3, 3, 'F');
+    doc.roundedRect(14, yPos, pageWidth - 28, 60, 3, 3, 'F');
     
     // Title
     doc.setFontSize(11);
@@ -1346,8 +1346,8 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     
     // Draw main speedometer (on left)
     const mainCenterX = 50;
-    const mainCenterY = yPos + 32;
-    const mainRadius = 18;
+    const mainCenterY = yPos + 30;
+    const mainRadius = 16;
     
     // Arc setup
     const startAngle = 135;
@@ -1405,38 +1405,38 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     
     // Center dot
     doc.setFillColor(60, 60, 60);
-    doc.circle(mainCenterX, mainCenterY, 2, 'F');
+    doc.circle(mainCenterX, mainCenterY, 1.5, 'F');
     
-    // Percentage text
-    doc.setFontSize(16);
+    // Percentage text - positioned inside the speedometer arc
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(needleColor[0], needleColor[1], needleColor[2]);
-    doc.text(`${avgPercentage.toFixed(0)}%`, mainCenterX, mainCenterY + mainRadius + 8, { align: 'center' });
+    doc.text(`${avgPercentage.toFixed(0)}%`, mainCenterX, mainCenterY + mainRadius + 6, { align: 'center' });
     
     // Category label below
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(80, 80, 80);
-    doc.text(getPercentageCategoryLabel(avgPercentage), mainCenterX, mainCenterY + mainRadius + 13, { align: 'center' });
+    doc.text(getPercentageCategoryLabel(avgPercentage), mainCenterX, mainCenterY + mainRadius + 11, { align: 'center' });
     
     // Mini speedometers for each category on the right
     const miniStartX = 85;
-    const miniY = yPos + 28;
+    const miniY = yPos + 30;
     const miniSpacing = 32;
     
     categoryScores.slice(0, 4).forEach((cat, index) => {
       const miniX = miniStartX + index * miniSpacing;
-      drawMiniSpeedometer(doc, miniX, miniY, cat.percentage, CATEGORY_LABELS[cat.category] || cat.category, 8);
+      drawMiniSpeedometer(doc, miniX, miniY, cat.percentage, CATEGORY_LABELS[cat.category] || cat.category, 7);
     });
     
     // Additional info
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 100, 100);
-    doc.text(`Berdasarkan ${data.testScores.length} item tes`, 50, yPos + 48, { align: 'center' });
+    doc.text(`Berdasarkan ${data.testScores.length} item tes`, 50, yPos + 52, { align: 'center' });
     
     doc.setTextColor(0, 0, 0);
-    yPos += 56;
+    yPos += 66;
     
     // SECTION 2: Detailed Radar Chart (Multi-Dimensional Performance Profile)
     if (data.testScores.length >= 3) {
