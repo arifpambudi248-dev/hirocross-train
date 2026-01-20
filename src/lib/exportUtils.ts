@@ -576,27 +576,359 @@ export interface AnnualPlanExportData {
   phases: AnnualPlanPhase[];
   weeklyData?: WeeklyPlanData[];
   biomotorConfig?: BiomotorConfig;
+  trainingFocus?: { week_number: number; focus_type: string; label?: string }[];
+  weeklyTests?: { week_number: number; test_name: string }[];
+  competitions?: { competition_name: string; competition_date: string }[];
+}
+
+// Helper to get phase for a week
+function getPhaseForWeek(weekStart: Date, phases: AnnualPlanPhase[]): { name: string; color: [number, number, number] } | null {
+  for (const phase of phases) {
+    const phaseStart = new Date(phase.startDate);
+    const phaseEnd = new Date(phase.endDate);
+    if (weekStart >= phaseStart && weekStart <= phaseEnd) {
+      let phaseName = 'UMUM';
+      let color: [number, number, number] = [34, 211, 238]; // cyan
+      
+      if (phase.name.includes('GPP') || phase.name.includes('Umum') || phase.name.includes('Accumulation')) {
+        phaseName = 'UMUM';
+        color = [34, 211, 238]; // cyan
+      } else if (phase.name.includes('SPP') || phase.name.includes('Khusus') || phase.name.includes('Transmutation')) {
+        phaseName = 'KHUSUS';
+        color = [34, 197, 94]; // green
+      } else if (phase.name.includes('Pra') || phase.name.includes('Pre')) {
+        phaseName = 'PRA-KOMP';
+        color = [251, 146, 60]; // orange
+      } else if (phase.name.includes('Kompetisi') || phase.name.includes('Realization') || phase.name.includes('Competition')) {
+        phaseName = 'KOMPETISI';
+        color = [168, 85, 247]; // purple
+      }
+      return { name: phaseName, color };
+    }
+  }
+  return null;
 }
 
 export const exportAnnualPlanToPDF = (data: AnnualPlanExportData) => {
-  const doc = new jsPDF();
+  // Use landscape orientation for better calendar visualization
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   
-  let yPos = addPDFHeader(doc, 'Annual Plan Periodization', `${data.athleteName} - ${data.planName}`);
+  // Calculate weeks
+  const startD = new Date(data.startDate);
+  const endD = new Date(data.competitionDate);
+  const totalWeeks = data.weeklyData?.length || Math.ceil((endD.getTime() - startD.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  
+  // Calculate cell width based on number of weeks
+  const labelColWidth = 22;
+  const availableWidth = pageWidth - 20 - labelColWidth; // margins
+  const cellWidth = Math.min(12, availableWidth / totalWeeks);
+  const tableWidth = labelColWidth + (cellWidth * totalWeeks);
+  const startX = 10;
+  
+  // Header
+  let yPos = addPDFHeader(doc, 'Kalender Periodisasi Annual Plan', `${data.athleteName} - ${data.planName}`);
+  
+  doc.setFontSize(9);
+  doc.text(`Periode: ${data.startDate} s/d ${data.competitionDate} | Tipe: ${data.periodizationType}`, 14, yPos);
+  yPos += 8;
+  
+  const rowHeight = 6;
+  let currentY = yPos;
+  
+  // Row function helper
+  const drawRow = (label: string, labelColor: [number, number, number], labelTextColor: [number, number, number], 
+    cells: { text: string; bgColor?: [number, number, number]; textColor?: [number, number, number] }[]) => {
+    // Label cell
+    doc.setFillColor(labelColor[0], labelColor[1], labelColor[2]);
+    doc.rect(startX, currentY, labelColWidth, rowHeight, 'F');
+    doc.setDrawColor(100, 100, 100);
+    doc.rect(startX, currentY, labelColWidth, rowHeight, 'S');
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(labelTextColor[0], labelTextColor[1], labelTextColor[2]);
+    doc.text(label, startX + 1.5, currentY + rowHeight - 1.5);
+    
+    // Data cells
+    let x = startX + labelColWidth;
+    cells.forEach((cell) => {
+      if (cell.bgColor) {
+        doc.setFillColor(cell.bgColor[0], cell.bgColor[1], cell.bgColor[2]);
+        doc.rect(x, currentY, cellWidth, rowHeight, 'F');
+      }
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(x, currentY, cellWidth, rowHeight, 'S');
+      
+      const tc = cell.textColor || [50, 50, 50];
+      doc.setTextColor(tc[0], tc[1], tc[2]);
+      doc.setFontSize(5);
+      doc.setFont('helvetica', 'normal');
+      
+      // Center text
+      const textWidth = doc.getTextWidth(cell.text);
+      doc.text(cell.text, x + (cellWidth - textWidth) / 2, currentY + rowHeight - 1.5);
+      x += cellWidth;
+    });
+    
+    currentY += rowHeight;
+  };
+  
+  // Prepare week data
+  const weeksData: {
+    weekNum: number;
+    weekStart: Date;
+    dateRange: string;
+    phase: { name: string; color: [number, number, number] } | null;
+    volume: number;
+    intensity: number;
+    hasCompetition: boolean;
+    hasTest: boolean;
+  }[] = [];
+  
+  for (let i = 0; i < totalWeeks; i++) {
+    const weekStart = new Date(startD.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+    const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+    const weekData = data.weeklyData?.find(w => w.week_number === i + 1);
+    
+    // Check for competition
+    let hasCompetition = false;
+    const mainCompDate = new Date(data.competitionDate);
+    if (mainCompDate >= weekStart && mainCompDate <= weekEnd) hasCompetition = true;
+    data.competitions?.forEach(c => {
+      const cd = new Date(c.competition_date);
+      if (cd >= weekStart && cd <= weekEnd) hasCompetition = true;
+    });
+    
+    // Check for test
+    const hasTest = data.weeklyTests?.some(t => t.week_number === i + 1) || false;
+    
+    weeksData.push({
+      weekNum: i + 1,
+      weekStart,
+      dateRange: `${weekStart.getDate()}-${weekEnd.getDate()}`,
+      phase: getPhaseForWeek(weekStart, data.phases),
+      volume: weekData?.planned_volume || 70,
+      intensity: weekData?.planned_intensity || 50,
+      hasCompetition,
+      hasTest,
+    });
+  }
+  
+  // Group weeks by month
+  const monthGroups: { name: string; weekIndexes: number[] }[] = [];
+  let currentMonth = '';
+  weeksData.forEach((w, idx) => {
+    const monthName = w.weekStart.toLocaleString('id-ID', { month: 'short' }).toUpperCase();
+    if (monthName !== currentMonth) {
+      monthGroups.push({ name: monthName, weekIndexes: [idx] });
+      currentMonth = monthName;
+    } else {
+      monthGroups[monthGroups.length - 1].weekIndexes.push(idx);
+    }
+  });
+  
+  // ROW 1: BULAN (merged cells)
+  doc.setFillColor(249, 115, 22);
+  doc.rect(startX, currentY, labelColWidth, rowHeight, 'F');
+  doc.setDrawColor(100, 100, 100);
+  doc.rect(startX, currentY, labelColWidth, rowHeight, 'S');
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('BULAN', startX + 1.5, currentY + rowHeight - 1.5);
+  
+  let x = startX + labelColWidth;
+  monthGroups.forEach(mg => {
+    const colSpan = mg.weekIndexes.length;
+    const width = colSpan * cellWidth;
+    doc.setFillColor(249, 115, 22);
+    doc.rect(x, currentY, width, rowHeight, 'F');
+    doc.setDrawColor(200, 100, 50);
+    doc.rect(x, currentY, width, rowHeight, 'S');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(6);
+    const textWidth = doc.getTextWidth(mg.name);
+    doc.text(mg.name, x + (width - textWidth) / 2, currentY + rowHeight - 1.5);
+    x += width;
+  });
+  currentY += rowHeight;
+  
+  // ROW 2: MINGGU
+  drawRow('MINGGU', [251, 146, 60], [255, 255, 255], 
+    weeksData.map(w => ({ text: String(w.weekNum), bgColor: [251, 146, 60] as [number, number, number], textColor: [255, 255, 255] as [number, number, number] })));
+  
+  // ROW 3: TANGGAL
+  drawRow('TANGGAL', [253, 186, 116], [120, 60, 20], 
+    weeksData.map(w => ({ text: w.dateRange, bgColor: [253, 186, 116] as [number, number, number], textColor: [120, 60, 20] as [number, number, number] })));
+  
+  // ROW 4: FASE (merged by phase)
+  doc.setFillColor(254, 243, 199);
+  doc.rect(startX, currentY, labelColWidth, rowHeight, 'F');
+  doc.setDrawColor(100, 100, 100);
+  doc.rect(startX, currentY, labelColWidth, rowHeight, 'S');
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(100, 60, 20);
+  doc.text('FASE', startX + 1.5, currentY + rowHeight - 1.5);
+  
+  // Group by phase
+  const phaseGroups: { phase: { name: string; color: [number, number, number] } | null; count: number }[] = [];
+  weeksData.forEach(w => {
+    const lastGroup = phaseGroups[phaseGroups.length - 1];
+    if (lastGroup && lastGroup.phase?.name === w.phase?.name) {
+      lastGroup.count++;
+    } else {
+      phaseGroups.push({ phase: w.phase, count: 1 });
+    }
+  });
+  
+  x = startX + labelColWidth;
+  phaseGroups.forEach(pg => {
+    const width = pg.count * cellWidth;
+    if (pg.phase) {
+      doc.setFillColor(pg.phase.color[0], pg.phase.color[1], pg.phase.color[2]);
+    } else {
+      doc.setFillColor(200, 200, 200);
+    }
+    doc.rect(x, currentY, width, rowHeight, 'F');
+    doc.setDrawColor(100, 100, 100);
+    doc.rect(x, currentY, width, rowHeight, 'S');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(5);
+    const name = pg.phase?.name || '-';
+    const textWidth = doc.getTextWidth(name);
+    doc.text(name, x + (width - textWidth) / 2, currentY + rowHeight - 1.5);
+    x += width;
+  });
+  currentY += rowHeight;
+  
+  // ROW 5: TES & KOMP
+  drawRow('TES & KOMP', [226, 232, 240], [60, 60, 80],
+    weeksData.map(w => {
+      let symbol = '-';
+      if (w.hasCompetition && w.hasTest) symbol = '🏆T';
+      else if (w.hasCompetition) symbol = '🏆';
+      else if (w.hasTest) symbol = 'T';
+      return { text: symbol, bgColor: [248, 250, 252] as [number, number, number], textColor: [60, 60, 80] as [number, number, number] };
+    }));
+  
+  // ROW 6: VOLUME %
+  drawRow('VOLUME %', [191, 219, 254], [30, 64, 175],
+    weeksData.map(w => ({ 
+      text: `${w.volume}`, 
+      bgColor: [219, 234, 254] as [number, number, number], 
+      textColor: [30, 64, 175] as [number, number, number] 
+    })));
+  
+  // ROW 7: INTENSITAS %
+  drawRow('INTENSITAS %', [254, 202, 202], [153, 27, 27],
+    weeksData.map(w => ({ 
+      text: `${w.intensity}`, 
+      bgColor: [254, 226, 226] as [number, number, number], 
+      textColor: [153, 27, 27] as [number, number, number] 
+    })));
+  
+  // ROW 8: Biomotor header
+  if (data.biomotorConfig) {
+    doc.setFillColor(13, 148, 136);
+    doc.rect(startX, currentY, tableWidth, rowHeight, 'F');
+    doc.setDrawColor(100, 100, 100);
+    doc.rect(startX, currentY, tableWidth, rowHeight, 'S');
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('TARGET BIOMOTOR PER MINGGU', startX + tableWidth / 2 - 25, currentY + rowHeight - 1.5);
+    currentY += rowHeight;
+    
+    // Biomotor rows
+    const biomotorRows = [
+      { key: 'kekuatan', label: 'KEKUATAN', labelBg: [254, 202, 202] as [number, number, number], labelText: [153, 27, 27] as [number, number, number], cellBg: [254, 242, 242] as [number, number, number], cellText: [153, 27, 27] as [number, number, number] },
+      { key: 'kecepatan', label: 'KECEPATAN', labelBg: [254, 249, 195] as [number, number, number], labelText: [133, 77, 14] as [number, number, number], cellBg: [254, 252, 232] as [number, number, number], cellText: [133, 77, 14] as [number, number, number] },
+      { key: 'daya_tahan', label: 'D.TAHAN', labelBg: [191, 219, 254] as [number, number, number], labelText: [30, 64, 175] as [number, number, number], cellBg: [239, 246, 255] as [number, number, number], cellText: [30, 64, 175] as [number, number, number] },
+      { key: 'teknik', label: 'TEKNIK', labelBg: [187, 247, 208] as [number, number, number], labelText: [22, 101, 52] as [number, number, number], cellBg: [240, 253, 244] as [number, number, number], cellText: [22, 101, 52] as [number, number, number] },
+      { key: 'taktik', label: 'TAKTIK', labelBg: [233, 213, 255] as [number, number, number], labelText: [88, 28, 135] as [number, number, number], cellBg: [250, 245, 255] as [number, number, number], cellText: [88, 28, 135] as [number, number, number] },
+    ];
+    
+    biomotorRows.forEach(row => {
+      drawRow(row.label, row.labelBg, row.labelText,
+        weeksData.map(w => {
+          const baseValue = (data.biomotorConfig as any)[row.key] || 0;
+          const value = Math.round((w.volume / 100) * baseValue);
+          return { 
+            text: value > 999 ? (value / 1000).toFixed(1) + 'k' : String(value), 
+            bgColor: row.cellBg, 
+            textColor: row.cellText 
+          };
+        }));
+    });
+  }
+  
+  // GRAPH ROW - Visual bar chart
+  currentY += 2;
+  const graphHeight = 25;
+  const graphY = currentY;
+  
+  doc.setFillColor(248, 250, 252);
+  doc.rect(startX, graphY, tableWidth, graphHeight, 'F');
+  doc.setDrawColor(200, 200, 200);
+  doc.rect(startX, graphY, tableWidth, graphHeight, 'S');
+  
+  // Label
+  doc.setFillColor(226, 232, 240);
+  doc.rect(startX, graphY, labelColWidth, graphHeight, 'F');
+  doc.setDrawColor(200, 200, 200);
+  doc.rect(startX, graphY, labelColWidth, graphHeight, 'S');
+  doc.setFontSize(5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(60, 60, 80);
+  doc.text('GRAFIK', startX + 2, graphY + 8);
+  
+  // Legend
+  doc.setFillColor(59, 130, 246);
+  doc.rect(startX + 2, graphY + 11, 3, 3, 'F');
+  doc.setFontSize(4);
+  doc.setTextColor(60, 60, 80);
+  doc.text('Vol', startX + 6, graphY + 13.5);
+  
+  doc.setFillColor(239, 68, 68);
+  doc.rect(startX + 2, graphY + 15, 3, 3, 'F');
+  doc.text('Int', startX + 6, graphY + 17.5);
+  
+  // Draw bars for each week
+  x = startX + labelColWidth;
+  const barMaxHeight = graphHeight - 4;
+  weeksData.forEach(w => {
+    const volHeight = (w.volume / 100) * barMaxHeight;
+    const intHeight = (w.intensity / 100) * barMaxHeight;
+    const barWidth = cellWidth * 0.35;
+    const barGap = cellWidth * 0.1;
+    
+    // Volume bar (blue)
+    doc.setFillColor(59, 130, 246);
+    doc.rect(x + barGap, graphY + graphHeight - 2 - volHeight, barWidth, volHeight, 'F');
+    
+    // Intensity bar (red)
+    doc.setFillColor(239, 68, 68);
+    doc.rect(x + barGap + barWidth + 1, graphY + graphHeight - 2 - intHeight, barWidth, intHeight, 'F');
+    
+    x += cellWidth;
+  });
+  
+  currentY = graphY + graphHeight + 5;
+  
+  // Add Phase Summary Table on new page
+  doc.addPage('portrait');
+  let yPos2 = addPDFHeader(doc, 'Ringkasan Fase Periodisasi', `${data.athleteName} - ${data.planName}`);
   
   doc.setFontSize(10);
-  doc.text(`Periode: ${data.startDate} s/d ${data.competitionDate}`, 14, yPos);
-  doc.text(`Tipe Periodisasi: ${data.periodizationType}`, 14, yPos + 6);
-  yPos += 16;
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Periode: ${data.startDate} s/d ${data.competitionDate}`, 14, yPos2);
+  doc.text(`Tipe Periodisasi: ${data.periodizationType}`, 14, yPos2 + 5);
+  yPos2 += 15;
   
-  // Phase breakdown table
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Fase Periodisasi', 14, yPos);
-  yPos += 6;
-  
-  const phaseData = data.phases.map(p => [
+  // Phase table
+  const phaseTableData = data.phases.map(p => [
     p.name,
     p.startDate,
     p.endDate,
@@ -607,102 +939,39 @@ export const exportAnnualPlanToPDF = (data: AnnualPlanExportData) => {
   ]);
   
   autoTable(doc, {
-    startY: yPos,
+    startY: yPos2,
     head: [['Fase', 'Mulai', 'Selesai', 'Durasi', '%', 'Planned Load', 'Actual Load']],
-    body: phaseData,
+    body: phaseTableData,
     theme: 'grid',
     headStyles: { fillColor: BRAND_RED },
-    styles: { fontSize: 8 },
+    styles: { fontSize: 9 },
   });
   
-  yPos = (doc as any).lastAutoTable.finalY + 10;
+  yPos2 = (doc as any).lastAutoTable.finalY + 15;
   
-  // Weekly Volume & Intensity table
-  if (data.weeklyData && data.weeklyData.length > 0) {
-    // Check if we need a new page
-    if (yPos > pageHeight - 80) {
-      doc.addPage();
-      yPos = 20;
-    }
-    
+  // Biomotor config summary
+  if (data.biomotorConfig) {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Volume & Intensitas per Minggu', 14, yPos);
-    yPos += 6;
+    doc.text('Konfigurasi Base Biomotor', 14, yPos2);
+    yPos2 += 8;
     
-    const weeklyTableData = data.weeklyData.map(w => [
-      `M${w.week_number}`,
-      w.week_start_date,
-      `${w.planned_volume}%`,
-      `${w.planned_intensity}%`,
-    ]);
-    
-    autoTable(doc, {
-      startY: yPos,
-      head: [['Minggu', 'Tanggal', 'Volume %', 'Intensitas %']],
-      body: weeklyTableData,
-      theme: 'grid',
-      headStyles: { fillColor: BRAND_RED },
-      styles: { fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 30 },
-      },
-    });
-    
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
-  
-  // Biomotor Target table
-  if (data.weeklyData && data.weeklyData.length > 0 && data.biomotorConfig) {
-    // Check if we need a new page
-    if (yPos > pageHeight - 100) {
-      doc.addPage();
-      yPos = 20;
-    }
-    
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Target Biomotor per Minggu', 14, yPos);
-    yPos += 6;
-    
-    // Add biomotor config info
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Base Values: Kekuatan=${data.biomotorConfig.kekuatan.toLocaleString()}, Kecepatan=${data.biomotorConfig.kecepatan}, D.Tahan=${data.biomotorConfig.daya_tahan}, Teknik=${data.biomotorConfig.teknik}, Taktik=${data.biomotorConfig.taktik}`, 14, yPos);
-    yPos += 6;
-    
-    const biomotorTableData = data.weeklyData.map(w => {
-      const vol = w.planned_volume / 100;
-      return [
-        `M${w.week_number}`,
-        `${w.planned_volume}%`,
-        Math.round(vol * data.biomotorConfig!.kekuatan).toLocaleString(),
-        Math.round(vol * data.biomotorConfig!.kecepatan).toLocaleString(),
-        Math.round(vol * data.biomotorConfig!.daya_tahan).toLocaleString(),
-        Math.round(vol * data.biomotorConfig!.teknik).toLocaleString(),
-        Math.round(vol * data.biomotorConfig!.taktik).toLocaleString(),
-      ];
-    });
+    const configData = [
+      ['Kekuatan', data.biomotorConfig.kekuatan.toLocaleString()],
+      ['Kecepatan', data.biomotorConfig.kecepatan.toLocaleString()],
+      ['Daya Tahan', data.biomotorConfig.daya_tahan.toLocaleString()],
+      ['Teknik', data.biomotorConfig.teknik.toLocaleString()],
+      ['Taktik', data.biomotorConfig.taktik.toLocaleString()],
+    ];
     
     autoTable(doc, {
-      startY: yPos,
-      head: [['Minggu', 'Volume', 'Kekuatan', 'Kecepatan', 'D.Tahan', 'Teknik', 'Taktik']],
-      body: biomotorTableData,
+      startY: yPos2,
+      head: [['Komponen', 'Base Value (100% Volume)']],
+      body: configData,
       theme: 'grid',
-      headStyles: { fillColor: BRAND_RED },
-      styles: { fontSize: 7 },
-      columnStyles: {
-        0: { cellWidth: 18 },
-        1: { cellWidth: 18 },
-        2: { cellWidth: 25 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 22 },
-        5: { cellWidth: 22 },
-        6: { cellWidth: 22 },
-      },
+      headStyles: { fillColor: [13, 148, 136] },
+      styles: { fontSize: 10 },
+      columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 60 } },
     });
   }
   
