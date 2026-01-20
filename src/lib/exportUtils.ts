@@ -552,6 +552,21 @@ export interface AnnualPlanPhase {
   actualLoad?: number;
 }
 
+export interface BiomotorConfig {
+  kekuatan: number;
+  kecepatan: number;
+  daya_tahan: number;
+  teknik: number;
+  taktik: number;
+}
+
+export interface WeeklyPlanData {
+  week_number: number;
+  week_start_date: string;
+  planned_volume: number;
+  planned_intensity: number;
+}
+
 export interface AnnualPlanExportData {
   athleteName: string;
   planName: string;
@@ -559,10 +574,14 @@ export interface AnnualPlanExportData {
   competitionDate: string;
   periodizationType: string;
   phases: AnnualPlanPhase[];
+  weeklyData?: WeeklyPlanData[];
+  biomotorConfig?: BiomotorConfig;
 }
 
 export const exportAnnualPlanToPDF = (data: AnnualPlanExportData) => {
   const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
   
   let yPos = addPDFHeader(doc, 'Annual Plan Periodization', `${data.athleteName} - ${data.planName}`);
   
@@ -570,6 +589,12 @@ export const exportAnnualPlanToPDF = (data: AnnualPlanExportData) => {
   doc.text(`Periode: ${data.startDate} s/d ${data.competitionDate}`, 14, yPos);
   doc.text(`Tipe Periodisasi: ${data.periodizationType}`, 14, yPos + 6);
   yPos += 16;
+  
+  // Phase breakdown table
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Fase Periodisasi', 14, yPos);
+  yPos += 6;
   
   const phaseData = data.phases.map(p => [
     p.name,
@@ -587,8 +612,99 @@ export const exportAnnualPlanToPDF = (data: AnnualPlanExportData) => {
     body: phaseData,
     theme: 'grid',
     headStyles: { fillColor: BRAND_RED },
-    styles: { fontSize: 9 },
+    styles: { fontSize: 8 },
   });
+  
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+  
+  // Weekly Volume & Intensity table
+  if (data.weeklyData && data.weeklyData.length > 0) {
+    // Check if we need a new page
+    if (yPos > pageHeight - 80) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Volume & Intensitas per Minggu', 14, yPos);
+    yPos += 6;
+    
+    const weeklyTableData = data.weeklyData.map(w => [
+      `M${w.week_number}`,
+      w.week_start_date,
+      `${w.planned_volume}%`,
+      `${w.planned_intensity}%`,
+    ]);
+    
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Minggu', 'Tanggal', 'Volume %', 'Intensitas %']],
+      body: weeklyTableData,
+      theme: 'grid',
+      headStyles: { fillColor: BRAND_RED },
+      styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 30 },
+      },
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+  }
+  
+  // Biomotor Target table
+  if (data.weeklyData && data.weeklyData.length > 0 && data.biomotorConfig) {
+    // Check if we need a new page
+    if (yPos > pageHeight - 100) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Target Biomotor per Minggu', 14, yPos);
+    yPos += 6;
+    
+    // Add biomotor config info
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Base Values: Kekuatan=${data.biomotorConfig.kekuatan.toLocaleString()}, Kecepatan=${data.biomotorConfig.kecepatan}, D.Tahan=${data.biomotorConfig.daya_tahan}, Teknik=${data.biomotorConfig.teknik}, Taktik=${data.biomotorConfig.taktik}`, 14, yPos);
+    yPos += 6;
+    
+    const biomotorTableData = data.weeklyData.map(w => {
+      const vol = w.planned_volume / 100;
+      return [
+        `M${w.week_number}`,
+        `${w.planned_volume}%`,
+        Math.round(vol * data.biomotorConfig!.kekuatan).toLocaleString(),
+        Math.round(vol * data.biomotorConfig!.kecepatan).toLocaleString(),
+        Math.round(vol * data.biomotorConfig!.daya_tahan).toLocaleString(),
+        Math.round(vol * data.biomotorConfig!.teknik).toLocaleString(),
+        Math.round(vol * data.biomotorConfig!.taktik).toLocaleString(),
+      ];
+    });
+    
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Minggu', 'Volume', 'Kekuatan', 'Kecepatan', 'D.Tahan', 'Teknik', 'Taktik']],
+      body: biomotorTableData,
+      theme: 'grid',
+      headStyles: { fillColor: BRAND_RED },
+      styles: { fontSize: 7 },
+      columnStyles: {
+        0: { cellWidth: 18 },
+        1: { cellWidth: 18 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 22 },
+        5: { cellWidth: 22 },
+        6: { cellWidth: 22 },
+      },
+    });
+  }
   
   doc.save(`annual-plan-${data.athleteName}-${new Date().toISOString().split('T')[0]}.pdf`);
 };
