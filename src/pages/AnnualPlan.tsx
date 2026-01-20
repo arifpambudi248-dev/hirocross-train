@@ -15,6 +15,8 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 import { Pencil, Save, FolderOpen, Plus, FileDown, Trash2, Trophy, Calendar } from "lucide-react";
 import { exportAnnualPlanToPDF, type AnnualPlanExportData } from "@/lib/exportUtils";
 import { PeriodizationCalendar } from "@/components/PeriodizationCalendar";
+import { BiomotorActualsForm } from "@/components/BiomotorActualsForm";
+import { BiomotorComparisonChartWrapper } from "@/components/BiomotorComparisonChartWrapper";
 import {
   Dialog,
   DialogContent,
@@ -154,6 +156,7 @@ export default function AnnualPlan() {
     taktik: 200,     // reps/sets
   });
   const [isEditingBiomotor, setIsEditingBiomotor] = useState(false);
+  const [biomotorActualsKey, setBiomotorActualsKey] = useState(0); // For refreshing actuals
 
   useEffect(() => {
     loadUser();
@@ -548,12 +551,19 @@ export default function AnnualPlan() {
   };
 
   // Generate weekly data based on plan dates
+  // Volume: 60% → 100% (at end of GPP/start SPP) → 50% (at competition)
+  // Intensity: 40% → 100% (at competition)
   const generatedWeeklyData = useMemo(() => {
     if (!startDate || !competitionDate) return [];
     
     const start = new Date(startDate);
     const end = new Date(competitionDate);
     const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
+    const totalWeeks = weeks.length;
+    
+    // Calculate phase boundaries based on percentages
+    const gppEndWeek = Math.floor(totalWeeks * (editablePercentages.gpp / 100));
+    const sppEndWeek = gppEndWeek + Math.floor(totalWeeks * (editablePercentages.spp / 100));
     
     return weeks.map((weekStart, index) => {
       const existing = weeklyData.find(w => w.week_number === index + 1);
@@ -561,12 +571,31 @@ export default function AnnualPlan() {
       // Calculate default values based on periodization phase
       let defaultVolume = 70;
       let defaultIntensity = 50;
-      const weekProgress = index / weeks.length;
+      const weekNumber = index + 1;
       
       if (periodizationType === "linear") {
-        // Traditional: Volume decreases, intensity increases over time
-        defaultVolume = Math.round(90 - (weekProgress * 60));
-        defaultIntensity = Math.round(40 + (weekProgress * 50));
+        // NEW LOGIC: Volume and Intensity based on user request
+        // Volume: 60% start → 100% at GPP/SPP transition → 50% at competition
+        // Intensity: 40% start → 100% at competition
+        
+        if (weekNumber <= gppEndWeek) {
+          // GPP Phase: Volume increases from 60% to 100%
+          const gppProgress = weekNumber / gppEndWeek;
+          defaultVolume = Math.round(60 + (gppProgress * 40)); // 60 → 100
+          defaultIntensity = Math.round(40 + (gppProgress * 20)); // 40 → 60
+        } else if (weekNumber <= sppEndWeek) {
+          // SPP Phase: Volume starts at 100% then gradually decreases
+          const sppWeeks = sppEndWeek - gppEndWeek;
+          const sppProgress = (weekNumber - gppEndWeek) / sppWeeks;
+          defaultVolume = Math.round(100 - (sppProgress * 20)); // 100 → 80
+          defaultIntensity = Math.round(60 + (sppProgress * 20)); // 60 → 80
+        } else {
+          // Pre-comp and Competition: Volume continues to decrease, Intensity increases to 100%
+          const remainingWeeks = totalWeeks - sppEndWeek;
+          const finalProgress = (weekNumber - sppEndWeek) / remainingWeeks;
+          defaultVolume = Math.round(80 - (finalProgress * 30)); // 80 → 50
+          defaultIntensity = Math.round(80 + (finalProgress * 20)); // 80 → 100
+        }
       } else if (periodizationType === "block") {
         const cycleLength = blockWeeks.accumulation + blockWeeks.transmutation + blockWeeks.realization;
         const posInCycle = index % cycleLength;
@@ -597,7 +626,7 @@ export default function AnnualPlan() {
         id: existing?.id,
       };
     });
-  }, [startDate, competitionDate, weeklyData, periodizationType, blockWeeks, blockParameters, undulatingParameters]);
+  }, [startDate, competitionDate, weeklyData, periodizationType, blockWeeks, blockParameters, undulatingParameters, editablePercentages]);
 
   const handleWeeklyDataChange = (weekNumber: number, field: 'planned_volume' | 'planned_intensity', value: number) => {
     const updatedData = [...generatedWeeklyData];
@@ -1980,6 +2009,42 @@ export default function AnnualPlan() {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Biomotor Tracking Section */}
+        {currentPlanId && generatedWeeklyData.length > 0 && (
+          <>
+            {/* Planned biomotor data computed from weekly volume */}
+            {(() => {
+              const plannedBiomotorData = generatedWeeklyData.map(week => ({
+                week_number: week.week_number,
+                kekuatan: Math.round((week.planned_volume / 100) * biomotorConfig.kekuatan),
+                kecepatan: Math.round((week.planned_volume / 100) * biomotorConfig.kecepatan),
+                daya_tahan: Math.round((week.planned_volume / 100) * biomotorConfig.daya_tahan),
+                teknik: Math.round((week.planned_volume / 100) * biomotorConfig.teknik),
+                taktik: Math.round((week.planned_volume / 100) * biomotorConfig.taktik),
+              }));
+
+              return (
+                <div className="space-y-4">
+                  <BiomotorActualsForm
+                    key={biomotorActualsKey}
+                    planId={currentPlanId}
+                    totalWeeks={generatedWeeklyData.length}
+                    plannedData={plannedBiomotorData}
+                    isCoach={isCoach}
+                    onDataChange={() => setBiomotorActualsKey(prev => prev + 1)}
+                  />
+                  
+                  <BiomotorComparisonChartWrapper
+                    planId={currentPlanId}
+                    plannedData={plannedBiomotorData}
+                    refreshKey={biomotorActualsKey}
+                  />
+                </div>
+              );
+            })()}
+          </>
         )}
 
         {phases.length > 0 && (
