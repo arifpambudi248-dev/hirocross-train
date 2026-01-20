@@ -34,6 +34,14 @@ type WeekData = {
   planned_intensity: number;
 };
 
+type BiomotorTarget = {
+  kekuatan: number;
+  kecepatan: number;
+  daya_tahan: number;
+  teknik: number;
+  taktik: number;
+};
+
 type TrainingFocus = {
   id?: string;
   week_number: number;
@@ -51,6 +59,15 @@ type WeeklyTest = {
   notes?: string;
 };
 
+// Biomotor base values (100% volume)
+const BIOMOTOR_BASE = {
+  kekuatan: 10000, // kg or reps
+  kecepatan: 800,  // meters
+  daya_tahan: 20,  // km
+  teknik: 500,     // reps
+  taktik: 200,     // reps/sets
+};
+
 interface PeriodizationCalendarProps {
   startDate: string;
   competitionDate: string;
@@ -60,6 +77,7 @@ interface PeriodizationCalendarProps {
   trainingFocus: TrainingFocus[];
   weeklyTests: WeeklyTest[];
   periodizationType: "linear" | "block" | "undulating";
+  biomotorConfig?: typeof BIOMOTOR_BASE;
   onWeeklyDataChange?: (weekNumber: number, field: 'planned_volume' | 'planned_intensity', value: number) => void;
   onTrainingFocusChange?: (weekNumber: number, focusType: string, intensityLevel: number, label?: string) => void;
   onTrainingFocusRemove?: (weekNumber: number, focusType: string) => void;
@@ -70,6 +88,7 @@ interface PeriodizationCalendarProps {
   onMesoConfigChange?: (mesoConfig: number[]) => void;
   mesoConfig?: number[];
   isEditing?: boolean;
+  isEditingVolumeIntensity?: boolean;
   isCoach?: boolean;
 }
 
@@ -90,6 +109,7 @@ export function PeriodizationCalendar({
   trainingFocus = [],
   weeklyTests = [],
   periodizationType,
+  biomotorConfig = BIOMOTOR_BASE,
   onWeeklyDataChange,
   onTrainingFocusChange,
   onTrainingFocusRemove,
@@ -100,6 +120,7 @@ export function PeriodizationCalendar({
   onMesoConfigChange,
   mesoConfig = [4],
   isEditing = false,
+  isEditingVolumeIntensity = false,
   isCoach = false,
 }: PeriodizationCalendarProps) {
   const [newTestName, setNewTestName] = useState("");
@@ -643,43 +664,164 @@ export function PeriodizationCalendar({
                 );
               })}
 
-              {/* Volume bars */}
+              {/* Volume row - editable */}
               <tr>
                 <td className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-bold p-2 border border-blue-200 dark:border-blue-800 sticky left-0 z-20">
                   VOLUME %
                 </td>
                 {weeks.map((week) => (
-                  <td key={week.weekNumber} className="bg-white dark:bg-slate-900 p-1 border border-slate-200 dark:border-slate-700">
-                    <div className="h-8 flex items-end justify-center">
-                      <div
-                        className="w-5 bg-blue-400 dark:bg-blue-500 rounded-t transition-all"
-                        style={{ height: `${(week.volume / 100) * 100}%` }}
-                        title={`${week.volume}%`}
-                      />
+                  <td key={week.weekNumber} className="bg-white dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-700">
+                    <div className="flex flex-col items-center gap-0.5">
+                      {isEditingVolumeIntensity && onWeeklyDataChange ? (
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={week.volume}
+                          onChange={(e) => onWeeklyDataChange(week.weekNumber, 'planned_volume', Number(e.target.value))}
+                          className="w-8 h-5 text-[9px] text-center border rounded bg-background"
+                        />
+                      ) : (
+                        <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">
+                          {week.volume}
+                        </span>
+                      )}
+                      <div className="h-6 w-full flex items-end justify-center">
+                        <div
+                          className="w-4 bg-blue-400 dark:bg-blue-500 rounded-t transition-all"
+                          style={{ height: `${(week.volume / 100) * 100}%` }}
+                          title={`${week.volume}%`}
+                        />
+                      </div>
                     </div>
                   </td>
                 ))}
               </tr>
 
-              {/* Intensity bars */}
+              {/* Intensity row - editable */}
               <tr>
                 <td className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 font-bold p-2 border border-red-200 dark:border-red-800 sticky left-0 z-20">
                   INTENSITAS %
                 </td>
                 {weeks.map((week) => (
-                  <td key={week.weekNumber} className="bg-white dark:bg-slate-900 p-1 border border-slate-200 dark:border-slate-700">
-                    <div className="h-10 flex flex-col items-center justify-end">
-                      <span className="text-[8px] text-red-500 dark:text-red-400 font-medium mb-0.5">
-                        {week.intensity}
-                      </span>
-                      <div
-                        className="w-5 bg-red-400 dark:bg-red-500 rounded-t transition-all"
-                        style={{ height: `${(week.intensity / 100) * 70}%` }}
-                        title={`${week.intensity}%`}
-                      />
+                  <td key={week.weekNumber} className="bg-white dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-700">
+                    <div className="flex flex-col items-center gap-0.5">
+                      {isEditingVolumeIntensity && onWeeklyDataChange ? (
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={week.intensity}
+                          onChange={(e) => onWeeklyDataChange(week.weekNumber, 'planned_intensity', Number(e.target.value))}
+                          className="w-8 h-5 text-[9px] text-center border rounded bg-background"
+                        />
+                      ) : (
+                        <span className="text-[9px] text-red-600 dark:text-red-400 font-medium">
+                          {week.intensity}
+                        </span>
+                      )}
+                      <div className="h-6 w-full flex items-end justify-center">
+                        <div
+                          className="w-4 bg-red-400 dark:bg-red-500 rounded-t transition-all"
+                          style={{ height: `${(week.intensity / 100) * 100}%` }}
+                          title={`${week.intensity}%`}
+                        />
+                      </div>
                     </div>
                   </td>
                 ))}
+              </tr>
+
+              {/* Biomotor Target Section Header */}
+              <tr>
+                <td colSpan={weeks.length + 1} className="bg-teal-600 dark:bg-teal-700 text-white font-bold p-2 border border-teal-700 dark:border-teal-800 text-center">
+                  TARGET BIOMOTOR PER MINGGU (berdasarkan volume)
+                </td>
+              </tr>
+
+              {/* Kekuatan row */}
+              <tr>
+                <td className="bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-100 font-bold p-2 border border-red-300 dark:border-red-700 sticky left-0 z-20">
+                  KEKUATAN
+                </td>
+                {weeks.map((week) => {
+                  const value = Math.round((week.volume / 100) * biomotorConfig.kekuatan);
+                  return (
+                    <td key={week.weekNumber} className="bg-red-50 dark:bg-red-950 p-1 border border-red-100 dark:border-red-900 text-center">
+                      <span className="text-[9px] font-medium text-red-700 dark:text-red-300">
+                        {value.toLocaleString()}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* Kecepatan row */}
+              <tr>
+                <td className="bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 font-bold p-2 border border-yellow-300 dark:border-yellow-700 sticky left-0 z-20">
+                  KECEPATAN
+                </td>
+                {weeks.map((week) => {
+                  const value = Math.round((week.volume / 100) * biomotorConfig.kecepatan);
+                  return (
+                    <td key={week.weekNumber} className="bg-yellow-50 dark:bg-yellow-950 p-1 border border-yellow-100 dark:border-yellow-900 text-center">
+                      <span className="text-[9px] font-medium text-yellow-700 dark:text-yellow-300">
+                        {value.toLocaleString()}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* Daya Tahan row */}
+              <tr>
+                <td className="bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-100 font-bold p-2 border border-blue-300 dark:border-blue-700 sticky left-0 z-20">
+                  D.TAHAN
+                </td>
+                {weeks.map((week) => {
+                  const value = Math.round((week.volume / 100) * biomotorConfig.daya_tahan);
+                  return (
+                    <td key={week.weekNumber} className="bg-blue-50 dark:bg-blue-950 p-1 border border-blue-100 dark:border-blue-900 text-center">
+                      <span className="text-[9px] font-medium text-blue-700 dark:text-blue-300">
+                        {value.toLocaleString()}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* Teknik row */}
+              <tr>
+                <td className="bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-100 font-bold p-2 border border-green-300 dark:border-green-700 sticky left-0 z-20">
+                  TEKNIK
+                </td>
+                {weeks.map((week) => {
+                  const value = Math.round((week.volume / 100) * biomotorConfig.teknik);
+                  return (
+                    <td key={week.weekNumber} className="bg-green-50 dark:bg-green-950 p-1 border border-green-100 dark:border-green-900 text-center">
+                      <span className="text-[9px] font-medium text-green-700 dark:text-green-300">
+                        {value.toLocaleString()}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* Taktik row */}
+              <tr>
+                <td className="bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-100 font-bold p-2 border border-purple-300 dark:border-purple-700 sticky left-0 z-20">
+                  TAKTIK
+                </td>
+                {weeks.map((week) => {
+                  const value = Math.round((week.volume / 100) * biomotorConfig.taktik);
+                  return (
+                    <td key={week.weekNumber} className="bg-purple-50 dark:bg-purple-950 p-1 border border-purple-100 dark:border-purple-900 text-center">
+                      <span className="text-[9px] font-medium text-purple-700 dark:text-purple-300">
+                        {value.toLocaleString()}
+                      </span>
+                    </td>
+                  );
+                })}
               </tr>
             </tbody>
           </table>
