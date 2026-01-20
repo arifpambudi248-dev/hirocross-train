@@ -17,6 +17,7 @@ export type Database = {
       annual_plans: {
         Row: {
           athlete_id: string
+          biomotor_config: Json | null
           competition_date: string
           created_at: string
           id: string
@@ -30,6 +31,7 @@ export type Database = {
         }
         Insert: {
           athlete_id: string
+          biomotor_config?: Json | null
           competition_date: string
           created_at?: string
           id?: string
@@ -43,6 +45,7 @@ export type Database = {
         }
         Update: {
           athlete_id?: string
+          biomotor_config?: Json | null
           competition_date?: string
           created_at?: string
           id?: string
@@ -574,6 +577,56 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_biomotor_actuals: {
+        Row: {
+          created_at: string
+          daya_tahan: number | null
+          id: string
+          kecepatan: number | null
+          kekuatan: number | null
+          notes: string | null
+          plan_id: string
+          taktik: number | null
+          teknik: number | null
+          updated_at: string
+          week_number: number
+        }
+        Insert: {
+          created_at?: string
+          daya_tahan?: number | null
+          id?: string
+          kecepatan?: number | null
+          kekuatan?: number | null
+          notes?: string | null
+          plan_id: string
+          taktik?: number | null
+          teknik?: number | null
+          updated_at?: string
+          week_number: number
+        }
+        Update: {
+          created_at?: string
+          daya_tahan?: number | null
+          id?: string
+          kecepatan?: number | null
+          kekuatan?: number | null
+          notes?: string | null
+          plan_id?: string
+          taktik?: number | null
+          teknik?: number | null
+          updated_at?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_biomotor_actuals_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "annual_plans"
             referencedColumns: ["id"]
           },
         ]
