@@ -144,6 +144,16 @@ export default function AnnualPlan() {
   
   // Meso configuration - array of weeks per meso (e.g., [4, 4, 3, 5] means meso 1 = 4w, meso 2 = 4w, etc.)
   const [mesoConfig, setMesoConfig] = useState<number[]>([4]);
+  
+  // Biomotor target configuration (base values at 100% volume)
+  const [biomotorConfig, setBiomotorConfig] = useState({
+    kekuatan: 10000, // kg or reps
+    kecepatan: 800,  // meters
+    daya_tahan: 20,  // km
+    teknik: 500,     // reps
+    taktik: 200,     // reps/sets
+  });
+  const [isEditingBiomotor, setIsEditingBiomotor] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -1670,6 +1680,7 @@ export default function AnnualPlan() {
                 trainingFocus={trainingFocus}
                 weeklyTests={weeklyTests}
                 periodizationType={periodizationType}
+                biomotorConfig={biomotorConfig}
                 onWeeklyDataChange={handleWeeklyDataChange}
                 onTrainingFocusChange={handleTrainingFocusChange}
                 onTrainingFocusRemove={handleTrainingFocusRemove}
@@ -1680,6 +1691,7 @@ export default function AnnualPlan() {
                 onMesoConfigChange={setMesoConfig}
                 mesoConfig={mesoConfig}
                 isEditing={isEditingWeeklyData}
+                isEditingVolumeIntensity={isEditingWeeklyData}
                 isCoach={isCoach}
               />
 
