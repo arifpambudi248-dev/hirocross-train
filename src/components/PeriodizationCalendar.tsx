@@ -718,121 +718,127 @@ export function PeriodizationCalendar({
               })}
 
 
-              {/* Biomotor Target Section Header */}
+              {/* Volume & Intensity Line Graph Row - Integrated into table */}
               <tr>
-                <td colSpan={weeks.length + 1} className="bg-teal-600 dark:bg-teal-700 text-white font-bold p-2 border border-teal-700 dark:border-teal-800 text-center">
-                  TARGET BIOMOTOR PER MINGGU (klik untuk edit label seperti AA, Hipertrofi, dll)
+                <td colSpan={weeks.length + 1} className="bg-slate-100 dark:bg-slate-800 p-0 border border-slate-200 dark:border-slate-700">
+                  <div className="flex">
+                    {/* Left label column */}
+                    <div className="min-w-[100px] flex flex-col justify-between p-2 bg-slate-200 dark:bg-slate-700 border-r border-slate-300 dark:border-slate-600">
+                      <div className="text-[9px] font-bold text-muted-foreground">100%</div>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-[3px] bg-blue-500 rounded"></div>
+                          <span className="text-[9px] text-blue-700 dark:text-blue-300 font-medium">Volume</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-[3px] bg-red-500 rounded"></div>
+                          <span className="text-[9px] text-red-700 dark:text-red-300 font-medium">Intensitas</span>
+                        </div>
+                      </div>
+                      <div className="text-[9px] font-bold text-muted-foreground">0%</div>
+                    </div>
+                    {/* Line Graph SVG */}
+                    <div className="flex-1 relative bg-gradient-to-b from-muted/20 to-background">
+                      <svg 
+                        className="w-full h-40" 
+                        viewBox={`0 0 ${weeks.length * 45} 140`}
+                        preserveAspectRatio="none"
+                      >
+                        {/* Y-axis grid lines */}
+                        <line x1="0" y1="20" x2={weeks.length * 45} y2="20" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="0.5" strokeDasharray="2,2" />
+                        <line x1="0" y1="50" x2={weeks.length * 45} y2="50" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="0.5" strokeDasharray="2,2" />
+                        <line x1="0" y1="80" x2={weeks.length * 45} y2="80" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="0.5" strokeDasharray="2,2" />
+                        <line x1="0" y1="110" x2={weeks.length * 45} y2="110" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="0.5" strokeDasharray="2,2" />
+                        
+                        {/* Gradient definitions */}
+                        <defs>
+                          <linearGradient id="volumeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+                          </linearGradient>
+                          <linearGradient id="intensityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="#ef4444" stopOpacity="0.05" />
+                          </linearGradient>
+                        </defs>
+                        
+                        {/* Volume Area Fill */}
+                        <polygon
+                          fill="url(#volumeGradient)"
+                          points={`22.5,130 ${weeks.map((week, idx) => {
+                            const x = (idx * 45) + 22.5;
+                            const y = 130 - (week.volume / 100) * 110;
+                            return `${x},${y}`;
+                          }).join(' ')} ${(weeks.length - 1) * 45 + 22.5},130`}
+                        />
+                        
+                        {/* Intensity Area Fill */}
+                        <polygon
+                          fill="url(#intensityGradient)"
+                          points={`22.5,130 ${weeks.map((week, idx) => {
+                            const x = (idx * 45) + 22.5;
+                            const y = 130 - (week.intensity / 100) * 110;
+                            return `${x},${y}`;
+                          }).join(' ')} ${(weeks.length - 1) * 45 + 22.5},130`}
+                        />
+                        
+                        {/* Volume Line (blue) */}
+                        <polyline
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          points={weeks.map((week, idx) => {
+                            const x = (idx * 45) + 22.5;
+                            const y = 130 - (week.volume / 100) * 110;
+                            return `${x},${y}`;
+                          }).join(' ')}
+                        />
+                        
+                        {/* Intensity Line (red) */}
+                        <polyline
+                          fill="none"
+                          stroke="#ef4444"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          points={weeks.map((week, idx) => {
+                            const x = (idx * 45) + 22.5;
+                            const y = 130 - (week.intensity / 100) * 110;
+                            return `${x},${y}`;
+                          }).join(' ')}
+                        />
+                        
+                        {/* Volume data points */}
+                        {weeks.map((week, idx) => {
+                          const x = (idx * 45) + 22.5;
+                          const y = 130 - (week.volume / 100) * 110;
+                          return (
+                            <g key={`vol-${week.weekNumber}`}>
+                              <circle cx={x} cy={y} r="5" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                              <title>M{week.weekNumber}: Volume {week.volume}%</title>
+                            </g>
+                          );
+                        })}
+                        
+                        {/* Intensity data points */}
+                        {weeks.map((week, idx) => {
+                          const x = (idx * 45) + 22.5;
+                          const y = 130 - (week.intensity / 100) * 110;
+                          return (
+                            <g key={`int-${week.weekNumber}`}>
+                              <circle cx={x} cy={y} r="5" fill="#ef4444" stroke="white" strokeWidth="2" />
+                              <title>M{week.weekNumber}: Intensitas {week.intensity}%</title>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  </div>
                 </td>
               </tr>
 
-              {/* Editable Biomotor rows with multi-select */}
-              {BIOMOTOR_FOCUS_TYPES.map((biomotorType) => {
-                const selectedForType = selectedBiomotorWeeks[biomotorType.key] || [];
-                const hasSelection = selectedForType.length > 0;
-                
-                return (
-                  <tr key={biomotorType.key}>
-                    <td className={cn(
-                      "font-bold p-2 border sticky left-0 z-20",
-                      biomotorType.headerBg,
-                      biomotorType.headerText,
-                      biomotorType.borderColor
-                    )}>
-                      <div className="flex items-center justify-between gap-1">
-                        <span>{biomotorType.label}</span>
-                        {isEditing && isCoach && hasSelection && (
-                          <Popover open={showBiomotorBulkDialog === biomotorType.key} onOpenChange={(open) => setShowBiomotorBulkDialog(open ? biomotorType.key : null)}>
-                            <PopoverTrigger asChild>
-                              <Button size="sm" variant="secondary" className="h-5 px-1 text-[9px]">
-                                Set ({selectedForType.length})
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-56 p-3" align="start">
-                              <div className="space-y-3">
-                                <div className="font-medium text-sm">
-                                  {biomotorType.label} - Minggu {selectedForType.join(", ")}
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Label Tujuan</Label>
-                                  <Input
-                                    placeholder="Contoh: AA, Hipertrofi, Max"
-                                    value={biomotorBulkLabel}
-                                    onChange={(e) => setBiomotorBulkLabel(e.target.value)}
-                                    className="h-8 text-xs"
-                                  />
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button size="sm" className="flex-1" onClick={() => handleBiomotorBulkSave(biomotorType.key)}>
-                                    <Check className="h-3 w-3 mr-1" /> Simpan
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => {
-                                    setSelectedBiomotorWeeks(prev => ({ ...prev, [biomotorType.key]: [] }));
-                                    setShowBiomotorBulkDialog(null);
-                                  }}>
-                                    Batal
-                                  </Button>
-                                </div>
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        )}
-                      </div>
-                    </td>
-                    {weeks.map((week) => {
-                      const focusLabel = biomotorFocusData[week.weekNumber]?.[biomotorType.key];
-                      const hasLabel = !!focusLabel;
-                      const isSelected = selectedForType.includes(week.weekNumber);
-                      const value = Math.round((week.volume / 100) * biomotorConfig[biomotorType.key as keyof typeof BIOMOTOR_BASE]);
-                      
-                      return (
-                        <td
-                          key={week.weekNumber}
-                          onClick={() => isEditing && isCoach && !hasLabel && toggleBiomotorWeekSelection(biomotorType.key, week.weekNumber)}
-                          className={cn(
-                            "p-1 border text-center transition-all",
-                            biomotorType.bgLight,
-                            isEditing && isCoach && !hasLabel ? "cursor-pointer hover:opacity-70" : "",
-                            hasLabel ? biomotorType.color + " bg-opacity-60" : "",
-                            isSelected ? "ring-2 ring-primary ring-inset bg-primary/20" : ""
-                          )}
-                        >
-                          {hasLabel ? (
-                            <div className="flex items-center justify-center gap-0.5">
-                              <span className={cn("text-[9px] leading-tight font-bold truncate max-w-[40px]", biomotorType.textColor)} title={focusLabel}>
-                                {focusLabel}
-                              </span>
-                              {isEditing && isCoach && onBiomotorFocusRemove && (
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onBiomotorFocusRemove(week.weekNumber, biomotorType.key);
-                                  }} 
-                                  className="text-red-500 hover:text-red-700 ml-0.5"
-                                >
-                                  <X className="h-2 w-2" />
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center">
-                              <span className={cn(
-                                "text-[9px] font-medium",
-                                biomotorType.textColor,
-                                isSelected ? "opacity-50" : ""
-                              )}>
-                                {value.toLocaleString()}
-                              </span>
-                              {isSelected && (
-                                <span className="text-[8px] text-primary font-bold">✓</span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
 
             </tbody>
           </table>
