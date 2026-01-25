@@ -15,7 +15,6 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 import { Pencil, Save, FolderOpen, Plus, FileDown, Trash2, Trophy, Calendar } from "lucide-react";
 import { exportAnnualPlanToPDF, type AnnualPlanExportData } from "@/lib/exportUtils";
 import { PeriodizationCalendar } from "@/components/PeriodizationCalendar";
-import { VolumeIntensityChart } from "@/components/VolumeIntensityChart";
 import { BiomotorActualsForm } from "@/components/BiomotorActualsForm";
 import { BiomotorComparisonChartWrapper } from "@/components/BiomotorComparisonChartWrapper";
 import {
@@ -1842,8 +1841,33 @@ export default function AnnualPlan() {
         {/* Periodization Calendar */}
         {phases.length > 0 && generatedWeeklyData.length > 0 && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Kalender Periodisasi</CardTitle>
+              {isCoach && currentPlanId && (
+                <Button
+                  variant={isEditingWeeklyData ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    if (isEditingWeeklyData) {
+                      saveWeeklyData();
+                    } else {
+                      setIsEditingWeeklyData(true);
+                    }
+                  }}
+                >
+                  {isEditingWeeklyData ? (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Simpan
+                    </>
+                  ) : (
+                    <>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit
+                    </>
+                  )}
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <PeriodizationCalendar
@@ -1872,45 +1896,8 @@ export default function AnnualPlan() {
                 isEditingVolumeIntensity={isEditingWeeklyData}
                 isCoach={isCoach}
               />
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Separate Volume & Intensity Chart - Larger and more visible */}
-        {phases.length > 0 && generatedWeeklyData.length > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Grafik Volume & Intensitas</CardTitle>
-              {isCoach && currentPlanId && (
-                <Button
-                  variant={isEditingWeeklyData ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    if (isEditingWeeklyData) {
-                      saveWeeklyData();
-                    } else {
-                      setIsEditingWeeklyData(true);
-                    }
-                  }}
-                >
-                  {isEditingWeeklyData ? (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Simpan
-                    </>
-                  ) : (
-                    <>
-                      <Pencil className="w-4 h-4 mr-2" />
-                      Edit Volume/Intensitas
-                    </>
-                  )}
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <VolumeIntensityChart weeklyData={generatedWeeklyData} />
-
-              {/* Editable Table - Moved to bottom */}
+              {/* Editable Table - below calendar */}
               {isEditingWeeklyData && (
                 <div className="border rounded-lg overflow-hidden mt-6">
                   <h4 className="text-sm font-medium p-3 bg-muted">Edit Volume & Intensitas</h4>
