@@ -68,6 +68,21 @@ const BIOMOTOR_BASE = {
   taktik: 200,     // reps/sets
 };
 
+// Biomotor types with colors for multi-select editing
+const BIOMOTOR_FOCUS_TYPES = [
+  { key: "kekuatan", label: "KEKUATAN", color: "bg-red-400 dark:bg-red-600", bgLight: "bg-red-50 dark:bg-red-950", textColor: "text-red-700 dark:text-red-300", headerBg: "bg-red-200 dark:bg-red-800", headerText: "text-red-800 dark:text-red-100", borderColor: "border-red-300 dark:border-red-700" },
+  { key: "kecepatan", label: "KECEPATAN", color: "bg-yellow-400 dark:bg-yellow-600", bgLight: "bg-yellow-50 dark:bg-yellow-950", textColor: "text-yellow-700 dark:text-yellow-300", headerBg: "bg-yellow-200 dark:bg-yellow-800", headerText: "text-yellow-800 dark:text-yellow-100", borderColor: "border-yellow-300 dark:border-yellow-700" },
+  { key: "daya_tahan", label: "D.TAHAN", color: "bg-blue-400 dark:bg-blue-600", bgLight: "bg-blue-50 dark:bg-blue-950", textColor: "text-blue-700 dark:text-blue-300", headerBg: "bg-blue-200 dark:bg-blue-800", headerText: "text-blue-800 dark:text-blue-100", borderColor: "border-blue-300 dark:border-blue-700" },
+  { key: "teknik", label: "TEKNIK", color: "bg-green-400 dark:bg-green-600", bgLight: "bg-green-50 dark:bg-green-950", textColor: "text-green-700 dark:text-green-300", headerBg: "bg-green-200 dark:bg-green-800", headerText: "text-green-800 dark:text-green-100", borderColor: "border-green-300 dark:border-green-700" },
+  { key: "taktik", label: "TAKTIK", color: "bg-purple-400 dark:bg-purple-600", bgLight: "bg-purple-50 dark:bg-purple-950", textColor: "text-purple-700 dark:text-purple-300", headerBg: "bg-purple-200 dark:bg-purple-800", headerText: "text-purple-800 dark:text-purple-100", borderColor: "border-purple-300 dark:border-purple-700" },
+];
+
+type BiomotorFocusData = {
+  [weekNumber: number]: {
+    [biomotorKey: string]: string; // e.g., week 1 -> kekuatan -> "AA"
+  };
+};
+
 interface PeriodizationCalendarProps {
   startDate: string;
   competitionDate: string;
@@ -78,10 +93,13 @@ interface PeriodizationCalendarProps {
   weeklyTests: WeeklyTest[];
   periodizationType: "linear" | "block" | "undulating";
   biomotorConfig?: typeof BIOMOTOR_BASE;
+  biomotorFocusData?: BiomotorFocusData;
   onWeeklyDataChange?: (weekNumber: number, field: 'planned_volume' | 'planned_intensity', value: number) => void;
   onTrainingFocusChange?: (weekNumber: number, focusType: string, intensityLevel: number, label?: string) => void;
   onTrainingFocusRemove?: (weekNumber: number, focusType: string) => void;
   onBulkTrainingFocusChange?: (weekNumbers: number[], focusType: string, label: string) => void;
+  onBiomotorFocusChange?: (weekNumbers: number[], biomotorKey: string, label: string) => void;
+  onBiomotorFocusRemove?: (weekNumber: number, biomotorKey: string) => void;
   onTestAdd?: (weekNumber: number, testName: string) => void;
   onTestRemove?: (weekNumber: number, testId: string) => void;
   onCompetitionAdd?: (weekNumber: number, competitionName: string, date: string) => void;
@@ -110,10 +128,13 @@ export function PeriodizationCalendar({
   weeklyTests = [],
   periodizationType,
   biomotorConfig = BIOMOTOR_BASE,
+  biomotorFocusData = {},
   onWeeklyDataChange,
   onTrainingFocusChange,
   onTrainingFocusRemove,
   onBulkTrainingFocusChange,
+  onBiomotorFocusChange,
+  onBiomotorFocusRemove,
   onTestAdd,
   onTestRemove,
   onCompetitionAdd,
@@ -132,6 +153,11 @@ export function PeriodizationCalendar({
   const [selectedWeeks, setSelectedWeeks] = useState<{ [focusType: string]: number[] }>({});
   const [bulkLabel, setBulkLabel] = useState("");
   const [showBulkDialog, setShowBulkDialog] = useState<string | null>(null);
+  
+  // Multi-select for biomotor focus (kekuatan, kecepatan, etc)
+  const [selectedBiomotorWeeks, setSelectedBiomotorWeeks] = useState<{ [biomotorKey: string]: number[] }>({});
+  const [biomotorBulkLabel, setBiomotorBulkLabel] = useState("");
+  const [showBiomotorBulkDialog, setShowBiomotorBulkDialog] = useState<string | null>(null);
 
   const calendarData = useMemo(() => {
     if (!startDate || !competitionDate) return null;
@@ -288,6 +314,33 @@ export function PeriodizationCalendar({
     setSelectedWeeks(prev => ({ ...prev, [focusType]: [] }));
     setBulkLabel("");
     setShowBulkDialog(null);
+  };
+
+  // Toggle week selection for biomotor focus
+  const toggleBiomotorWeekSelection = useCallback((biomotorKey: string, weekNumber: number) => {
+    if (!isEditing || !isCoach) return;
+    
+    setSelectedBiomotorWeeks(prev => {
+      const current = prev[biomotorKey] || [];
+      if (current.includes(weekNumber)) {
+        return { ...prev, [biomotorKey]: current.filter(w => w !== weekNumber) };
+      } else {
+        return { ...prev, [biomotorKey]: [...current, weekNumber].sort((a, b) => a - b) };
+      }
+    });
+  }, [isEditing, isCoach]);
+
+  const handleBiomotorBulkSave = (biomotorKey: string) => {
+    const weeks = selectedBiomotorWeeks[biomotorKey] || [];
+    if (weeks.length === 0 || !biomotorBulkLabel.trim()) return;
+    
+    if (onBiomotorFocusChange) {
+      onBiomotorFocusChange(weeks, biomotorKey, biomotorBulkLabel.trim());
+    }
+    
+    setSelectedBiomotorWeeks(prev => ({ ...prev, [biomotorKey]: [] }));
+    setBiomotorBulkLabel("");
+    setShowBiomotorBulkDialog(null);
   };
 
   const handleAddTest = (weekNumber: number) => {
@@ -735,96 +788,120 @@ export function PeriodizationCalendar({
               {/* Biomotor Target Section Header */}
               <tr>
                 <td colSpan={weeks.length + 1} className="bg-teal-600 dark:bg-teal-700 text-white font-bold p-2 border border-teal-700 dark:border-teal-800 text-center">
-                  TARGET BIOMOTOR PER MINGGU (berdasarkan volume)
+                  TARGET BIOMOTOR PER MINGGU (klik untuk edit label seperti AA, Hipertrofi, dll)
                 </td>
               </tr>
 
-              {/* Kekuatan row */}
-              <tr>
-                <td className="bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-100 font-bold p-2 border border-red-300 dark:border-red-700 sticky left-0 z-20">
-                  KEKUATAN
-                </td>
-                {weeks.map((week) => {
-                  const value = Math.round((week.volume / 100) * biomotorConfig.kekuatan);
-                  return (
-                    <td key={week.weekNumber} className="bg-red-50 dark:bg-red-950 p-1 border border-red-100 dark:border-red-900 text-center">
-                      <span className="text-[9px] font-medium text-red-700 dark:text-red-300">
-                        {value.toLocaleString()}
-                      </span>
+              {/* Editable Biomotor rows with multi-select */}
+              {BIOMOTOR_FOCUS_TYPES.map((biomotorType) => {
+                const selectedForType = selectedBiomotorWeeks[biomotorType.key] || [];
+                const hasSelection = selectedForType.length > 0;
+                
+                return (
+                  <tr key={biomotorType.key}>
+                    <td className={cn(
+                      "font-bold p-2 border sticky left-0 z-20",
+                      biomotorType.headerBg,
+                      biomotorType.headerText,
+                      biomotorType.borderColor
+                    )}>
+                      <div className="flex items-center justify-between gap-1">
+                        <span>{biomotorType.label}</span>
+                        {isEditing && isCoach && hasSelection && (
+                          <Popover open={showBiomotorBulkDialog === biomotorType.key} onOpenChange={(open) => setShowBiomotorBulkDialog(open ? biomotorType.key : null)}>
+                            <PopoverTrigger asChild>
+                              <Button size="sm" variant="secondary" className="h-5 px-1 text-[9px]">
+                                Set ({selectedForType.length})
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-56 p-3" align="start">
+                              <div className="space-y-3">
+                                <div className="font-medium text-sm">
+                                  {biomotorType.label} - Minggu {selectedForType.join(", ")}
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Label Tujuan</Label>
+                                  <Input
+                                    placeholder="Contoh: AA, Hipertrofi, Max"
+                                    value={biomotorBulkLabel}
+                                    onChange={(e) => setBiomotorBulkLabel(e.target.value)}
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button size="sm" className="flex-1" onClick={() => handleBiomotorBulkSave(biomotorType.key)}>
+                                    <Check className="h-3 w-3 mr-1" /> Simpan
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => {
+                                    setSelectedBiomotorWeeks(prev => ({ ...prev, [biomotorType.key]: [] }));
+                                    setShowBiomotorBulkDialog(null);
+                                  }}>
+                                    Batal
+                                  </Button>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </div>
                     </td>
-                  );
-                })}
-              </tr>
+                    {weeks.map((week) => {
+                      const focusLabel = biomotorFocusData[week.weekNumber]?.[biomotorType.key];
+                      const hasLabel = !!focusLabel;
+                      const isSelected = selectedForType.includes(week.weekNumber);
+                      const value = Math.round((week.volume / 100) * biomotorConfig[biomotorType.key as keyof typeof BIOMOTOR_BASE]);
+                      
+                      return (
+                        <td
+                          key={week.weekNumber}
+                          onClick={() => isEditing && isCoach && !hasLabel && toggleBiomotorWeekSelection(biomotorType.key, week.weekNumber)}
+                          className={cn(
+                            "p-1 border text-center transition-all",
+                            biomotorType.bgLight,
+                            isEditing && isCoach && !hasLabel ? "cursor-pointer hover:opacity-70" : "",
+                            hasLabel ? biomotorType.color + " bg-opacity-60" : "",
+                            isSelected ? "ring-2 ring-primary ring-inset bg-primary/20" : ""
+                          )}
+                        >
+                          {hasLabel ? (
+                            <div className="flex items-center justify-center gap-0.5">
+                              <span className={cn("text-[9px] leading-tight font-bold truncate max-w-[40px]", biomotorType.textColor)} title={focusLabel}>
+                                {focusLabel}
+                              </span>
+                              {isEditing && isCoach && onBiomotorFocusRemove && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onBiomotorFocusRemove(week.weekNumber, biomotorType.key);
+                                  }} 
+                                  className="text-red-500 hover:text-red-700 ml-0.5"
+                                >
+                                  <X className="h-2 w-2" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center">
+                              <span className={cn(
+                                "text-[9px] font-medium",
+                                biomotorType.textColor,
+                                isSelected ? "opacity-50" : ""
+                              )}>
+                                {value.toLocaleString()}
+                              </span>
+                              {isSelected && (
+                                <span className="text-[8px] text-primary font-bold">✓</span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
 
-              {/* Kecepatan row */}
-              <tr>
-                <td className="bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 font-bold p-2 border border-yellow-300 dark:border-yellow-700 sticky left-0 z-20">
-                  KECEPATAN
-                </td>
-                {weeks.map((week) => {
-                  const value = Math.round((week.volume / 100) * biomotorConfig.kecepatan);
-                  return (
-                    <td key={week.weekNumber} className="bg-yellow-50 dark:bg-yellow-950 p-1 border border-yellow-100 dark:border-yellow-900 text-center">
-                      <span className="text-[9px] font-medium text-yellow-700 dark:text-yellow-300">
-                        {value.toLocaleString()}
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
-
-              {/* Daya Tahan row */}
-              <tr>
-                <td className="bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-100 font-bold p-2 border border-blue-300 dark:border-blue-700 sticky left-0 z-20">
-                  D.TAHAN
-                </td>
-                {weeks.map((week) => {
-                  const value = Math.round((week.volume / 100) * biomotorConfig.daya_tahan);
-                  return (
-                    <td key={week.weekNumber} className="bg-blue-50 dark:bg-blue-950 p-1 border border-blue-100 dark:border-blue-900 text-center">
-                      <span className="text-[9px] font-medium text-blue-700 dark:text-blue-300">
-                        {value.toLocaleString()}
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
-
-              {/* Teknik row */}
-              <tr>
-                <td className="bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-100 font-bold p-2 border border-green-300 dark:border-green-700 sticky left-0 z-20">
-                  TEKNIK
-                </td>
-                {weeks.map((week) => {
-                  const value = Math.round((week.volume / 100) * biomotorConfig.teknik);
-                  return (
-                    <td key={week.weekNumber} className="bg-green-50 dark:bg-green-950 p-1 border border-green-100 dark:border-green-900 text-center">
-                      <span className="text-[9px] font-medium text-green-700 dark:text-green-300">
-                        {value.toLocaleString()}
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
-
-              {/* Taktik row */}
-              <tr>
-                <td className="bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-100 font-bold p-2 border border-purple-300 dark:border-purple-700 sticky left-0 z-20">
-                  TAKTIK
-                </td>
-                {weeks.map((week) => {
-                  const value = Math.round((week.volume / 100) * biomotorConfig.taktik);
-                  return (
-                    <td key={week.weekNumber} className="bg-purple-50 dark:bg-purple-950 p-1 border border-purple-100 dark:border-purple-900 text-center">
-                      <span className="text-[9px] font-medium text-purple-700 dark:text-purple-300">
-                        {value.toLocaleString()}
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
-
-              {/* Volume & Intensity Graph Row - Integrated into table */}
+              {/* Volume & Intensity Line Graph Row - Integrated into table */}
               <tr>
                 <td colSpan={weeks.length + 1} className="bg-slate-100 dark:bg-slate-800 p-0 border border-slate-200 dark:border-slate-700">
                   <div className="p-2 border-b border-slate-300 dark:border-slate-600">
@@ -834,34 +911,113 @@ export function PeriodizationCalendar({
                     {/* Left label column */}
                     <div className="min-w-[100px] flex flex-col justify-center p-2 bg-slate-200 dark:bg-slate-700 border-r border-slate-300 dark:border-slate-600">
                       <div className="flex items-center gap-1 mb-1">
-                        <div className="w-3 h-3 bg-blue-400 rounded"></div>
+                        <div className="w-6 h-[3px] bg-blue-500 rounded"></div>
                         <span className="text-[9px] text-blue-700 dark:text-blue-300">Volume</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-red-400 rounded"></div>
+                        <div className="w-6 h-[3px] bg-red-500 rounded"></div>
                         <span className="text-[9px] text-red-700 dark:text-red-300">Intensitas</span>
                       </div>
                     </div>
-                    {/* Graph cells aligned with weeks */}
-                    {weeks.map((week) => (
-                      <div 
-                        key={week.weekNumber} 
-                        className="min-w-[45px] h-24 flex items-end justify-center gap-0.5 p-1 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    {/* Line Graph SVG */}
+                    <div className="flex-1 relative bg-white dark:bg-slate-900">
+                      <svg 
+                        className="w-full h-24" 
+                        viewBox={`0 0 ${weeks.length * 45} 100`}
+                        preserveAspectRatio="none"
                       >
-                        {/* Volume bar */}
-                        <div 
-                          className="w-2 bg-blue-400 dark:bg-blue-500 rounded-t transition-all"
-                          style={{ height: `${(week.volume / 100) * 80}px` }}
-                          title={`Volume: ${week.volume}%`}
+                        {/* Y-axis grid lines */}
+                        <line x1="0" y1="20" x2={weeks.length * 45} y2="20" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="0.5" strokeDasharray="2,2" />
+                        <line x1="0" y1="50" x2={weeks.length * 45} y2="50" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="0.5" strokeDasharray="2,2" />
+                        <line x1="0" y1="80" x2={weeks.length * 45} y2="80" stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="0.5" strokeDasharray="2,2" />
+                        
+                        {/* Volume Line (blue) */}
+                        <polyline
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          points={weeks.map((week, idx) => {
+                            const x = (idx * 45) + 22.5;
+                            const y = 90 - (week.volume / 100) * 80;
+                            return `${x},${y}`;
+                          }).join(' ')}
                         />
-                        {/* Intensity bar */}
-                        <div 
-                          className="w-2 bg-red-400 dark:bg-red-500 rounded-t transition-all"
-                          style={{ height: `${(week.intensity / 100) * 80}px` }}
-                          title={`Intensitas: ${week.intensity}%`}
+                        
+                        {/* Volume Area Fill */}
+                        <polygon
+                          fill="url(#volumeGradient)"
+                          opacity="0.2"
+                          points={`22.5,90 ${weeks.map((week, idx) => {
+                            const x = (idx * 45) + 22.5;
+                            const y = 90 - (week.volume / 100) * 80;
+                            return `${x},${y}`;
+                          }).join(' ')} ${(weeks.length - 1) * 45 + 22.5},90`}
                         />
-                      </div>
-                    ))}
+                        
+                        {/* Intensity Line (red) */}
+                        <polyline
+                          fill="none"
+                          stroke="#ef4444"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          points={weeks.map((week, idx) => {
+                            const x = (idx * 45) + 22.5;
+                            const y = 90 - (week.intensity / 100) * 80;
+                            return `${x},${y}`;
+                          }).join(' ')}
+                        />
+                        
+                        {/* Intensity Area Fill */}
+                        <polygon
+                          fill="url(#intensityGradient)"
+                          opacity="0.2"
+                          points={`22.5,90 ${weeks.map((week, idx) => {
+                            const x = (idx * 45) + 22.5;
+                            const y = 90 - (week.intensity / 100) * 80;
+                            return `${x},${y}`;
+                          }).join(' ')} ${(weeks.length - 1) * 45 + 22.5},90`}
+                        />
+                        
+                        {/* Volume data points */}
+                        {weeks.map((week, idx) => {
+                          const x = (idx * 45) + 22.5;
+                          const y = 90 - (week.volume / 100) * 80;
+                          return (
+                            <g key={`vol-${week.weekNumber}`}>
+                              <circle cx={x} cy={y} r="4" fill="#3b82f6" />
+                              <title>M{week.weekNumber}: Volume {week.volume}%</title>
+                            </g>
+                          );
+                        })}
+                        
+                        {/* Intensity data points */}
+                        {weeks.map((week, idx) => {
+                          const x = (idx * 45) + 22.5;
+                          const y = 90 - (week.intensity / 100) * 80;
+                          return (
+                            <g key={`int-${week.weekNumber}`}>
+                              <circle cx={x} cy={y} r="4" fill="#ef4444" />
+                              <title>M{week.weekNumber}: Intensitas {week.intensity}%</title>
+                            </g>
+                          );
+                        })}
+                        
+                        {/* Gradient definitions */}
+                        <defs>
+                          <linearGradient id="volumeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                          </linearGradient>
+                          <linearGradient id="intensityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </div>
                   </div>
                 </td>
               </tr>
