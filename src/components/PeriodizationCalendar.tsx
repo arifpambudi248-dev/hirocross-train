@@ -617,10 +617,48 @@ export function PeriodizationCalendar({
                 ))}
               </tr>
 
-              {/* Training focus rows with multi-select */}
+{/* Training focus rows with multi-select and merged cells */}
               {FOCUS_TYPES.map((focusType) => {
                 const selectedForType = selectedWeeks[focusType.key] || [];
                 const hasSelection = selectedForType.length > 0;
+                
+                // Calculate merged cell spans for consecutive weeks with same label
+                const getMergedCells = () => {
+                  const cells: { weekNumber: number; span: number; label?: string; isSkipped?: boolean }[] = [];
+                  let i = 0;
+                  
+                  while (i < weeks.length) {
+                    const week = weeks[i];
+                    const focusData = week.focus[focusType.key];
+                    const currentLabel = focusData?.label;
+                    
+                    if (currentLabel) {
+                      // Count consecutive weeks with same label
+                      let span = 1;
+                      while (i + span < weeks.length) {
+                        const nextWeek = weeks[i + span];
+                        const nextFocusData = nextWeek.focus[focusType.key];
+                        if (nextFocusData?.label === currentLabel) {
+                          span++;
+                        } else {
+                          break;
+                        }
+                      }
+                      cells.push({ weekNumber: week.weekNumber, span, label: currentLabel });
+                      // Mark subsequent weeks as skipped
+                      for (let j = 1; j < span; j++) {
+                        cells.push({ weekNumber: weeks[i + j].weekNumber, span: 0, isSkipped: true });
+                      }
+                      i += span;
+                    } else {
+                      cells.push({ weekNumber: week.weekNumber, span: 1 });
+                      i++;
+                    }
+                  }
+                  return cells;
+                };
+                
+                const mergedCells = getMergedCells();
                 
                 return (
                   <tr key={focusType.key}>
@@ -669,47 +707,66 @@ export function PeriodizationCalendar({
                         )}
                       </div>
                     </td>
-                    {weeks.map((week) => {
-                      const focusData = week.focus[focusType.key];
-                      const hasLabel = focusData?.label;
-                      const isSelected = selectedForType.includes(week.weekNumber);
+                    {mergedCells.map((cellData, idx) => {
+                      // Skip cells that are part of a merged span
+                      if (cellData.isSkipped) return null;
                       
-                      return (
-                        <td
-                          key={week.weekNumber}
-                          onClick={() => isEditing && isCoach && !hasLabel && toggleWeekSelection(focusType.key, week.weekNumber)}
-                          className={cn(
-                            "p-1 border border-slate-200 dark:border-slate-700 text-center transition-all",
-                            isEditing && isCoach && !hasLabel ? "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" : "",
-                            hasLabel ? focusType.color + " bg-opacity-40" : "bg-white dark:bg-slate-900",
-                            isSelected ? "ring-2 ring-primary ring-inset bg-primary/20" : ""
-                          )}
-                        >
-                          {hasLabel ? (
-                            <div className="flex items-center justify-center gap-0.5">
-                              <span className="text-[9px] leading-tight font-medium truncate max-w-[40px]" title={focusData.label}>
-                                {focusData.label}
+                      const week = weeks.find(w => w.weekNumber === cellData.weekNumber)!;
+                      const isSelected = selectedForType.includes(week.weekNumber);
+                      const hasLabel = !!cellData.label;
+                      
+                      if (hasLabel && cellData.span > 0) {
+                        // Merged cell with label
+                        return (
+                          <td
+                            key={`${focusType.key}-${cellData.weekNumber}`}
+                            colSpan={cellData.span}
+                            className={cn(
+                              "p-2 border border-slate-200 dark:border-slate-700 text-center transition-all",
+                              focusType.color
+                            )}
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-sm font-bold text-white drop-shadow-sm">
+                                {cellData.label}
                               </span>
                               {isEditing && isCoach && onTrainingFocusRemove && (
                                 <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onTrainingFocusRemove(week.weekNumber, focusType.key);
+                                    // Remove label from all weeks in this span
+                                    for (let w = cellData.weekNumber; w < cellData.weekNumber + cellData.span; w++) {
+                                      onTrainingFocusRemove(w, focusType.key);
+                                    }
                                   }} 
-                                  className="text-red-500 hover:text-red-700 ml-0.5"
+                                  className="text-white/70 hover:text-white ml-1"
                                 >
-                                  <X className="h-2 w-2" />
+                                  <X className="h-3 w-3" />
                                 </button>
                               )}
                             </div>
-                          ) : (
-                            <span className={cn(
-                              "text-[9px]",
-                              isSelected ? "text-primary font-bold" : "text-muted-foreground"
-                            )}>
-                              {isSelected ? "✓" : "-"}
-                            </span>
+                          </td>
+                        );
+                      }
+                      
+                      // Regular cell without label
+                      return (
+                        <td
+                          key={`${focusType.key}-${cellData.weekNumber}`}
+                          onClick={() => isEditing && isCoach && toggleWeekSelection(focusType.key, week.weekNumber)}
+                          className={cn(
+                            "p-1 border border-slate-200 dark:border-slate-700 text-center transition-all",
+                            isEditing && isCoach ? "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800" : "",
+                            "bg-white dark:bg-slate-900",
+                            isSelected ? "ring-2 ring-primary ring-inset bg-primary/20" : ""
                           )}
+                        >
+                          <span className={cn(
+                            "text-[9px]",
+                            isSelected ? "text-primary font-bold" : "text-muted-foreground"
+                          )}>
+                            {isSelected ? "✓" : "-"}
+                          </span>
                         </td>
                       );
                     })}
