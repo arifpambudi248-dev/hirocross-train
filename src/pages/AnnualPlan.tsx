@@ -157,6 +157,13 @@ export default function AnnualPlan() {
   });
   const [isEditingBiomotor, setIsEditingBiomotor] = useState(false);
   const [biomotorActualsKey, setBiomotorActualsKey] = useState(0); // For refreshing actuals
+  
+  // Biomotor focus data for multi-week labeling (e.g., AA, Hipertrofi)
+  const [biomotorFocusData, setBiomotorFocusData] = useState<{
+    [weekNumber: number]: {
+      [biomotorKey: string]: string;
+    };
+  }>({});
 
   useEffect(() => {
     loadUser();
@@ -423,6 +430,34 @@ export default function AnnualPlan() {
     }
 
     setTrainingFocus(prev => prev.filter(f => f.id !== existing.id));
+  };
+
+  // Handle biomotor focus change (multi-week labeling like AA, Hipertrofi)
+  const handleBiomotorFocusChange = (weekNumbers: number[], biomotorKey: string, label: string) => {
+    setBiomotorFocusData(prev => {
+      const newData = { ...prev };
+      weekNumbers.forEach(weekNumber => {
+        if (!newData[weekNumber]) {
+          newData[weekNumber] = {};
+        }
+        newData[weekNumber][biomotorKey] = label;
+      });
+      return newData;
+    });
+    toast.success(`${biomotorKey.toUpperCase()} label "${label}" diset untuk ${weekNumbers.length} minggu`);
+  };
+
+  const handleBiomotorFocusRemove = (weekNumber: number, biomotorKey: string) => {
+    setBiomotorFocusData(prev => {
+      const newData = { ...prev };
+      if (newData[weekNumber]) {
+        delete newData[weekNumber][biomotorKey];
+        if (Object.keys(newData[weekNumber]).length === 0) {
+          delete newData[weekNumber];
+        }
+      }
+      return newData;
+    });
   };
 
   const handleTestAdd = async (weekNumber: number, testName: string) => {
@@ -1845,10 +1880,13 @@ export default function AnnualPlan() {
                 weeklyTests={weeklyTests}
                 periodizationType={periodizationType}
                 biomotorConfig={biomotorConfig}
+                biomotorFocusData={biomotorFocusData}
                 onWeeklyDataChange={handleWeeklyDataChange}
                 onTrainingFocusChange={handleTrainingFocusChange}
                 onTrainingFocusRemove={handleTrainingFocusRemove}
                 onBulkTrainingFocusChange={handleBulkTrainingFocusChange}
+                onBiomotorFocusChange={handleBiomotorFocusChange}
+                onBiomotorFocusRemove={handleBiomotorFocusRemove}
                 onTestAdd={handleTestAdd}
                 onTestRemove={handleTestRemove}
                 onCompetitionAdd={handleCompetitionAddFromCalendar}
