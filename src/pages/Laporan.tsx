@@ -501,13 +501,28 @@ export default function Laporan() {
                 Readiness Terkini
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                {latestReadiness?.readiness_score || 0}
-              </div>
-              <div className="mt-2">
-                {latestReadiness && getZoneBadge(latestReadiness.readiness_zone)}
-              </div>
+            <CardContent className="flex flex-col items-center">
+              {(() => {
+                const score = latestReadiness?.readiness_score || 0;
+                // Convert readiness score (range 1.0–2.5) to 0-100%
+                // 1.0 = 0%, 2.0 = 66.7%, 2.5 = 100%
+                const percentage = Math.min(100, Math.max(0, ((score - 1.0) / 1.5) * 100));
+                const zone = latestReadiness?.readiness_zone || '';
+                const zoneLabel = zone === 'prime' ? 'Supercompensation' 
+                  : zone === 'normal' ? 'Normal' 
+                  : zone === 'fatigue' ? 'Fatigue' 
+                  : zone === 'high_fatigue' ? 'High Fatigue' : 'N/A';
+                return (
+                  <>
+                    <Speedometer value={percentage} size={160} label="Readiness" />
+                    <p className="text-lg font-bold text-primary mt-2">{score}</p>
+                    <div className="mt-1">
+                      {latestReadiness && getZoneBadge(latestReadiness.readiness_zone)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{zoneLabel}</p>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
