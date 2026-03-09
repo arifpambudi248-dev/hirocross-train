@@ -188,13 +188,31 @@ export default function Readiness() {
           .eq("id", selectedAthleteId);
 
         if (!updateError) {
+          // Log baseline history
+          const historyEntries = [];
           if (updates.baseline_vj) {
+            historyEntries.push({
+              athlete_id: selectedAthleteId,
+              field_name: 'baseline_vj',
+              old_value: baselineVj,
+              new_value: updates.baseline_vj,
+            });
             toast.success(`⬆️ Baseline VJ naik: ${baselineVj} → ${updates.baseline_vj} cm`, { duration: 5000 });
             setBaselineVj(updates.baseline_vj);
           }
           if (updates.baseline_rhr) {
+            historyEntries.push({
+              athlete_id: selectedAthleteId,
+              field_name: 'baseline_rhr',
+              old_value: baselineRhr,
+              new_value: updates.baseline_rhr,
+            });
             toast.success(`⬆️ Baseline RHR membaik: ${baselineRhr} → ${updates.baseline_rhr} bpm`, { duration: 5000 });
             setBaselineRhr(updates.baseline_rhr);
+          }
+          if (historyEntries.length > 0) {
+            await supabase.from("baseline_history").insert(historyEntries);
+            loadBaselineHistory(selectedAthleteId);
           }
         }
       }
