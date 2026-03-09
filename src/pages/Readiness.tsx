@@ -113,7 +113,16 @@ export default function Readiness() {
     }
   };
 
-  const loadLogs = async (uid: string) => {
+  const loadBaselineHistory = async (uid: string) => {
+    const { data } = await supabase
+      .from("baseline_history")
+      .select("*")
+      .eq("athlete_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setBaselineHistory(data || []);
+  };
+
     const { data, error } = await supabase
       .from("readiness_logs")
       .select("*")
