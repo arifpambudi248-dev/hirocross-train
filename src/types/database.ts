@@ -42,7 +42,7 @@ export type ReadinessLog = {
   vj_score: number;
   rhr_score: number;
   readiness_score: number;
-  readiness_zone: 'low' | 'moderate' | 'prime';
+  readiness_zone: 'prime' | 'normal' | 'fatigue' | 'high_fatigue';
   body_weight?: number | null;
   notes: string;
   created_at: string;

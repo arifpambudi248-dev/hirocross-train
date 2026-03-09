@@ -185,11 +185,13 @@ export default function Readiness() {
 
   const getZoneBadge = (zone: string) => {
     if (zone === "prime") {
-      return <Badge className="bg-success text-white">Prima</Badge>;
-    } else if (zone === "moderate") {
-      return <Badge className="bg-warning text-white">Sedang</Badge>;
+      return <Badge className="bg-success text-white">Supercompensation</Badge>;
+    } else if (zone === "normal") {
+      return <Badge className="bg-primary text-primary-foreground">Normal</Badge>;
+    } else if (zone === "fatigue") {
+      return <Badge className="bg-warning text-white">Fatigue</Badge>;
     } else {
-      return <Badge variant="destructive">Kurang</Badge>;
+      return <Badge variant="destructive">High Fatigue</Badge>;
     }
   };
 
@@ -328,15 +330,16 @@ export default function Readiness() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis domain={[1.5, 2.5]} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis domain={[1.4, 2.4]} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "hsl(var(--card))",
                         border: "1px solid hsl(var(--border))",
                       }}
                     />
-                    <ReferenceLine y={1.9} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Low" />
-                    <ReferenceLine y={2.0} stroke="hsl(var(--warning))" strokeDasharray="3 3" label="Prime" />
+                    <ReferenceLine y={1.6} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="High Fatigue" />
+                    <ReferenceLine y={1.8} stroke="hsl(var(--warning))" strokeDasharray="3 3" label="Fatigue" />
+                    <ReferenceLine y={2.0} stroke="hsl(var(--primary))" strokeDasharray="3 3" label="Normal/Prime" />
                     <Area
                       type="monotone"
                       dataKey="score"
