@@ -328,15 +328,15 @@ export default function Readiness() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis domain={[0, 100]} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis domain={[1.5, 2.5]} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "hsl(var(--card))",
                         border: "1px solid hsl(var(--border))",
                       }}
                     />
-                    <ReferenceLine y={40} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Low" />
-                    <ReferenceLine y={70} stroke="hsl(var(--warning))" strokeDasharray="3 3" label="Moderate" />
+                    <ReferenceLine y={1.9} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Low" />
+                    <ReferenceLine y={2.0} stroke="hsl(var(--warning))" strokeDasharray="3 3" label="Prime" />
                     <Area
                       type="monotone"
                       dataKey="score"
