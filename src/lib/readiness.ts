@@ -1,4 +1,6 @@
 // Utility functions for readiness score calculation
+// Readiness = (VJtoday / VJbaseline) + (HRbaseline / HRtoday)
+// Perfect readiness = 2.0 (when today == baseline for both)
 
 export function computeReadinessScore(
   vj: number,
@@ -6,29 +8,30 @@ export function computeReadinessScore(
   baselineVJ: number,
   baselineRHR: number
 ): { vjScore: number; rhrScore: number; readinessScore: number; zone: 'low' | 'moderate' | 'prime' } {
-  // VJ Score: percentage change from baseline
-  const vjScore = ((vj - baselineVJ) / baselineVJ) * 100;
+  // VJ ratio: VJtoday / VJbaseline
+  const vjScore = vj / baselineVJ;
   
-  // RHR Score: inverse percentage change (lower is better)
-  const rhrScore = ((baselineRHR - rhr) / baselineRHR) * 100;
+  // RHR ratio: HRbaseline / HRtoday
+  const rhrScore = baselineRHR / rhr;
   
-  // Combined readiness score (50/50 weight)
-  const readinessScore = (vjScore + rhrScore) / 2;
+  // Combined readiness score (sum of ratios, perfect = 2.0)
+  const readinessScore = vjScore + rhrScore;
   
-  // Determine zone
+  // Determine zone based on readiness score
+  // 2.0 = perfect, <1.9 = low, 1.9-2.0 = moderate, >=2.0 = prime
   let zone: 'low' | 'moderate' | 'prime';
-  if (readinessScore < -5) {
+  if (readinessScore < 1.9) {
     zone = 'low';
-  } else if (readinessScore < 5) {
+  } else if (readinessScore < 2.0) {
     zone = 'moderate';
   } else {
     zone = 'prime';
   }
   
   return {
-    vjScore: Number(vjScore.toFixed(2)),
-    rhrScore: Number(rhrScore.toFixed(2)),
-    readinessScore: Number(readinessScore.toFixed(2)),
+    vjScore: Number(vjScore.toFixed(3)),
+    rhrScore: Number(rhrScore.toFixed(3)),
+    readinessScore: Number(readinessScore.toFixed(3)),
     zone
   };
 }
