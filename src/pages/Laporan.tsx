@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { FileDown, Users, Activity, Zap, TrendingUp, User } from "lucide-react";
+import { Speedometer } from "@/components/Speedometer";
 import { 
   LineChart, 
   Line, 
@@ -337,11 +338,13 @@ export default function Laporan() {
 
   const getZoneBadge = (zone: string) => {
     if (zone === "prime") {
-      return <Badge className="bg-success text-white">Prima</Badge>;
-    } else if (zone === "moderate") {
-      return <Badge className="bg-warning text-white">Sedang</Badge>;
+      return <Badge className="bg-success text-white">Supercompensation</Badge>;
+    } else if (zone === "normal") {
+      return <Badge className="bg-primary text-primary-foreground">Normal</Badge>;
+    } else if (zone === "fatigue") {
+      return <Badge className="bg-warning text-white">Fatigue</Badge>;
     } else {
-      return <Badge variant="destructive">Kurang</Badge>;
+      return <Badge variant="destructive">High Fatigue</Badge>;
     }
   };
 
@@ -498,13 +501,28 @@ export default function Laporan() {
                 Readiness Terkini
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                {latestReadiness?.readiness_score || 0}
-              </div>
-              <div className="mt-2">
-                {latestReadiness && getZoneBadge(latestReadiness.readiness_zone)}
-              </div>
+            <CardContent className="flex flex-col items-center">
+              {(() => {
+                const score = latestReadiness?.readiness_score || 0;
+                // Convert readiness score (range 1.0–2.5) to 0-100%
+                // 1.0 = 0%, 2.0 = 66.7%, 2.5 = 100%
+                const percentage = Math.min(100, Math.max(0, ((score - 1.0) / 1.5) * 100));
+                const zone = latestReadiness?.readiness_zone || '';
+                const zoneLabel = zone === 'prime' ? 'Supercompensation' 
+                  : zone === 'normal' ? 'Normal' 
+                  : zone === 'fatigue' ? 'Fatigue' 
+                  : zone === 'high_fatigue' ? 'High Fatigue' : 'N/A';
+                return (
+                  <>
+                    <Speedometer value={percentage} size={160} label="Readiness" />
+                    <p className="text-lg font-bold text-primary mt-2">{score}</p>
+                    <div className="mt-1">
+                      {latestReadiness && getZoneBadge(latestReadiness.readiness_zone)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{zoneLabel}</p>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
