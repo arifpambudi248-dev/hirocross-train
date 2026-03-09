@@ -35,6 +35,7 @@ export default function Readiness() {
   const [baselineVj, setBaselineVj] = useState<number>(40);
   const [baselineRhr, setBaselineRhr] = useState<number>(60);
   const [showForm, setShowForm] = useState(false);
+  const [baselineHistory, setBaselineHistory] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     vj: 40,
