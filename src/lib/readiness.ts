@@ -19,13 +19,15 @@ export function computeReadinessScore(
   
   // Determine zone based on readiness score
   // 2.0 = perfect, <1.9 = low, 1.9-2.0 = moderate, >=2.0 = prime
-  let zone: 'low' | 'moderate' | 'prime';
-  if (readinessScore < 1.9) {
-    zone = 'low';
-  } else if (readinessScore < 2.0) {
-    zone = 'moderate';
-  } else {
+  let zone: 'prime' | 'normal' | 'fatigue' | 'high_fatigue';
+  if (readinessScore > 2.0) {
     zone = 'prime';
+  } else if (readinessScore >= 1.8) {
+    zone = 'normal';
+  } else if (readinessScore >= 1.6) {
+    zone = 'fatigue';
+  } else {
+    zone = 'high_fatigue';
   }
   
   return {
