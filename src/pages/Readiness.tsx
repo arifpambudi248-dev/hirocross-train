@@ -17,7 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, FileDown } from "lucide-react";
+import { Plus, FileDown, TrendingUp } from "lucide-react";
 import { exportReadinessToPDF, type ReadinessExportData } from "@/lib/exportUtils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceLine } from "recharts";
 import { computeReadinessScore } from "@/lib/readiness";
