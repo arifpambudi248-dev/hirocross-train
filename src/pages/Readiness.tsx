@@ -165,6 +165,38 @@ export default function Readiness() {
       if (error) throw error;
 
       toast.success("Readiness log berhasil disimpan");
+
+      // Auto-update baseline if improved
+      let baselineUpdated = false;
+      const updates: Record<string, number> = {};
+
+      if (validatedData.vj > baselineVj) {
+        updates.baseline_vj = validatedData.vj;
+        baselineUpdated = true;
+      }
+      if (validatedData.rhr < baselineRhr) {
+        updates.baseline_rhr = validatedData.rhr;
+        baselineUpdated = true;
+      }
+
+      if (baselineUpdated) {
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update(updates)
+          .eq("id", selectedAthleteId);
+
+        if (!updateError) {
+          if (updates.baseline_vj) {
+            toast.success(`⬆️ Baseline VJ naik: ${baselineVj} → ${updates.baseline_vj} cm`, { duration: 5000 });
+            setBaselineVj(updates.baseline_vj);
+          }
+          if (updates.baseline_rhr) {
+            toast.success(`⬆️ Baseline RHR membaik: ${baselineRhr} → ${updates.baseline_rhr} bpm`, { duration: 5000 });
+            setBaselineRhr(updates.baseline_rhr);
+          }
+        }
+      }
+
       loadLogs(selectedAthleteId);
       setShowForm(false);
       setFormData({
