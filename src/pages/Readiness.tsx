@@ -123,6 +123,7 @@ export default function Readiness() {
     setBaselineHistory(data || []);
   };
 
+  const loadLogs = async (uid: string) => {
     const { data, error } = await supabase
       .from("readiness_logs")
       .select("*")
