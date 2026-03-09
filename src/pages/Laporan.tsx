@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { FileDown, Users, Activity, Zap, TrendingUp, User } from "lucide-react";
+import { Speedometer } from "@/components/Speedometer";
 import { 
   LineChart, 
   Line, 
