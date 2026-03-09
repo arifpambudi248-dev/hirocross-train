@@ -17,7 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, FileDown } from "lucide-react";
+import { Plus, FileDown, TrendingUp } from "lucide-react";
 import { exportReadinessToPDF, type ReadinessExportData } from "@/lib/exportUtils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceLine } from "recharts";
 import { computeReadinessScore } from "@/lib/readiness";
@@ -165,6 +165,38 @@ export default function Readiness() {
       if (error) throw error;
 
       toast.success("Readiness log berhasil disimpan");
+
+      // Auto-update baseline if improved
+      let baselineUpdated = false;
+      const updates: Record<string, number> = {};
+
+      if (validatedData.vj > baselineVj) {
+        updates.baseline_vj = validatedData.vj;
+        baselineUpdated = true;
+      }
+      if (validatedData.rhr < baselineRhr) {
+        updates.baseline_rhr = validatedData.rhr;
+        baselineUpdated = true;
+      }
+
+      if (baselineUpdated) {
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update(updates)
+          .eq("id", selectedAthleteId);
+
+        if (!updateError) {
+          if (updates.baseline_vj) {
+            toast.success(`⬆️ Baseline VJ naik: ${baselineVj} → ${updates.baseline_vj} cm`, { duration: 5000 });
+            setBaselineVj(updates.baseline_vj);
+          }
+          if (updates.baseline_rhr) {
+            toast.success(`⬆️ Baseline RHR membaik: ${baselineRhr} → ${updates.baseline_rhr} bpm`, { duration: 5000 });
+            setBaselineRhr(updates.baseline_rhr);
+          }
+        }
+      }
+
       loadLogs(selectedAthleteId);
       setShowForm(false);
       setFormData({
@@ -304,10 +336,16 @@ export default function Readiness() {
                     Opsional - untuk prediksi power yang akurat
                   </p>
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-2 flex items-center gap-4">
                   <p className="text-sm text-muted-foreground">
                     Baseline: VJ = {baselineVj} cm, RHR = {baselineRhr} bpm
                   </p>
+                  {(formData.vj > baselineVj || formData.rhr < baselineRhr) && (
+                    <Badge className="bg-success text-white gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      Baseline akan diperbarui!
+                    </Badge>
+                  )}
                 </div>
                 <div className="col-span-2 flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setShowForm(false)}>
