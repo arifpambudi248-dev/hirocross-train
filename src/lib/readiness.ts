@@ -2,12 +2,14 @@
 // Readiness = (VJtoday / VJbaseline) + (HRbaseline / HRtoday)
 // Perfect readiness = 2.0 (when today == baseline for both)
 
+export type ReadinessZone = 'prime' | 'normal' | 'fatigue' | 'high_fatigue';
+
 export function computeReadinessScore(
   vj: number,
   rhr: number,
   baselineVJ: number,
   baselineRHR: number
-): { vjScore: number; rhrScore: number; readinessScore: number; zone: 'low' | 'moderate' | 'prime' } {
+): { vjScore: number; rhrScore: number; readinessScore: number; zone: ReadinessZone } {
   // VJ ratio: VJtoday / VJbaseline
   const vjScore = vj / baselineVJ;
   
