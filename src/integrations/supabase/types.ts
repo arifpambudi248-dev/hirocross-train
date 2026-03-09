@@ -107,6 +107,33 @@ export type Database = {
         }
         Relationships: []
       }
+      baseline_history: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          field_name: string
+          id: string
+          new_value: number
+          old_value: number
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          field_name: string
+          id?: string
+          new_value: number
+          old_value: number
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          field_name?: string
+          id?: string
+          new_value?: number
+          old_value?: number
+        }
+        Relationships: []
+      }
       coach_athletes: {
         Row: {
           assigned_at: string

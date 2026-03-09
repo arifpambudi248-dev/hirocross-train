@@ -35,6 +35,7 @@ export default function Readiness() {
   const [baselineVj, setBaselineVj] = useState<number>(40);
   const [baselineRhr, setBaselineRhr] = useState<number>(60);
   const [showForm, setShowForm] = useState(false);
+  const [baselineHistory, setBaselineHistory] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     vj: 40,
@@ -51,6 +52,7 @@ export default function Readiness() {
     if (selectedAthleteId) {
       loadLogs(selectedAthleteId);
       loadBaseline(selectedAthleteId);
+      loadBaselineHistory(selectedAthleteId);
     }
   }, [selectedAthleteId]);
 
@@ -109,6 +111,16 @@ export default function Readiness() {
       setBaselineVj(p.baseline_vj || 40);
       setBaselineRhr(p.baseline_rhr || 60);
     }
+  };
+
+  const loadBaselineHistory = async (uid: string) => {
+    const { data } = await supabase
+      .from("baseline_history")
+      .select("*")
+      .eq("athlete_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setBaselineHistory(data || []);
   };
 
   const loadLogs = async (uid: string) => {
@@ -186,13 +198,31 @@ export default function Readiness() {
           .eq("id", selectedAthleteId);
 
         if (!updateError) {
+          // Log baseline history
+          const historyEntries = [];
           if (updates.baseline_vj) {
+            historyEntries.push({
+              athlete_id: selectedAthleteId,
+              field_name: 'baseline_vj',
+              old_value: baselineVj,
+              new_value: updates.baseline_vj,
+            });
             toast.success(`⬆️ Baseline VJ naik: ${baselineVj} → ${updates.baseline_vj} cm`, { duration: 5000 });
             setBaselineVj(updates.baseline_vj);
           }
           if (updates.baseline_rhr) {
+            historyEntries.push({
+              athlete_id: selectedAthleteId,
+              field_name: 'baseline_rhr',
+              old_value: baselineRhr,
+              new_value: updates.baseline_rhr,
+            });
             toast.success(`⬆️ Baseline RHR membaik: ${baselineRhr} → ${updates.baseline_rhr} bpm`, { duration: 5000 });
             setBaselineRhr(updates.baseline_rhr);
+          }
+          if (historyEntries.length > 0) {
+            await supabase.from("baseline_history").insert(historyEntries);
+            loadBaselineHistory(selectedAthleteId);
           }
         }
       }
@@ -430,6 +460,51 @@ export default function Readiness() {
             )}
           </CardContent>
         </Card>
+
+        {/* Baseline History */}
+        {baselineHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-success" />
+                Riwayat Perubahan Baseline
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Parameter</TableHead>
+                    <TableHead>Nilai Lama</TableHead>
+                    <TableHead>Nilai Baru</TableHead>
+                    <TableHead>Perubahan</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {baselineHistory.map((h: any) => {
+                    const isVJ = h.field_name === 'baseline_vj';
+                    const diff = h.new_value - h.old_value;
+                    return (
+                      <TableRow key={h.id}>
+                        <TableCell>{new Date(h.created_at).toLocaleDateString('id-ID')}</TableCell>
+                        <TableCell>{isVJ ? 'Vertical Jump' : 'Resting HR'}</TableCell>
+                        <TableCell>{h.old_value} {isVJ ? 'cm' : 'bpm'}</TableCell>
+                        <TableCell className="font-semibold">{h.new_value} {isVJ ? 'cm' : 'bpm'}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-success text-white gap-1">
+                            <TrendingUp className="h-3 w-3" />
+                            {isVJ ? `+${diff}` : `${diff}`} {isVJ ? 'cm' : 'bpm'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
       </div>
       <BottomNavigation />
     </div>
