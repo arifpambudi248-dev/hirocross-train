@@ -337,11 +337,13 @@ export default function Laporan() {
 
   const getZoneBadge = (zone: string) => {
     if (zone === "prime") {
-      return <Badge className="bg-success text-white">Prima</Badge>;
-    } else if (zone === "moderate") {
-      return <Badge className="bg-warning text-white">Sedang</Badge>;
+      return <Badge className="bg-success text-white">Supercompensation</Badge>;
+    } else if (zone === "normal") {
+      return <Badge className="bg-primary text-primary-foreground">Normal</Badge>;
+    } else if (zone === "fatigue") {
+      return <Badge className="bg-warning text-white">Fatigue</Badge>;
     } else {
-      return <Badge variant="destructive">Kurang</Badge>;
+      return <Badge variant="destructive">High Fatigue</Badge>;
     }
   };
 
