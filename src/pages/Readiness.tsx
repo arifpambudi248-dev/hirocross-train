@@ -52,6 +52,7 @@ export default function Readiness() {
     if (selectedAthleteId) {
       loadLogs(selectedAthleteId);
       loadBaseline(selectedAthleteId);
+      loadBaselineHistory(selectedAthleteId);
     }
   }, [selectedAthleteId]);
 
