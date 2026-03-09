@@ -336,10 +336,16 @@ export default function Readiness() {
                     Opsional - untuk prediksi power yang akurat
                   </p>
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-2 flex items-center gap-4">
                   <p className="text-sm text-muted-foreground">
                     Baseline: VJ = {baselineVj} cm, RHR = {baselineRhr} bpm
                   </p>
+                  {(formData.vj > baselineVj || formData.rhr < baselineRhr) && (
+                    <Badge className="bg-success text-white gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      Baseline akan diperbarui!
+                    </Badge>
+                  )}
                 </div>
                 <div className="col-span-2 flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setShowForm(false)}>
