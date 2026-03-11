@@ -1297,9 +1297,26 @@ export default function AnnualPlan() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-bottom-nav">
-      <Navigation />
-      <div className="container mx-auto px-4 py-8 space-y-6">
+    <div className="min-h-screen bg-background flex">
+      <SidebarNavigation />
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar for mobile + compact header */}
+        <div className="lg:hidden">
+          <Navigation />
+        </div>
+        <header className="hidden lg:flex items-center justify-between px-6 py-3 border-b border-border bg-card">
+          <div className="flex items-center gap-2">
+            <img src={logo} alt="Hirocross Logo" className="h-8 w-auto" />
+            <h1 className="text-lg font-bold text-primary">HIRO CROSS</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground font-medium">{isCoach ? "Admin" : ""}</span>
+            <Button variant="destructive" size="sm" onClick={async () => { await supabase.auth.signOut(); }}>
+              LOGOUT
+            </Button>
+          </div>
+        </header>
+        <div className="flex-1 overflow-auto px-4 lg:px-6 py-4 lg:py-6 space-y-6 pb-bottom-nav lg:pb-6">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
