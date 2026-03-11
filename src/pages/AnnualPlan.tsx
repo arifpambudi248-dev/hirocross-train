@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Navigation } from "@/components/Navigation";
+import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
+import logo from "@/assets/hirocross-logo.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
