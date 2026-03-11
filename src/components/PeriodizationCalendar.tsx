@@ -159,6 +159,15 @@ export function PeriodizationCalendar({
   const [biomotorBulkLabel, setBiomotorBulkLabel] = useState("");
   const [showBiomotorBulkDialog, setShowBiomotorBulkDialog] = useState<string | null>(null);
 
+  // Zoom level: 0 = fit-all, 1 = compact, 2 = normal, 3 = wide
+  const ZOOM_LEVELS = [
+    { label: "Fit", colWidth: 0, fontSize: "text-[8px]", padding: "px-0.5 py-1" },
+    { label: "S", colWidth: 30, fontSize: "text-[9px]", padding: "px-1 py-1" },
+    { label: "M", colWidth: 45, fontSize: "text-xs", padding: "p-2" },
+    { label: "L", colWidth: 65, fontSize: "text-xs", padding: "p-2" },
+  ];
+  const [zoomLevel, setZoomLevel] = useState(2);
+
   const calendarData = useMemo(() => {
     if (!startDate || !competitionDate) return null;
 
