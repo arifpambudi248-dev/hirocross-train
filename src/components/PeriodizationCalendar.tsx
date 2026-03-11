@@ -437,7 +437,7 @@ export function PeriodizationCalendar({
       )}
 
       <ScrollArea className="w-full whitespace-nowrap rounded-lg border">
-        <div className="min-w-max">
+        <div>
           <table className="w-full border-collapse text-xs">
             <tbody>
               {/* Row 1: BULAN */}
