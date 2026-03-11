@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback } from "react";
 import { format, addDays, parseISO, differenceInDays, isWithinInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Trophy, FlaskConical, X, Check, Plus, Minus, AlertTriangle } from "lucide-react";
+import { Trophy, FlaskConical, X, Check, Plus, Minus, AlertTriangle, ZoomIn, ZoomOut } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,6 +158,15 @@ export function PeriodizationCalendar({
   const [selectedBiomotorWeeks, setSelectedBiomotorWeeks] = useState<{ [biomotorKey: string]: number[] }>({});
   const [biomotorBulkLabel, setBiomotorBulkLabel] = useState("");
   const [showBiomotorBulkDialog, setShowBiomotorBulkDialog] = useState<string | null>(null);
+
+  // Zoom level: 0 = fit-all, 1 = compact, 2 = normal, 3 = wide
+  const ZOOM_LEVELS = [
+    { label: "Fit", colWidth: 0, fontSize: "text-[8px]", padding: "px-0.5 py-1" },
+    { label: "S", colWidth: 30, fontSize: "text-[9px]", padding: "px-1 py-1" },
+    { label: "M", colWidth: 45, fontSize: "text-xs", padding: "p-2" },
+    { label: "L", colWidth: 65, fontSize: "text-xs", padding: "p-2" },
+  ];
+  const [zoomLevel, setZoomLevel] = useState(2);
 
   const calendarData = useMemo(() => {
     if (!startDate || !competitionDate) return null;
@@ -436,17 +445,41 @@ export function PeriodizationCalendar({
         </Alert>
       )}
 
+      {/* Zoom Controls */}
+      <div className="flex items-center justify-end gap-2 mb-2">
+        <span className="text-xs text-muted-foreground">Zoom:</span>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-7 w-7"
+          disabled={zoomLevel <= 0}
+          onClick={() => setZoomLevel(z => Math.max(0, z - 1))}
+        >
+          <ZoomOut className="h-3.5 w-3.5" />
+        </Button>
+        <span className="text-xs font-medium w-6 text-center">{ZOOM_LEVELS[zoomLevel].label}</span>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-7 w-7"
+          disabled={zoomLevel >= ZOOM_LEVELS.length - 1}
+          onClick={() => setZoomLevel(z => Math.min(ZOOM_LEVELS.length - 1, z + 1))}
+        >
+          <ZoomIn className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
       <ScrollArea className="w-full whitespace-nowrap rounded-lg border">
         <div>
-          <table className="w-full border-collapse text-xs">
+          <table className={cn("w-full border-collapse", ZOOM_LEVELS[zoomLevel].fontSize)}>
             <tbody>
               {/* Row 1: BULAN */}
               <tr>
-                <td className="bg-orange-500 dark:bg-orange-600 text-white font-bold p-2 border border-orange-600 dark:border-orange-700 sticky left-0 z-20 min-w-[100px]">
+                <td className="bg-orange-500 dark:bg-orange-600 text-white font-bold p-2 border border-orange-600 dark:border-orange-700 sticky left-0 z-20 min-w-[80px]">
                   BULAN
                 </td>
                 {months.map((month, idx) => (
-                  <td key={idx} colSpan={month.weeks.length} className="bg-orange-500 dark:bg-orange-600 text-white font-bold p-2 border border-orange-600 dark:border-orange-700 text-center whitespace-nowrap">
+                  <td key={idx} colSpan={month.weeks.length} className={cn("bg-orange-500 dark:bg-orange-600 text-white font-bold border border-orange-600 dark:border-orange-700 text-center whitespace-nowrap", ZOOM_LEVELS[zoomLevel].padding)}>
                     {month.name}
                   </td>
                 ))}
@@ -458,7 +491,11 @@ export function PeriodizationCalendar({
                   MINGGU
                 </td>
                 {weeks.map((week) => (
-                  <td key={week.weekNumber} className="bg-orange-400 dark:bg-orange-500 text-white font-medium p-2 border border-orange-500 dark:border-orange-600 text-center min-w-[45px]">
+                  <td
+                    key={week.weekNumber}
+                    className={cn("bg-orange-400 dark:bg-orange-500 text-white font-medium border border-orange-500 dark:border-orange-600 text-center", ZOOM_LEVELS[zoomLevel].padding)}
+                    style={ZOOM_LEVELS[zoomLevel].colWidth > 0 ? { minWidth: ZOOM_LEVELS[zoomLevel].colWidth } : undefined}
+                  >
                     {week.weekNumber}
                   </td>
                 ))}
