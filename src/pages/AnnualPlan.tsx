@@ -2275,10 +2275,7 @@ export default function AnnualPlan() {
           </Card>
         )}
       </div>
-      </div>
-      <div className="lg:hidden">
-        <BottomNavigation />
-      </div>
+      <BottomNavigation />
     </div>
   );
 }
