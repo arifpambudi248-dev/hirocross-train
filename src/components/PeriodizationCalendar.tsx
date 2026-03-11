@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback } from "react";
 import { format, addDays, parseISO, differenceInDays, isWithinInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Trophy, FlaskConical, X, Check, Plus, Minus, AlertTriangle } from "lucide-react";
+import { Trophy, FlaskConical, X, Check, Plus, Minus, AlertTriangle, ZoomIn, ZoomOut } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
