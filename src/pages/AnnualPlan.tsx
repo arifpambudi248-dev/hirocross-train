@@ -744,6 +744,13 @@ export default function AnnualPlan() {
       competition_date: competitionDate,
       percentages: editablePercentages,
       planned_loads: editableLoads,
+      biomotor_config: {
+        kekuatan: biomotorConfig.kekuatan,
+        kecepatan: biomotorConfig.kecepatan,
+        dayaTahan: biomotorConfig.daya_tahan,
+        teknik: biomotorConfig.teknik,
+        taktik: biomotorConfig.taktik,
+      },
     };
 
     if (currentPlanId) {
