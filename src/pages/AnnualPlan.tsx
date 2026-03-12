@@ -744,6 +744,13 @@ export default function AnnualPlan() {
       competition_date: competitionDate,
       percentages: editablePercentages,
       planned_loads: editableLoads,
+      biomotor_config: {
+        kekuatan: biomotorConfig.kekuatan,
+        kecepatan: biomotorConfig.kecepatan,
+        dayaTahan: biomotorConfig.daya_tahan,
+        teknik: biomotorConfig.teknik,
+        taktik: biomotorConfig.taktik,
+      },
     };
 
     if (currentPlanId) {
@@ -788,6 +795,18 @@ export default function AnnualPlan() {
       setEditableLoads(selectedPlan.planned_loads || {});
       setSelectedAthleteId(selectedPlan.athlete_id);
       setShowLoadDialog(false);
+      
+      // Load biomotor config from saved plan
+      if (selectedPlan.biomotor_config) {
+        const bc = selectedPlan.biomotor_config as any;
+        setBiomotorConfig({
+          kekuatan: bc.kekuatan ?? 10000,
+          kecepatan: bc.kecepatan ?? 800,
+          daya_tahan: bc.dayaTahan ?? bc.daya_tahan ?? 20,
+          teknik: bc.teknik ?? 500,
+          taktik: bc.taktik ?? 200,
+        });
+      }
       
       generatePlanWithData(
         selectedPlan.start_date,
@@ -1502,7 +1521,89 @@ export default function AnnualPlan() {
                   onChange={(e) => setCompetitionDate(e.target.value)}
                   disabled={!isCoach}
                 />
+            </div>
+
+            {/* Biomotor Target Configuration - inline in plan creation */}
+            {isCoach && (
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-sm font-medium mb-3 block">Target Biomotor (Base Value pada 100% Volume)</Label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Target per minggu dihitung otomatis: (volume% × base value)
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-kekuatan" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-500 rounded"></div>
+                      Kekuatan (kg/reps)
+                    </Label>
+                    <Input
+                      id="bio-kekuatan"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.kekuatan}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, kekuatan: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-kecepatan" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                      Kecepatan (meter)
+                    </Label>
+                    <Input
+                      id="bio-kecepatan"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.kecepatan}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, kecepatan: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-dayatahan" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                      Daya Tahan (km)
+                    </Label>
+                    <Input
+                      id="bio-dayatahan"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.daya_tahan}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, daya_tahan: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-teknik" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded"></div>
+                      Teknik (reps)
+                    </Label>
+                    <Input
+                      id="bio-teknik"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.teknik}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, teknik: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-taktik" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                      Taktik (reps/sets)
+                    </Label>
+                    <Input
+                      id="bio-taktik"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.taktik}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, taktik: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
               </div>
+            )}
               <div className="space-y-2">
                 <Label htmlFor="autoAdjust">Auto-Adjust Load</Label>
                 <div className="flex items-center h-10 space-x-2">
@@ -1723,120 +1824,6 @@ export default function AnnualPlan() {
           </Card>
         )}
 
-        {/* Biomotor Configuration Card */}
-        {phases.length > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Konfigurasi Target Biomotor</CardTitle>
-              {isCoach && (
-                <Button
-                  variant={isEditingBiomotor ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsEditingBiomotor(!isEditingBiomotor)}
-                >
-                  {isEditingBiomotor ? (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Selesai
-                    </>
-                  ) : (
-                    <>
-                      <Pencil className="w-4 h-4 mr-2" />
-                      Edit Base Values
-                    </>
-                  )}
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Base values adalah nilai target pada 100% volume. Target per minggu dihitung: (volume% × base value)
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bio-kekuatan" className="text-xs font-medium flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-500 rounded"></div>
-                    Kekuatan
-                  </Label>
-                  <Input
-                    id="bio-kekuatan"
-                    type="number"
-                    min="0"
-                    value={biomotorConfig.kekuatan}
-                    onChange={(e) => setBiomotorConfig(prev => ({ ...prev, kekuatan: Number(e.target.value) }))}
-                    disabled={!isEditingBiomotor}
-                    className="h-9"
-                  />
-                  <span className="text-xs text-muted-foreground">kg/reps</span>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bio-kecepatan" className="text-xs font-medium flex items-center gap-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                    Kecepatan
-                  </Label>
-                  <Input
-                    id="bio-kecepatan"
-                    type="number"
-                    min="0"
-                    value={biomotorConfig.kecepatan}
-                    onChange={(e) => setBiomotorConfig(prev => ({ ...prev, kecepatan: Number(e.target.value) }))}
-                    disabled={!isEditingBiomotor}
-                    className="h-9"
-                  />
-                  <span className="text-xs text-muted-foreground">meter</span>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bio-dayatahan" className="text-xs font-medium flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                    Daya Tahan
-                  </Label>
-                  <Input
-                    id="bio-dayatahan"
-                    type="number"
-                    min="0"
-                    value={biomotorConfig.daya_tahan}
-                    onChange={(e) => setBiomotorConfig(prev => ({ ...prev, daya_tahan: Number(e.target.value) }))}
-                    disabled={!isEditingBiomotor}
-                    className="h-9"
-                  />
-                  <span className="text-xs text-muted-foreground">km</span>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bio-teknik" className="text-xs font-medium flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded"></div>
-                    Teknik
-                  </Label>
-                  <Input
-                    id="bio-teknik"
-                    type="number"
-                    min="0"
-                    value={biomotorConfig.teknik}
-                    onChange={(e) => setBiomotorConfig(prev => ({ ...prev, teknik: Number(e.target.value) }))}
-                    disabled={!isEditingBiomotor}
-                    className="h-9"
-                  />
-                  <span className="text-xs text-muted-foreground">reps</span>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bio-taktik" className="text-xs font-medium flex items-center gap-2">
-                    <div className="w-3 h-3 bg-purple-500 rounded"></div>
-                    Taktik
-                  </Label>
-                  <Input
-                    id="bio-taktik"
-                    type="number"
-                    min="0"
-                    value={biomotorConfig.taktik}
-                    onChange={(e) => setBiomotorConfig(prev => ({ ...prev, taktik: Number(e.target.value) }))}
-                    disabled={!isEditingBiomotor}
-                    className="h-9"
-                  />
-                  <span className="text-xs text-muted-foreground">reps/sets</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Periodization Calendar */}
         {phases.length > 0 && generatedWeeklyData.length > 0 && (
