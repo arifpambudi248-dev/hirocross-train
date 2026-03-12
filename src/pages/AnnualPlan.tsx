@@ -796,6 +796,18 @@ export default function AnnualPlan() {
       setSelectedAthleteId(selectedPlan.athlete_id);
       setShowLoadDialog(false);
       
+      // Load biomotor config from saved plan
+      if (selectedPlan.biomotor_config) {
+        const bc = selectedPlan.biomotor_config as any;
+        setBiomotorConfig({
+          kekuatan: bc.kekuatan ?? 10000,
+          kecepatan: bc.kecepatan ?? 800,
+          daya_tahan: bc.dayaTahan ?? bc.daya_tahan ?? 20,
+          teknik: bc.teknik ?? 500,
+          taktik: bc.taktik ?? 200,
+        });
+      }
+      
       generatePlanWithData(
         selectedPlan.start_date,
         selectedPlan.competition_date,
