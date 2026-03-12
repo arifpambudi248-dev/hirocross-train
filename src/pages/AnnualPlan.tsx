@@ -1521,7 +1521,89 @@ export default function AnnualPlan() {
                   onChange={(e) => setCompetitionDate(e.target.value)}
                   disabled={!isCoach}
                 />
+            </div>
+
+            {/* Biomotor Target Configuration - inline in plan creation */}
+            {isCoach && (
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-sm font-medium mb-3 block">Target Biomotor (Base Value pada 100% Volume)</Label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Target per minggu dihitung otomatis: (volume% × base value)
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-kekuatan" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-500 rounded"></div>
+                      Kekuatan (kg/reps)
+                    </Label>
+                    <Input
+                      id="bio-kekuatan"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.kekuatan}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, kekuatan: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-kecepatan" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                      Kecepatan (meter)
+                    </Label>
+                    <Input
+                      id="bio-kecepatan"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.kecepatan}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, kecepatan: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-dayatahan" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                      Daya Tahan (km)
+                    </Label>
+                    <Input
+                      id="bio-dayatahan"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.daya_tahan}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, daya_tahan: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-teknik" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded"></div>
+                      Teknik (reps)
+                    </Label>
+                    <Input
+                      id="bio-teknik"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.teknik}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, teknik: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="bio-taktik" className="text-xs font-medium flex items-center gap-2">
+                      <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                      Taktik (reps/sets)
+                    </Label>
+                    <Input
+                      id="bio-taktik"
+                      type="number"
+                      min="0"
+                      value={biomotorConfig.taktik}
+                      onChange={(e) => setBiomotorConfig(prev => ({ ...prev, taktik: Number(e.target.value) }))}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
               </div>
+            )}
               <div className="space-y-2">
                 <Label htmlFor="autoAdjust">Auto-Adjust Load</Label>
                 <div className="flex items-center h-10 space-x-2">
