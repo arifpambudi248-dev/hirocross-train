@@ -812,6 +812,45 @@ export function PeriodizationCalendar({
               })}
 
 
+              {/* Biomotor Target Rows - calculated from volume% × base value */}
+              {BIOMOTOR_FOCUS_TYPES.map((bio) => (
+                <tr key={`bio-target-${bio.key}`}>
+                  <td className={cn(
+                    "font-medium p-2 border sticky left-0 z-20",
+                    bio.headerBg, bio.headerText
+                  )}>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-bold">{bio.label}</span>
+                      <span className="text-[8px] opacity-70">Target</span>
+                    </div>
+                  </td>
+                  {weeks.map((week) => {
+                    const volumePercent = week.volume / 100;
+                    const baseValue = biomotorConfig[bio.key as keyof typeof biomotorConfig] || 0;
+                    const targetValue = Math.round(volumePercent * baseValue);
+                    
+                    // Format large numbers
+                    const displayValue = targetValue >= 1000 
+                      ? `${(targetValue / 1000).toFixed(1)}k` 
+                      : targetValue.toString();
+                    
+                    return (
+                      <td
+                        key={`bio-${bio.key}-${week.weekNumber}`}
+                        className={cn(
+                          "p-1 border text-center",
+                          bio.bgLight, bio.borderColor
+                        )}
+                      >
+                        <span className={cn("font-semibold", bio.textColor, ZOOM_LEVELS[zoomLevel].fontSize)}>
+                          {displayValue}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+
               {/* Volume & Intensity Line Graph Row - Integrated into table */}
               <tr>
                 <td colSpan={weeks.length + 1} className="bg-slate-100 dark:bg-slate-800 p-0 border border-slate-200 dark:border-slate-700">
