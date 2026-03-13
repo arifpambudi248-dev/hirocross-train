@@ -132,6 +132,15 @@ export default function ProgramLatihan() {
   // Exercise type filter
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<string>("all");
 
+  // Biomotor weekly targets from active annual plan
+  const [weeklyBiomotorTarget, setWeeklyBiomotorTarget] = useState<{
+    planName: string;
+    weekNumber: number;
+    totalWeeks: number;
+    volume: number;
+    targets: { kekuatan: number; kecepatan: number; daya_tahan: number; teknik: number; taktik: number };
+  } | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
