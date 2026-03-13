@@ -939,6 +939,69 @@ export function PeriodizationCalendar({
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+
+      {/* Biomotor Target Table - Separate section below graph */}
+      <div className="mt-4">
+        <h4 className="text-sm font-semibold mb-2">TARGET BIOMOTOR PER MINGGU</h4>
+        <ScrollArea className="w-full">
+          <div className="min-w-max">
+            <table className="border-collapse text-center w-full">
+              <thead>
+                <tr>
+                  <th className="p-2 border bg-muted sticky left-0 z-20 text-xs font-bold min-w-[100px]">Komponen</th>
+                  {weeks.map((week) => (
+                    <th key={`bio-header-${week.weekNumber}`} className={cn("p-1 border text-center min-w-[40px]", ZOOM_LEVELS[zoomLevel].fontSize)}>
+                      <div className="font-bold">M{week.weekNumber}</div>
+                      <div className="text-muted-foreground text-[8px]">{week.volume}%</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {BIOMOTOR_FOCUS_TYPES.map((bio) => (
+                  <tr key={`bio-target-${bio.key}`}>
+                    <td className={cn(
+                      "font-medium p-2 border sticky left-0 z-20",
+                      bio.headerBg, bio.headerText
+                    )}>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold">{bio.label}</span>
+                        <span className="text-[8px] opacity-70">
+                          {bio.key === 'kekuatan' ? 'kg' : bio.key === 'kecepatan' ? 'm' : bio.key === 'daya_tahan' ? 'km' : 'reps'}
+                        </span>
+                      </div>
+                    </td>
+                    {weeks.map((week) => {
+                      const volumePercent = week.volume / 100;
+                      const baseValue = biomotorConfig[bio.key as keyof typeof biomotorConfig] || 0;
+                      const targetValue = Math.round(volumePercent * baseValue);
+                      
+                      const displayValue = targetValue >= 1000 
+                        ? `${(targetValue / 1000).toFixed(1)}k` 
+                        : targetValue.toString();
+                      
+                      return (
+                        <td
+                          key={`bio-${bio.key}-${week.weekNumber}`}
+                          className={cn(
+                            "p-1 border text-center",
+                            bio.bgLight, bio.borderColor
+                          )}
+                        >
+                          <span className={cn("font-semibold", bio.textColor, ZOOM_LEVELS[zoomLevel].fontSize)}>
+                            {displayValue}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </div>
       
       {isEditing && isCoach && (
         <p className="text-xs text-muted-foreground">
