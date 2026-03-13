@@ -157,6 +157,7 @@ export default function ProgramLatihan() {
     if (selectedAthleteId) {
       fetchSessions(selectedAthleteId);
       fetchTemplates(selectedAthleteId);
+      fetchActiveBiomotorTargets(selectedAthleteId);
     }
   }, [selectedAthleteId]);
 
