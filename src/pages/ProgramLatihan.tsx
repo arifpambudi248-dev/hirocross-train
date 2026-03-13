@@ -1449,6 +1449,50 @@ export default function ProgramLatihan() {
             </div>
           )}
 
+          {/* Biomotor Weekly Target from Annual Plan */}
+          {weeklyBiomotorTarget && (
+            <Card className="mb-6 border-primary/30">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-primary" />
+                    <span className="font-semibold text-sm">Target Biomotor Minggu {weeklyBiomotorTarget.weekNumber}/{weeklyBiomotorTarget.totalWeeks}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {weeklyBiomotorTarget.planName} • Volume {weeklyBiomotorTarget.volume}%
+                  </span>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-center">
+                    <div className="text-[10px] text-red-600 dark:text-red-400 font-medium">Kekuatan</div>
+                    <div className="text-sm font-bold text-red-700 dark:text-red-300">{weeklyBiomotorTarget.targets.kekuatan.toLocaleString()}</div>
+                    <div className="text-[9px] text-muted-foreground">kg/reps</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-900 text-center">
+                    <div className="text-[10px] text-yellow-600 dark:text-yellow-400 font-medium">Kecepatan</div>
+                    <div className="text-sm font-bold text-yellow-700 dark:text-yellow-300">{weeklyBiomotorTarget.targets.kecepatan.toLocaleString()}</div>
+                    <div className="text-[9px] text-muted-foreground">meter</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 text-center">
+                    <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">D.Tahan</div>
+                    <div className="text-sm font-bold text-blue-700 dark:text-blue-300">{weeklyBiomotorTarget.targets.daya_tahan}</div>
+                    <div className="text-[9px] text-muted-foreground">km</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 text-center">
+                    <div className="text-[10px] text-green-600 dark:text-green-400 font-medium">Teknik</div>
+                    <div className="text-sm font-bold text-green-700 dark:text-green-300">{weeklyBiomotorTarget.targets.teknik}</div>
+                    <div className="text-[9px] text-muted-foreground">reps</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900 text-center">
+                    <div className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">Taktik</div>
+                    <div className="text-sm font-bold text-purple-700 dark:text-purple-300">{weeklyBiomotorTarget.targets.taktik}</div>
+                    <div className="text-[9px] text-muted-foreground">reps/sets</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Filter and Calendar Grid */}
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             {/* Filter Bar */}
