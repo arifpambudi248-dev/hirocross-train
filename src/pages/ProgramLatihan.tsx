@@ -332,7 +332,7 @@ export default function ProgramLatihan() {
     }
   };
 
-
+  const handleDragStart = (event: DragStartEvent) => {
     const session = sessions.find(s => s.id === event.active.id);
     setActiveSession(session || null);
   };
