@@ -132,6 +132,15 @@ export default function ProgramLatihan() {
   // Exercise type filter
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<string>("all");
 
+  // Biomotor weekly targets from active annual plan
+  const [weeklyBiomotorTarget, setWeeklyBiomotorTarget] = useState<{
+    planName: string;
+    weekNumber: number;
+    totalWeeks: number;
+    volume: number;
+    targets: { kekuatan: number; kecepatan: number; daya_tahan: number; teknik: number; taktik: number };
+  } | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -148,6 +157,7 @@ export default function ProgramLatihan() {
     if (selectedAthleteId) {
       fetchSessions(selectedAthleteId);
       fetchTemplates(selectedAthleteId);
+      fetchActiveBiomotorTargets(selectedAthleteId);
     }
   }, [selectedAthleteId]);
 
@@ -259,8 +269,70 @@ export default function ProgramLatihan() {
       handleError(error, getFriendlyErrorMessage(error));
     }
   };
+  const fetchActiveBiomotorTargets = async (athleteId: string) => {
+    try {
+      const today = format(new Date(), "yyyy-MM-dd");
+      
+      // Find active annual plan (where today is between start_date and competition_date)
+      const { data: plans, error } = await supabase
+        .from("annual_plans")
+        .select("id, plan_name, start_date, competition_date, biomotor_config")
+        .eq("athlete_id", athleteId)
+        .lte("start_date", today)
+        .gte("competition_date", today)
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-  const handleDragStart = (event: DragStartEvent) => {
+      if (error || !plans || plans.length === 0) {
+        setWeeklyBiomotorTarget(null);
+        return;
+      }
+
+      const plan = plans[0];
+      const bc = plan.biomotor_config as any;
+      if (!bc) { setWeeklyBiomotorTarget(null); return; }
+
+      // Get weekly plan data for volume percentages
+      const { data: weeklyPlanData } = await supabase
+        .from("weekly_plan_data")
+        .select("week_number, planned_volume, week_start_date")
+        .eq("plan_id", plan.id)
+        .order("week_number", { ascending: true });
+
+      // Calculate which week we're in
+      const planStart = new Date(plan.start_date);
+      const nowDate = new Date();
+      const daysDiff = Math.floor((nowDate.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
+      const currentWeekNumber = Math.max(1, Math.floor(daysDiff / 7) + 1);
+
+      // Find volume for current week
+      const currentWeekData = weeklyPlanData?.find(w => w.week_number === currentWeekNumber);
+      const volumePercent = (currentWeekData?.planned_volume ?? 70) / 100;
+
+      // Calculate total weeks
+      const totalDays = Math.floor((new Date(plan.competition_date).getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
+      const totalWeeks = Math.ceil(totalDays / 7);
+
+      setWeeklyBiomotorTarget({
+        planName: plan.plan_name,
+        weekNumber: currentWeekNumber,
+        totalWeeks,
+        volume: Math.round(volumePercent * 100),
+        targets: {
+          kekuatan: Math.round(volumePercent * (bc.kekuatan ?? 10000)),
+          kecepatan: Math.round(volumePercent * (bc.kecepatan ?? 800)),
+          daya_tahan: Math.round(volumePercent * (bc.dayaTahan ?? bc.daya_tahan ?? 20)),
+          teknik: Math.round(volumePercent * (bc.teknik ?? 500)),
+          taktik: Math.round(volumePercent * (bc.taktik ?? 200)),
+        },
+      });
+    } catch (err) {
+      console.error("Error fetching biomotor targets:", err);
+      setWeeklyBiomotorTarget(null);
+    }
+  };
+
+
     const session = sessions.find(s => s.id === event.active.id);
     setActiveSession(session || null);
   };
@@ -1375,6 +1447,50 @@ export default function ProgramLatihan() {
             <div className="mb-6">
               <WeeklyVolumeChart sessions={sessions} />
             </div>
+          )}
+
+          {/* Biomotor Weekly Target from Annual Plan */}
+          {weeklyBiomotorTarget && (
+            <Card className="mb-6 border-primary/30">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-primary" />
+                    <span className="font-semibold text-sm">Target Biomotor Minggu {weeklyBiomotorTarget.weekNumber}/{weeklyBiomotorTarget.totalWeeks}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {weeklyBiomotorTarget.planName} • Volume {weeklyBiomotorTarget.volume}%
+                  </span>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-center">
+                    <div className="text-[10px] text-red-600 dark:text-red-400 font-medium">Kekuatan</div>
+                    <div className="text-sm font-bold text-red-700 dark:text-red-300">{weeklyBiomotorTarget.targets.kekuatan.toLocaleString()}</div>
+                    <div className="text-[9px] text-muted-foreground">kg/reps</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-900 text-center">
+                    <div className="text-[10px] text-yellow-600 dark:text-yellow-400 font-medium">Kecepatan</div>
+                    <div className="text-sm font-bold text-yellow-700 dark:text-yellow-300">{weeklyBiomotorTarget.targets.kecepatan.toLocaleString()}</div>
+                    <div className="text-[9px] text-muted-foreground">meter</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 text-center">
+                    <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">D.Tahan</div>
+                    <div className="text-sm font-bold text-blue-700 dark:text-blue-300">{weeklyBiomotorTarget.targets.daya_tahan}</div>
+                    <div className="text-[9px] text-muted-foreground">km</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 text-center">
+                    <div className="text-[10px] text-green-600 dark:text-green-400 font-medium">Teknik</div>
+                    <div className="text-sm font-bold text-green-700 dark:text-green-300">{weeklyBiomotorTarget.targets.teknik}</div>
+                    <div className="text-[9px] text-muted-foreground">reps</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900 text-center">
+                    <div className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">Taktik</div>
+                    <div className="text-sm font-bold text-purple-700 dark:text-purple-300">{weeklyBiomotorTarget.targets.taktik}</div>
+                    <div className="text-[9px] text-muted-foreground">reps/sets</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Filter and Calendar Grid */}
