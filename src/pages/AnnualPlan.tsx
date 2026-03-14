@@ -165,6 +165,10 @@ export default function AnnualPlan() {
     };
   }>({});
 
+  // Session config for load calculation
+  const [sessionDuration, setSessionDuration] = useState(120); // minutes
+  const [maxSessionsPerWeek, setMaxSessionsPerWeek] = useState(12);
+
   useEffect(() => {
     loadUser();
   }, []);
@@ -743,7 +747,7 @@ export default function AnnualPlan() {
       start_date: startDate,
       competition_date: competitionDate,
       percentages: editablePercentages,
-      planned_loads: editableLoads,
+      planned_loads: { ...editableLoads, session_duration: sessionDuration, max_sessions_per_week: maxSessionsPerWeek },
       biomotor_config: {
         kekuatan: biomotorConfig.kekuatan,
         kecepatan: biomotorConfig.kecepatan,
@@ -806,6 +810,13 @@ export default function AnnualPlan() {
           teknik: bc.teknik ?? 500,
           taktik: bc.taktik ?? 200,
         });
+      }
+      
+      // Load session config
+      if (selectedPlan.planned_loads) {
+        const pl = selectedPlan.planned_loads as any;
+        if (pl.session_duration) setSessionDuration(pl.session_duration);
+        if (pl.max_sessions_per_week) setMaxSessionsPerWeek(pl.max_sessions_per_week);
       }
       
       generatePlanWithData(
@@ -1826,6 +1837,75 @@ export default function AnnualPlan() {
           </Card>
         )}
 
+        {/* Session Configuration for Load Calculation */}
+        {phases.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                ⚡ Konfigurasi Sesi & Estimasi Load
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sessionDuration">Durasi Latihan per Sesi (menit)</Label>
+                  <Input
+                    id="sessionDuration"
+                    type="number"
+                    min="30"
+                    max="300"
+                    value={sessionDuration}
+                    onChange={(e) => setSessionDuration(Number(e.target.value))}
+                    disabled={!isCoach}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Session Max Load = 140 × ({sessionDuration}/60) = <strong>{Math.round(140 * (sessionDuration / 60))} TSS</strong>
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxSessions">Maksimal Sesi per Minggu</Label>
+                  <Input
+                    id="maxSessions"
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={maxSessionsPerWeek}
+                    onChange={(e) => setMaxSessionsPerWeek(Number(e.target.value))}
+                    disabled={!isCoach}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Max Weekly Load = {Math.round(140 * (sessionDuration / 60))} × {maxSessionsPerWeek} = <strong>{Math.round(140 * (sessionDuration / 60) * maxSessionsPerWeek)} TSS</strong>
+                  </p>
+                </div>
+              </div>
+              
+              {/* RPE Reference Table */}
+              <div className="border rounded-lg overflow-hidden">
+                <h4 className="text-sm font-medium p-3 bg-muted">Tabel Konversi RPE → Load (durasi {sessionDuration} menit)</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        {[1,2,3,4,5,6,7,8,9,10].map(rpe => (
+                          <th key={rpe} className="p-2 text-center font-medium border-r last:border-r-0">RPE {rpe}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        {[20,30,40,50,60,70,80,100,120,140].map((base, i) => (
+                          <td key={i} className="p-2 text-center border-r last:border-r-0 font-mono text-xs">
+                            {Math.round(base * (sessionDuration / 60))}
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Periodization Calendar */}
         {phases.length > 0 && generatedWeeklyData.length > 0 && (
@@ -1870,6 +1950,8 @@ export default function AnnualPlan() {
                 periodizationType={periodizationType}
                 biomotorConfig={biomotorConfig}
                 biomotorFocusData={biomotorFocusData}
+                sessionDuration={sessionDuration}
+                maxSessionsPerWeek={maxSessionsPerWeek}
                 onWeeklyDataChange={handleWeeklyDataChange}
                 onTrainingFocusChange={handleTrainingFocusChange}
                 onTrainingFocusRemove={handleTrainingFocusRemove}
