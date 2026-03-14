@@ -94,6 +94,8 @@ interface PeriodizationCalendarProps {
   periodizationType: "linear" | "block" | "undulating";
   biomotorConfig?: typeof BIOMOTOR_BASE;
   biomotorFocusData?: BiomotorFocusData;
+  sessionDuration?: number;
+  maxSessionsPerWeek?: number;
   onWeeklyDataChange?: (weekNumber: number, field: 'planned_volume' | 'planned_intensity', value: number) => void;
   onTrainingFocusChange?: (weekNumber: number, focusType: string, intensityLevel: number, label?: string) => void;
   onTrainingFocusRemove?: (weekNumber: number, focusType: string) => void;
