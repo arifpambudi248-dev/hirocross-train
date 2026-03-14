@@ -131,6 +131,8 @@ export function PeriodizationCalendar({
   periodizationType,
   biomotorConfig = BIOMOTOR_BASE,
   biomotorFocusData = {},
+  sessionDuration = 120,
+  maxSessionsPerWeek = 12,
   onWeeklyDataChange,
   onTrainingFocusChange,
   onTrainingFocusRemove,
