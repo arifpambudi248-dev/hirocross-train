@@ -278,10 +278,9 @@ export default function ProgramLatihan() {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
       
-      // Find active annual plan (where today is between start_date and competition_date)
       const { data: plans, error } = await supabase
         .from("annual_plans")
-        .select("id, plan_name, start_date, competition_date, biomotor_config")
+        .select("id, plan_name, start_date, competition_date, biomotor_config, planned_loads")
         .eq("athlete_id", athleteId)
         .lte("start_date", today)
         .gte("competition_date", today)
@@ -297,32 +296,62 @@ export default function ProgramLatihan() {
       const bc = plan.biomotor_config as any;
       if (!bc) { setWeeklyBiomotorTarget(null); return; }
 
-      // Get weekly plan data for volume percentages
       const { data: weeklyPlanData } = await supabase
         .from("weekly_plan_data")
-        .select("week_number, planned_volume, week_start_date")
+        .select("week_number, planned_volume, planned_intensity, week_start_date")
         .eq("plan_id", plan.id)
         .order("week_number", { ascending: true });
 
-      // Calculate which week we're in
       const planStart = new Date(plan.start_date);
       const nowDate = new Date();
       const daysDiff = Math.floor((nowDate.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
       const currentWeekNumber = Math.max(1, Math.floor(daysDiff / 7) + 1);
 
-      // Find volume for current week
       const currentWeekData = weeklyPlanData?.find(w => w.week_number === currentWeekNumber);
       const volumePercent = (currentWeekData?.planned_volume ?? 70) / 100;
+      const intensityPercent = (currentWeekData?.planned_intensity ?? 50) / 100;
 
-      // Calculate total weeks
       const totalDays = Math.floor((new Date(plan.competition_date).getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
       const totalWeeks = Math.ceil(totalDays / 7);
+
+      // Load calculations
+      const pl = plan.planned_loads as any;
+      const sessionDuration = pl?.sessionDuration ?? 120;
+      const maxSessions = pl?.maxSessionsPerWeek ?? 12;
+      const sessionMaxLoad = 140 * (sessionDuration / 60);
+      const maxWeeklyLoad = sessionMaxLoad * maxSessions;
+      const weeklyLoad = Math.round(maxWeeklyLoad * volumePercent * intensityPercent);
+      const loadPerSession = Math.round(weeklyLoad / maxSessions);
+
+      // Fixed RPE conversion (duration-independent)
+      const RPE_LOAD_MAP = [
+        { rpe: 1, load: 20 }, { rpe: 2, load: 30 }, { rpe: 3, load: 40 },
+        { rpe: 4, load: 50 }, { rpe: 5, load: 60 }, { rpe: 6, load: 70 },
+        { rpe: 7, load: 80 }, { rpe: 8, load: 100 }, { rpe: 9, load: 120 },
+        { rpe: 10, load: 140 },
+      ];
+      let estRpe = 1;
+      for (const entry of RPE_LOAD_MAP) {
+        if (loadPerSession >= entry.load) estRpe = entry.rpe;
+      }
+      const lowerEntry = RPE_LOAD_MAP.find(e => e.rpe === estRpe)!;
+      const upperEntry = RPE_LOAD_MAP.find(e => e.rpe === estRpe + 1);
+      let displayRpe = estRpe.toString();
+      if (upperEntry && loadPerSession > lowerEntry.load) {
+        const fraction = (loadPerSession - lowerEntry.load) / (upperEntry.load - lowerEntry.load);
+        displayRpe = (estRpe + fraction).toFixed(1);
+      }
 
       setWeeklyBiomotorTarget({
         planName: plan.plan_name,
         weekNumber: currentWeekNumber,
         totalWeeks,
         volume: Math.round(volumePercent * 100),
+        intensity: Math.round(intensityPercent * 100),
+        weeklyLoad,
+        loadPerSession,
+        estRpe: displayRpe,
+        maxSessionsPerWeek: maxSessions,
         targets: {
           kekuatan: Math.round(volumePercent * (bc.kekuatan ?? 10000)),
           kecepatan: Math.round(volumePercent * (bc.kecepatan ?? 800)),
