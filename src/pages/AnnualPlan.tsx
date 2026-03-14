@@ -812,6 +812,13 @@ export default function AnnualPlan() {
         });
       }
       
+      // Load session config
+      if (selectedPlan.planned_loads) {
+        const pl = selectedPlan.planned_loads as any;
+        if (pl.session_duration) setSessionDuration(pl.session_duration);
+        if (pl.max_sessions_per_week) setMaxSessionsPerWeek(pl.max_sessions_per_week);
+      }
+      
       generatePlanWithData(
         selectedPlan.start_date,
         selectedPlan.competition_date,
