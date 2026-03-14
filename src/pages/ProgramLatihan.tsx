@@ -1483,19 +1483,40 @@ export default function ProgramLatihan() {
             </div>
           )}
 
-          {/* Biomotor Weekly Target from Annual Plan */}
+          {/* Weekly Target from Annual Plan */}
           {weeklyBiomotorTarget && (
             <Card className="mb-6 border-primary/30">
               <CardContent className="py-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Target className="w-4 h-4 text-primary" />
-                    <span className="font-semibold text-sm">Target Biomotor Minggu {weeklyBiomotorTarget.weekNumber}/{weeklyBiomotorTarget.totalWeeks}</span>
+                    <span className="font-semibold text-sm">Target Minggu {weeklyBiomotorTarget.weekNumber}/{weeklyBiomotorTarget.totalWeeks}</span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {weeklyBiomotorTarget.planName} • Volume {weeklyBiomotorTarget.volume}%
+                    {weeklyBiomotorTarget.planName} • Vol {weeklyBiomotorTarget.volume}% • Int {weeklyBiomotorTarget.intensity}%
                   </span>
                 </div>
+
+                {/* Weekly Load & RPE Target */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-center">
+                    <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Weekly Load</div>
+                    <div className="text-sm font-bold text-amber-700 dark:text-amber-300">{weeklyBiomotorTarget.weeklyLoad.toLocaleString()}</div>
+                    <div className="text-[9px] text-muted-foreground">TSS</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-center">
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Load/Sesi</div>
+                    <div className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{weeklyBiomotorTarget.loadPerSession}</div>
+                    <div className="text-[9px] text-muted-foreground">TSS ({weeklyBiomotorTarget.maxSessionsPerWeek} sesi)</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-center">
+                    <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Target RPE</div>
+                    <div className="text-sm font-bold text-rose-700 dark:text-rose-300">{weeklyBiomotorTarget.estRpe}</div>
+                    <div className="text-[9px] text-muted-foreground">per sesi</div>
+                  </div>
+                </div>
+
+                {/* Biomotor Targets */}
                 <div className="grid grid-cols-5 gap-2">
                   <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-center">
                     <div className="text-[10px] text-red-600 dark:text-red-400 font-medium">Kekuatan</div>
