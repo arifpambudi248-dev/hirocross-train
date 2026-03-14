@@ -1879,30 +1879,6 @@ export default function AnnualPlan() {
                 </div>
               </div>
               
-              {/* RPE Reference Table */}
-              <div className="border rounded-lg overflow-hidden">
-                <h4 className="text-sm font-medium p-3 bg-muted">Tabel Konversi RPE → Load (durasi {sessionDuration} menit)</h4>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        {[1,2,3,4,5,6,7,8,9,10].map(rpe => (
-                          <th key={rpe} className="p-2 text-center font-medium border-r last:border-r-0">RPE {rpe}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        {[20,30,40,50,60,70,80,100,120,140].map((base, i) => (
-                          <td key={i} className="p-2 text-center border-r last:border-r-0 font-mono text-xs">
-                            {Math.round(base * (sessionDuration / 60))}
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             </CardContent>
           </Card>
         )}
