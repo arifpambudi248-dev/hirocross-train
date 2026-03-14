@@ -138,6 +138,11 @@ export default function ProgramLatihan() {
     weekNumber: number;
     totalWeeks: number;
     volume: number;
+    intensity: number;
+    weeklyLoad: number;
+    loadPerSession: number;
+    estRpe: string;
+    maxSessionsPerWeek: number;
     targets: { kekuatan: number; kecepatan: number; daya_tahan: number; teknik: number; taktik: number };
   } | null>(null);
 
