@@ -1002,7 +1002,134 @@ export function PeriodizationCalendar({
                 ))}
               </tbody>
             </table>
-          </div>
+      </div>
+
+      {/* Weekly Load Estimation Table */}
+      {sessionDuration > 0 && maxSessionsPerWeek > 0 && (
+        <div className="mt-4">
+          <h4 className="text-sm font-semibold mb-2">ESTIMASI WEEKLY LOAD</h4>
+          <p className="text-xs text-muted-foreground mb-2">
+            Durasi: {sessionDuration} menit | Max Sesi/Minggu: {maxSessionsPerWeek} | 
+            Session Max Load: {Math.round(140 * (sessionDuration / 60))} TSS | 
+            Max Weekly Load: {Math.round(140 * (sessionDuration / 60) * maxSessionsPerWeek)} TSS
+          </p>
+          <ScrollArea className="w-full">
+            <div className="min-w-max">
+              <table className="border-collapse text-center w-full">
+                <thead>
+                  <tr>
+                    <th className="p-2 border bg-muted sticky left-0 z-20 text-xs font-bold min-w-[100px]">Parameter</th>
+                    {weeks.map((week) => (
+                      <th key={`load-header-${week.weekNumber}`} className={cn("p-1 border text-center min-w-[40px]", ZOOM_LEVELS[zoomLevel].fontSize)}>
+                        <div className="font-bold">M{week.weekNumber}</div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Weekly Load row */}
+                  <tr>
+                    <td className="font-medium p-2 border sticky left-0 z-20 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-100">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold">WEEKLY LOAD</span>
+                        <span className="text-[8px] opacity-70">TSS</span>
+                      </div>
+                    </td>
+                    {weeks.map((week) => {
+                      const sessionMaxLoad = 140 * (sessionDuration / 60);
+                      const maxWeeklyLoad = sessionMaxLoad * maxSessionsPerWeek;
+                      const weeklyLoad = Math.round(maxWeeklyLoad * (week.volume / 100) * (week.intensity / 100));
+                      return (
+                        <td key={`wl-${week.weekNumber}`} className={cn("p-1 border bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800", ZOOM_LEVELS[zoomLevel].fontSize)}>
+                          <span className="font-semibold text-amber-700 dark:text-amber-300">
+                            {weeklyLoad >= 1000 ? `${(weeklyLoad / 1000).toFixed(1)}k` : weeklyLoad}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  
+                  {/* Load per Session row */}
+                  <tr>
+                    <td className="font-medium p-2 border sticky left-0 z-20 bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-100">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold">LOAD/SESI</span>
+                        <span className="text-[8px] opacity-70">TSS</span>
+                      </div>
+                    </td>
+                    {weeks.map((week) => {
+                      const sessionMaxLoad = 140 * (sessionDuration / 60);
+                      const maxWeeklyLoad = sessionMaxLoad * maxSessionsPerWeek;
+                      const weeklyLoad = maxWeeklyLoad * (week.volume / 100) * (week.intensity / 100);
+                      const loadPerSession = Math.round(weeklyLoad / maxSessionsPerWeek);
+                      return (
+                        <td key={`ls-${week.weekNumber}`} className={cn("p-1 border bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800", ZOOM_LEVELS[zoomLevel].fontSize)}>
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                            {loadPerSession}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  
+                  {/* Estimated RPE row */}
+                  <tr>
+                    <td className="font-medium p-2 border sticky left-0 z-20 bg-rose-100 dark:bg-rose-900 text-rose-800 dark:text-rose-100">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold">EST. RPE</span>
+                        <span className="text-[8px] opacity-70">target</span>
+                      </div>
+                    </td>
+                    {weeks.map((week) => {
+                      const sessionMaxLoad = 140 * (sessionDuration / 60);
+                      const maxWeeklyLoad = sessionMaxLoad * maxSessionsPerWeek;
+                      const weeklyLoad = maxWeeklyLoad * (week.volume / 100) * (week.intensity / 100);
+                      const loadPerSession = weeklyLoad / maxSessionsPerWeek;
+                      
+                      // Convert load per session back to RPE
+                      // Load at 60min: RPE table values. Scale by duration.
+                      const durationFactor = sessionDuration / 60;
+                      const loadAt60 = loadPerSession / durationFactor;
+                      const RPE_TABLE = [
+                        { rpe: 1, load: 20 }, { rpe: 2, load: 30 }, { rpe: 3, load: 40 },
+                        { rpe: 4, load: 50 }, { rpe: 5, load: 60 }, { rpe: 6, load: 70 },
+                        { rpe: 7, load: 80 }, { rpe: 8, load: 100 }, { rpe: 9, load: 120 },
+                        { rpe: 10, load: 140 },
+                      ];
+                      let estRpe = 1;
+                      for (const entry of RPE_TABLE) {
+                        if (loadAt60 >= entry.load) estRpe = entry.rpe;
+                      }
+                      // Interpolate for better precision
+                      const lowerEntry = RPE_TABLE.find(e => e.rpe === estRpe)!;
+                      const upperEntry = RPE_TABLE.find(e => e.rpe === estRpe + 1);
+                      let displayRpe = estRpe.toString();
+                      if (upperEntry && loadAt60 > lowerEntry.load) {
+                        const fraction = (loadAt60 - lowerEntry.load) / (upperEntry.load - lowerEntry.load);
+                        displayRpe = (estRpe + fraction).toFixed(1);
+                      }
+                      
+                      const rpeColor = estRpe <= 4 ? "text-green-600 dark:text-green-400" :
+                                       estRpe <= 6 ? "text-yellow-600 dark:text-yellow-400" :
+                                       estRpe <= 8 ? "text-orange-600 dark:text-orange-400" :
+                                       "text-red-600 dark:text-red-400";
+                      
+                      return (
+                        <td key={`rpe-${week.weekNumber}`} className={cn("p-1 border bg-rose-50 dark:bg-rose-950 border-rose-200 dark:border-rose-800", ZOOM_LEVELS[zoomLevel].fontSize)}>
+                          <span className={cn("font-bold", rpeColor)}>
+                            {displayRpe}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </div>
+      )}
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
