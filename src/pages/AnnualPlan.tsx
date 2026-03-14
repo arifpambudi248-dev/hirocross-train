@@ -165,6 +165,10 @@ export default function AnnualPlan() {
     };
   }>({});
 
+  // Session config for load calculation
+  const [sessionDuration, setSessionDuration] = useState(120); // minutes
+  const [maxSessionsPerWeek, setMaxSessionsPerWeek] = useState(12);
+
   useEffect(() => {
     loadUser();
   }, []);
