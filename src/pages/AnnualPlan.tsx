@@ -747,7 +747,7 @@ export default function AnnualPlan() {
       start_date: startDate,
       competition_date: competitionDate,
       percentages: editablePercentages,
-      planned_loads: editableLoads,
+      planned_loads: { ...editableLoads, session_duration: sessionDuration, max_sessions_per_week: maxSessionsPerWeek },
       biomotor_config: {
         kekuatan: biomotorConfig.kekuatan,
         kecepatan: biomotorConfig.kecepatan,
