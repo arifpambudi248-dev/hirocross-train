@@ -138,6 +138,11 @@ export default function ProgramLatihan() {
     weekNumber: number;
     totalWeeks: number;
     volume: number;
+    intensity: number;
+    weeklyLoad: number;
+    loadPerSession: number;
+    estRpe: string;
+    maxSessionsPerWeek: number;
     targets: { kekuatan: number; kecepatan: number; daya_tahan: number; teknik: number; taktik: number };
   } | null>(null);
 
@@ -273,10 +278,9 @@ export default function ProgramLatihan() {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
       
-      // Find active annual plan (where today is between start_date and competition_date)
       const { data: plans, error } = await supabase
         .from("annual_plans")
-        .select("id, plan_name, start_date, competition_date, biomotor_config")
+        .select("id, plan_name, start_date, competition_date, biomotor_config, planned_loads")
         .eq("athlete_id", athleteId)
         .lte("start_date", today)
         .gte("competition_date", today)
@@ -292,32 +296,62 @@ export default function ProgramLatihan() {
       const bc = plan.biomotor_config as any;
       if (!bc) { setWeeklyBiomotorTarget(null); return; }
 
-      // Get weekly plan data for volume percentages
       const { data: weeklyPlanData } = await supabase
         .from("weekly_plan_data")
-        .select("week_number, planned_volume, week_start_date")
+        .select("week_number, planned_volume, planned_intensity, week_start_date")
         .eq("plan_id", plan.id)
         .order("week_number", { ascending: true });
 
-      // Calculate which week we're in
       const planStart = new Date(plan.start_date);
       const nowDate = new Date();
       const daysDiff = Math.floor((nowDate.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
       const currentWeekNumber = Math.max(1, Math.floor(daysDiff / 7) + 1);
 
-      // Find volume for current week
       const currentWeekData = weeklyPlanData?.find(w => w.week_number === currentWeekNumber);
       const volumePercent = (currentWeekData?.planned_volume ?? 70) / 100;
+      const intensityPercent = (currentWeekData?.planned_intensity ?? 50) / 100;
 
-      // Calculate total weeks
       const totalDays = Math.floor((new Date(plan.competition_date).getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24));
       const totalWeeks = Math.ceil(totalDays / 7);
+
+      // Load calculations
+      const pl = plan.planned_loads as any;
+      const sessionDuration = pl?.sessionDuration ?? 120;
+      const maxSessions = pl?.maxSessionsPerWeek ?? 12;
+      const sessionMaxLoad = 140 * (sessionDuration / 60);
+      const maxWeeklyLoad = sessionMaxLoad * maxSessions;
+      const weeklyLoad = Math.round(maxWeeklyLoad * volumePercent * intensityPercent);
+      const loadPerSession = Math.round(weeklyLoad / maxSessions);
+
+      // Fixed RPE conversion (duration-independent)
+      const RPE_LOAD_MAP = [
+        { rpe: 1, load: 20 }, { rpe: 2, load: 30 }, { rpe: 3, load: 40 },
+        { rpe: 4, load: 50 }, { rpe: 5, load: 60 }, { rpe: 6, load: 70 },
+        { rpe: 7, load: 80 }, { rpe: 8, load: 100 }, { rpe: 9, load: 120 },
+        { rpe: 10, load: 140 },
+      ];
+      let estRpe = 1;
+      for (const entry of RPE_LOAD_MAP) {
+        if (loadPerSession >= entry.load) estRpe = entry.rpe;
+      }
+      const lowerEntry = RPE_LOAD_MAP.find(e => e.rpe === estRpe)!;
+      const upperEntry = RPE_LOAD_MAP.find(e => e.rpe === estRpe + 1);
+      let displayRpe = estRpe.toString();
+      if (upperEntry && loadPerSession > lowerEntry.load) {
+        const fraction = (loadPerSession - lowerEntry.load) / (upperEntry.load - lowerEntry.load);
+        displayRpe = (estRpe + fraction).toFixed(1);
+      }
 
       setWeeklyBiomotorTarget({
         planName: plan.plan_name,
         weekNumber: currentWeekNumber,
         totalWeeks,
         volume: Math.round(volumePercent * 100),
+        intensity: Math.round(intensityPercent * 100),
+        weeklyLoad,
+        loadPerSession,
+        estRpe: displayRpe,
+        maxSessionsPerWeek: maxSessions,
         targets: {
           kekuatan: Math.round(volumePercent * (bc.kekuatan ?? 10000)),
           kecepatan: Math.round(volumePercent * (bc.kecepatan ?? 800)),
@@ -1449,19 +1483,40 @@ export default function ProgramLatihan() {
             </div>
           )}
 
-          {/* Biomotor Weekly Target from Annual Plan */}
+          {/* Weekly Target from Annual Plan */}
           {weeklyBiomotorTarget && (
             <Card className="mb-6 border-primary/30">
               <CardContent className="py-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Target className="w-4 h-4 text-primary" />
-                    <span className="font-semibold text-sm">Target Biomotor Minggu {weeklyBiomotorTarget.weekNumber}/{weeklyBiomotorTarget.totalWeeks}</span>
+                    <span className="font-semibold text-sm">Target Minggu {weeklyBiomotorTarget.weekNumber}/{weeklyBiomotorTarget.totalWeeks}</span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {weeklyBiomotorTarget.planName} • Volume {weeklyBiomotorTarget.volume}%
+                    {weeklyBiomotorTarget.planName} • Vol {weeklyBiomotorTarget.volume}% • Int {weeklyBiomotorTarget.intensity}%
                   </span>
                 </div>
+
+                {/* Weekly Load & RPE Target */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-center">
+                    <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Weekly Load</div>
+                    <div className="text-sm font-bold text-amber-700 dark:text-amber-300">{weeklyBiomotorTarget.weeklyLoad.toLocaleString()}</div>
+                    <div className="text-[9px] text-muted-foreground">TSS</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-center">
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Load/Sesi</div>
+                    <div className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{weeklyBiomotorTarget.loadPerSession}</div>
+                    <div className="text-[9px] text-muted-foreground">TSS ({weeklyBiomotorTarget.maxSessionsPerWeek} sesi)</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-center">
+                    <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Target RPE</div>
+                    <div className="text-sm font-bold text-rose-700 dark:text-rose-300">{weeklyBiomotorTarget.estRpe}</div>
+                    <div className="text-[9px] text-muted-foreground">per sesi</div>
+                  </div>
+                </div>
+
+                {/* Biomotor Targets */}
                 <div className="grid grid-cols-5 gap-2">
                   <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-center">
                     <div className="text-[10px] text-red-600 dark:text-red-400 font-medium">Kekuatan</div>
