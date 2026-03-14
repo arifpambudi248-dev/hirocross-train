@@ -1950,6 +1950,8 @@ export default function AnnualPlan() {
                 periodizationType={periodizationType}
                 biomotorConfig={biomotorConfig}
                 biomotorFocusData={biomotorFocusData}
+                sessionDuration={sessionDuration}
+                maxSessionsPerWeek={maxSessionsPerWeek}
                 onWeeklyDataChange={handleWeeklyDataChange}
                 onTrainingFocusChange={handleTrainingFocusChange}
                 onTrainingFocusRemove={handleTrainingFocusRemove}
