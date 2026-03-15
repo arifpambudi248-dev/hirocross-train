@@ -1858,9 +1858,6 @@ export default function AnnualPlan() {
                     onChange={(e) => setSessionDuration(Number(e.target.value))}
                     disabled={!isCoach}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Session Max Load = 140 × ({sessionDuration}/60) = <strong>{Math.round(140 * (sessionDuration / 60))} TSS</strong>
-                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="maxSessions">Maksimal Sesi per Minggu</Label>
@@ -1873,9 +1870,6 @@ export default function AnnualPlan() {
                     onChange={(e) => setMaxSessionsPerWeek(Number(e.target.value))}
                     disabled={!isCoach}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Max Weekly Load = {Math.round(140 * (sessionDuration / 60))} × {maxSessionsPerWeek} = <strong>{Math.round(140 * (sessionDuration / 60) * maxSessionsPerWeek)} TSS</strong>
-                  </p>
                 </div>
               </div>
               
