@@ -69,21 +69,22 @@ export default function Notifications() {
 
       setUserId(user.id);
 
-      // Check if user is athlete
+      // Check user roles without assuming a single role row
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .single();
+        .eq("user_id", user.id);
 
-      if (roleData?.role === "athlete") {
+      const roles = roleData?.map((item) => item.role) || [];
+
+      if (roles.includes("athlete")) {
         setIsAthlete(true);
         await Promise.all([
           loadInvitations(user.id),
           loadMyRequests(user.id),
           loadUpcomingCompetitions(user.id)
         ]);
-      } else if (roleData?.role === "coach") {
+      } else if (roles.includes("coach")) {
         // Coaches can also see their competitions
         await loadUpcomingCompetitionsForCoach(user.id);
         setIsAthlete(false);
