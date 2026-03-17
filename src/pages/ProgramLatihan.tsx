@@ -82,6 +82,15 @@ type Template = {
   notes: string | null;
 };
 
+type AnnualPlanOption = {
+  id: string;
+  plan_name: string;
+  start_date: string;
+  competition_date: string;
+  biomotor_config: unknown;
+  planned_loads: unknown;
+};
+
 export default function ProgramLatihan() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
