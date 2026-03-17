@@ -588,7 +588,7 @@ export default function Notifications() {
                 </div>
 
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {coaches.length === 0 && searchQuery && !isSearching && (
+                  {coaches.length === 0 && !isSearching && (
                     <p className="text-center text-muted-foreground py-4">
                       Tidak ada pelatih ditemukan
                     </p>
@@ -611,20 +611,24 @@ export default function Notifications() {
                           <Badge variant="secondary" className="text-xs">Pelatih</Badge>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => sendJoinRequest(coach.id)}
-                        disabled={isSending === coach.id}
-                      >
-                        {isSending === coach.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Send className="h-4 w-4 mr-1" />
-                            Request
-                          </>
-                        )}
-                      </Button>
+                      {coach.relationStatus === "pending" ? (
+                        <Badge variant="outline">Menunggu</Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => sendJoinRequest(coach.id)}
+                          disabled={isSending === coach.id}
+                        >
+                          {isSending === coach.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4 mr-1" />
+                              Request
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
