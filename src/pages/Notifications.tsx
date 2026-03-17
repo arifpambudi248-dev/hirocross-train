@@ -30,6 +30,7 @@ interface Coach {
   id: string;
   athlete_name: string;
   avatar_url: string | null;
+  relationStatus: "available" | "pending" | "accepted";
 }
 
 interface UpcomingCompetition {
@@ -68,21 +69,22 @@ export default function Notifications() {
 
       setUserId(user.id);
 
-      // Check if user is athlete
+      // Check user roles without assuming a single role row
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .single();
+        .eq("user_id", user.id);
 
-      if (roleData?.role === "athlete") {
+      const roles = roleData?.map((item) => item.role) || [];
+
+      if (roles.includes("athlete")) {
         setIsAthlete(true);
         await Promise.all([
           loadInvitations(user.id),
           loadMyRequests(user.id),
           loadUpcomingCompetitions(user.id)
         ]);
-      } else if (roleData?.role === "coach") {
+      } else if (roles.includes("coach")) {
         // Coaches can also see their competitions
         await loadUpcomingCompetitionsForCoach(user.id);
         setIsAthlete(false);
@@ -374,52 +376,48 @@ export default function Notifications() {
   };
 
   const searchCoaches = async () => {
-    if (!searchQuery.trim()) {
-      toast.error("Masukkan nama pelatih untuk mencari");
-      return;
-    }
-
     setIsSearching(true);
     try {
-      // Get all users with coach role
-      const { data: coachRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "coach");
+      const normalizedQuery = searchQuery.trim();
 
-      if (import.meta.env.DEV) console.log("Coach roles:", coachRoles, "Error:", rolesError);
+      const [{ data: profiles, error: profilesError }, { data: allRelations, error: relationsError }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, athlete_name, avatar_url")
+          .ilike("athlete_name", normalizedQuery ? `%${normalizedQuery}%` : "%"),
+        supabase
+          .from("coach_athletes")
+          .select("coach_id, status")
+          .eq("athlete_id", userId)
+      ]);
 
-      if (!coachRoles || coachRoles.length === 0) {
-        if (import.meta.env.DEV) console.log("No coach roles found");
-        setCoaches([]);
-        setIsSearching(false);
-        return;
-      }
+      if (profilesError) throw profilesError;
+      if (relationsError) throw relationsError;
 
-      const coachIds = coachRoles.map(r => r.user_id);
+      const relationMap = new Map<string, "pending" | "accepted">();
+      allRelations?.forEach((relation) => {
+        if (relation.status === "pending" || relation.status === "accepted") {
+          relationMap.set(relation.coach_id, relation.status);
+        }
+      });
 
-      // Search coach profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, athlete_name, avatar_url")
-        .in("id", coachIds)
-        .ilike("athlete_name", `%${searchQuery}%`);
+      const coachResults = (profiles || [])
+        .filter((profile) => profile.id !== userId)
+        .map<Coach>((profile) => {
+          const relationStatus: Coach["relationStatus"] = relationMap.get(profile.id) === "accepted"
+            ? "accepted"
+            : relationMap.get(profile.id) === "pending"
+              ? "pending"
+              : "available";
 
-      // Filter out coaches already connected or with pending requests
-      const existingConnections = [...invitations, ...myRequests].map(i => i.coach_id);
-      
-      // Also get accepted connections
-      const { data: acceptedCoaches } = await supabase
-        .from("coach_athletes")
-        .select("coach_id")
-        .eq("athlete_id", userId)
-        .eq("status", "accepted");
+          return {
+            ...profile,
+            relationStatus,
+          };
+        })
+        .filter((coach) => coach.relationStatus !== "accepted");
 
-      const acceptedIds = acceptedCoaches?.map(a => a.coach_id) || [];
-      const allExisting = [...existingConnections, ...acceptedIds];
-
-      const filteredCoaches = profiles?.filter(p => !allExisting.includes(p.id)) || [];
-      setCoaches(filteredCoaches);
+      setCoaches(coachResults);
     } catch (error) {
       console.error("Error searching coaches:", error);
       toast.error("Gagal mencari pelatih");
@@ -445,7 +443,9 @@ export default function Notifications() {
       if (error) throw error;
 
       toast.success("Request berhasil dikirim ke pelatih!");
-      setCoaches(coaches.filter(c => c.id !== coachId));
+      setCoaches((prev) => prev.map((coach) =>
+        coach.id === coachId ? { ...coach, relationStatus: "pending" } : coach
+      ));
       loadMyRequests(userId);
       setDialogOpen(false);
       setSearchQuery("");
@@ -592,7 +592,7 @@ export default function Notifications() {
                 </div>
 
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {coaches.length === 0 && searchQuery && !isSearching && (
+                  {coaches.length === 0 && !isSearching && (
                     <p className="text-center text-muted-foreground py-4">
                       Tidak ada pelatih ditemukan
                     </p>
@@ -615,20 +615,24 @@ export default function Notifications() {
                           <Badge variant="secondary" className="text-xs">Pelatih</Badge>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => sendJoinRequest(coach.id)}
-                        disabled={isSending === coach.id}
-                      >
-                        {isSending === coach.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Send className="h-4 w-4 mr-1" />
-                            Request
-                          </>
-                        )}
-                      </Button>
+                      {coach.relationStatus === "pending" ? (
+                        <Badge variant="outline">Menunggu</Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => sendJoinRequest(coach.id)}
+                          disabled={isSending === coach.id}
+                        >
+                          {isSending === coach.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4 mr-1" />
+                              Request
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>

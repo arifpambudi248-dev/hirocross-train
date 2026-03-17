@@ -82,6 +82,15 @@ type Template = {
   notes: string | null;
 };
 
+type AnnualPlanOption = {
+  id: string;
+  plan_name: string;
+  start_date: string;
+  competition_date: string;
+  biomotor_config: unknown;
+  planned_loads: unknown;
+};
+
 export default function ProgramLatihan() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
@@ -132,7 +141,9 @@ export default function ProgramLatihan() {
   // Exercise type filter
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<string>("all");
 
-  // Biomotor weekly targets from active annual plan
+  // Annual plan & weekly targets
+  const [annualPlans, setAnnualPlans] = useState<AnnualPlanOption[]>([]);
+  const [selectedAnnualPlanId, setSelectedAnnualPlanId] = useState<string>("");
   const [weeklyBiomotorTarget, setWeeklyBiomotorTarget] = useState<{
     planName: string;
     weekNumber: number;
@@ -162,9 +173,15 @@ export default function ProgramLatihan() {
     if (selectedAthleteId) {
       fetchSessions(selectedAthleteId);
       fetchTemplates(selectedAthleteId);
-      fetchActiveBiomotorTargets(selectedAthleteId);
+      fetchAnnualPlans(selectedAthleteId);
     }
   }, [selectedAthleteId]);
+
+  useEffect(() => {
+    if (selectedAthleteId) {
+      fetchActiveBiomotorTargets(selectedAthleteId, selectedAnnualPlanId || undefined);
+    }
+  }, [selectedAthleteId, selectedAnnualPlanId]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
