@@ -30,6 +30,7 @@ interface Coach {
   id: string;
   athlete_name: string;
   avatar_url: string | null;
+  relationStatus: "available" | "pending" | "accepted";
 }
 
 interface UpcomingCompetition {
