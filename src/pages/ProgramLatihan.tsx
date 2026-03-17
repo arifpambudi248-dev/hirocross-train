@@ -141,7 +141,9 @@ export default function ProgramLatihan() {
   // Exercise type filter
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<string>("all");
 
-  // Biomotor weekly targets from active annual plan
+  // Annual plan & weekly targets
+  const [annualPlans, setAnnualPlans] = useState<AnnualPlanOption[]>([]);
+  const [selectedAnnualPlanId, setSelectedAnnualPlanId] = useState<string>("");
   const [weeklyBiomotorTarget, setWeeklyBiomotorTarget] = useState<{
     planName: string;
     weekNumber: number;
