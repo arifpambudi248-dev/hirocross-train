@@ -376,52 +376,44 @@ export default function Notifications() {
   };
 
   const searchCoaches = async () => {
-    if (!searchQuery.trim()) {
-      toast.error("Masukkan nama pelatih untuk mencari");
-      return;
-    }
-
     setIsSearching(true);
     try {
-      // Get all users with coach role
-      const { data: coachRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "coach");
+      const normalizedQuery = searchQuery.trim();
 
-      if (import.meta.env.DEV) console.log("Coach roles:", coachRoles, "Error:", rolesError);
+      const [{ data: profiles, error: profilesError }, { data: allRelations, error: relationsError }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, athlete_name, avatar_url")
+          .ilike("athlete_name", normalizedQuery ? `%${normalizedQuery}%` : "%"),
+        supabase
+          .from("coach_athletes")
+          .select("coach_id, status")
+          .eq("athlete_id", userId)
+      ]);
 
-      if (!coachRoles || coachRoles.length === 0) {
-        if (import.meta.env.DEV) console.log("No coach roles found");
-        setCoaches([]);
-        setIsSearching(false);
-        return;
-      }
+      if (profilesError) throw profilesError;
+      if (relationsError) throw relationsError;
 
-      const coachIds = coachRoles.map(r => r.user_id);
+      const relationMap = new Map<string, "pending" | "accepted">();
+      allRelations?.forEach((relation) => {
+        if (relation.status === "pending" || relation.status === "accepted") {
+          relationMap.set(relation.coach_id, relation.status);
+        }
+      });
 
-      // Search coach profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, athlete_name, avatar_url")
-        .in("id", coachIds)
-        .ilike("athlete_name", `%${searchQuery}%`);
+      const coachResults: Coach[] = (profiles || [])
+        .filter((profile) => profile.id !== userId)
+        .map((profile) => ({
+          ...profile,
+          relationStatus: relationMap.get(profile.id) === "accepted"
+            ? "accepted"
+            : relationMap.get(profile.id) === "pending"
+              ? "pending"
+              : "available",
+        }))
+        .filter((coach) => coach.relationStatus !== "accepted");
 
-      // Filter out coaches already connected or with pending requests
-      const existingConnections = [...invitations, ...myRequests].map(i => i.coach_id);
-      
-      // Also get accepted connections
-      const { data: acceptedCoaches } = await supabase
-        .from("coach_athletes")
-        .select("coach_id")
-        .eq("athlete_id", userId)
-        .eq("status", "accepted");
-
-      const acceptedIds = acceptedCoaches?.map(a => a.coach_id) || [];
-      const allExisting = [...existingConnections, ...acceptedIds];
-
-      const filteredCoaches = profiles?.filter(p => !allExisting.includes(p.id)) || [];
-      setCoaches(filteredCoaches);
+      setCoaches(coachResults);
     } catch (error) {
       console.error("Error searching coaches:", error);
       toast.error("Gagal mencari pelatih");
