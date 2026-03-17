@@ -439,7 +439,9 @@ export default function Notifications() {
       if (error) throw error;
 
       toast.success("Request berhasil dikirim ke pelatih!");
-      setCoaches(coaches.filter(c => c.id !== coachId));
+      setCoaches((prev) => prev.map((coach) =>
+        coach.id === coachId ? { ...coach, relationStatus: "pending" } : coach
+      ));
       loadMyRequests(userId);
       setDialogOpen(false);
       setSearchQuery("");
