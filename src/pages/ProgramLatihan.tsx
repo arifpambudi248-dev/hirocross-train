@@ -173,9 +173,15 @@ export default function ProgramLatihan() {
     if (selectedAthleteId) {
       fetchSessions(selectedAthleteId);
       fetchTemplates(selectedAthleteId);
-      fetchActiveBiomotorTargets(selectedAthleteId);
+      fetchAnnualPlans(selectedAthleteId);
     }
   }, [selectedAthleteId]);
+
+  useEffect(() => {
+    if (selectedAthleteId) {
+      fetchActiveBiomotorTargets(selectedAthleteId, selectedAnnualPlanId || undefined);
+    }
+  }, [selectedAthleteId, selectedAnnualPlanId]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();

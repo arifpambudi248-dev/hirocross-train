@@ -401,16 +401,20 @@ export default function Notifications() {
         }
       });
 
-      const coachResults: Coach[] = (profiles || [])
+      const coachResults = (profiles || [])
         .filter((profile) => profile.id !== userId)
-        .map((profile) => ({
-          ...profile,
-          relationStatus: relationMap.get(profile.id) === "accepted"
+        .map<Coach>((profile) => {
+          const relationStatus: Coach["relationStatus"] = relationMap.get(profile.id) === "accepted"
             ? "accepted"
             : relationMap.get(profile.id) === "pending"
               ? "pending"
-              : "available",
-        }))
+              : "available";
+
+          return {
+            ...profile,
+            relationStatus,
+          };
+        })
         .filter((coach) => coach.relationStatus !== "accepted");
 
       setCoaches(coachResults);
