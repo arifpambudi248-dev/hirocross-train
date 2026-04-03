@@ -291,16 +291,40 @@ export default function ProgramLatihan() {
       handleError(error, getFriendlyErrorMessage(error));
     }
   };
-  const fetchActiveBiomotorTargets = async (athleteId: string) => {
+  const fetchAnnualPlans = async (athleteId: string) => {
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
-      
-      const { data: plans, error } = await supabase
+      const { data, error } = await supabase
         .from("annual_plans")
         .select("id, plan_name, start_date, competition_date, biomotor_config, planned_loads")
         .eq("athlete_id", athleteId)
-        .lte("start_date", today)
-        .gte("competition_date", today)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setAnnualPlans((data || []) as AnnualPlanOption[]);
+      if (data && data.length > 0 && !selectedAnnualPlanId) {
+        setSelectedAnnualPlanId(data[0].id);
+      }
+    } catch (error: any) {
+      handleError(error, getFriendlyErrorMessage(error));
+    }
+  };
+
+  const fetchActiveBiomotorTargets = async (athleteId: string, planId?: string) => {
+    try {
+      const today = format(new Date(), "yyyy-MM-dd");
+      
+      let query = supabase
+        .from("annual_plans")
+        .select("id, plan_name, start_date, competition_date, biomotor_config, planned_loads")
+        .eq("athlete_id", athleteId);
+
+      if (planId) {
+        query = query.eq("id", planId);
+      } else {
+        query = query.lte("start_date", today).gte("competition_date", today);
+      }
+
+      const { data: plans, error } = await query
         .order("created_at", { ascending: false })
         .limit(1);
 
