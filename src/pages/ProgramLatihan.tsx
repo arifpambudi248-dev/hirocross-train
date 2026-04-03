@@ -295,12 +295,12 @@ export default function ProgramLatihan() {
     try {
       const { data, error } = await supabase
         .from("annual_plans")
-        .select("id, plan_name, start_date, competition_date")
+        .select("id, plan_name, start_date, competition_date, biomotor_config, planned_loads")
         .eq("athlete_id", athleteId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setAnnualPlans((data || []).map(p => ({ id: p.id, plan_name: p.plan_name, start_date: p.start_date, competition_date: p.competition_date })));
+      setAnnualPlans((data || []) as AnnualPlanOption[]);
       if (data && data.length > 0 && !selectedAnnualPlanId) {
         setSelectedAnnualPlanId(data[0].id);
       }
