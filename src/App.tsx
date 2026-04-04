@@ -105,6 +105,7 @@ const App = () => {
               <Route path="/historical" element={<Historical />} />
               <Route path="/athlete-management" element={<AthleteManagement />} />
               <Route path="/athlete-comparison" element={<AthleteComparison />} />
+              <Route path="/body-map" element={<BodyMapPage />} />
               <Route path="/notifications" element={<Notifications />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

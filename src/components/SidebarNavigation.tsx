@@ -76,6 +76,7 @@ export const SidebarNavigation = () => {
     { to: "/annual-plan", icon: Calendar, label: "Annual Plan" },
     { to: "/program-latihan", icon: ClipboardList, label: "Bulanan" },
     { to: "/tes-fisik", icon: Target, label: "Tes & Pengukuran" },
+    { to: "/body-map", icon: Dumbbell, label: "Body Map" },
   ];
 
   const premiumNavItems = [
