@@ -30,6 +30,7 @@ import { handleError, getFriendlyErrorMessage } from "@/lib/errorHandling";
 import { z } from "zod";
 import { ExerciseForm, Exercise, ExercisePhase, PhaseNotes } from "@/components/ExerciseForm";
 import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
+import { BodyMapSection } from "@/components/BodyMapSection";
 import { exportSessionDetailToPDF } from "@/lib/exportUtils";
 import { TrainingSessionForm, SessionFormData, MainExercise, ExerciseType } from "@/components/TrainingSessionForm";
 import { BulkSessionForm } from "@/components/BulkSessionForm";
@@ -1523,6 +1524,9 @@ export default function ProgramLatihan() {
               <WeeklyVolumeChart sessions={sessions} />
             </div>
           )}
+
+          {/* Body Map */}
+          <BodyMapSection exercises={sessions.flatMap(s => s.exercises || [])} />
 
           {/* Weekly Target from Annual Plan */}
           {weeklyBiomotorTarget && (
