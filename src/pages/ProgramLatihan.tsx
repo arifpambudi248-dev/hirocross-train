@@ -1525,6 +1525,9 @@ export default function ProgramLatihan() {
             </div>
           )}
 
+          {/* Body Map */}
+          <BodyMapSection exercises={sessions.flatMap(s => s.exercises || [])} />
+
           {/* Weekly Target from Annual Plan */}
           {weeklyBiomotorTarget && (
             <Card className="mb-6 border-primary/30">
