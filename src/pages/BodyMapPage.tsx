@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { BodyMapSVG } from "@/components/BodyMapSVG";
-import { calculateBodyDistribution, classifyExercise } from "@/lib/exerciseBodyMapping";
+import { BodyMapSVG, DetailedIntensities } from "@/components/BodyMapSVG";
+import { calculateDetailedBodyDistribution, classifyExercise } from "@/lib/exerciseBodyMapping";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -110,12 +110,15 @@ export default function BodyMapPage() {
     setLoading(false);
   };
 
-  const distribution = useMemo(() => calculateBodyDistribution(exercises), [exercises]);
+  const dist = useMemo(() => calculateDetailedBodyDistribution(exercises), [exercises]);
 
-  const maxVolume = Math.max(distribution.upper, distribution.lower, distribution.core, 1);
-  const upperIntensity = distribution.total > 0 ? distribution.upper / maxVolume : 0;
-  const lowerIntensity = distribution.total > 0 ? distribution.lower / maxVolume : 0;
-  const coreIntensity = distribution.total > 0 ? distribution.core / maxVolume : 0;
+  const REGIONS: (keyof DetailedIntensities)[] = ["chest", "back", "shoulders", "arms", "core", "quads", "hamstrings", "calves"];
+  const maxVolume = useMemo(() => Math.max(...REGIONS.map(r => dist[r]), 1), [dist]);
+  const intensities: DetailedIntensities = useMemo(() => {
+    const result = {} as DetailedIntensities;
+    for (const r of REGIONS) result[r] = dist.total > 0 ? dist[r] / maxVolume : 0;
+    return result;
+  }, [dist, maxVolume]);
 
   const timeRangeLabel = timeRange === "today" ? "Hari Ini" : timeRange === "week" ? "Minggu Ini" : "30 Hari";
 
@@ -182,7 +185,7 @@ export default function BodyMapPage() {
             <div className="flex justify-center py-20">
               <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : distribution.total === 0 ? (
+          ) : dist.total === 0 ? (
             <Card>
               <CardContent className="py-16 text-center">
                 <Dumbbell className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -196,7 +199,6 @@ export default function BodyMapPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Body Map Card */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">Peta Tubuh — {timeRangeLabel}</CardTitle>
@@ -205,15 +207,10 @@ export default function BodyMapPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <BodyMapSVG
-                    upperIntensity={upperIntensity}
-                    lowerIntensity={lowerIntensity}
-                    coreIntensity={coreIntensity}
-                  />
+                  <BodyMapSVG intensities={intensities} />
                 </CardContent>
               </Card>
 
-              {/* Stats Card */}
               <div className="space-y-4">
                 <Card>
                   <CardHeader className="pb-3">
@@ -222,70 +219,35 @@ export default function BodyMapPage() {
                       Distribusi Volume
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Upper */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <ArrowUp className="w-4 h-4 text-orange-500" />
-                          <span className="text-sm font-medium">Upper Body</span>
+                  <CardContent className="space-y-3">
+                    {([
+                      { key: "chest" as const, label: "Chest", color: "bg-red-500" },
+                      { key: "back" as const, label: "Back", color: "bg-blue-500" },
+                      { key: "shoulders" as const, label: "Shoulders", color: "bg-orange-500" },
+                      { key: "arms" as const, label: "Arms", color: "bg-purple-500" },
+                      { key: "core" as const, label: "Core", color: "bg-yellow-500" },
+                      { key: "quads" as const, label: "Quads", color: "bg-emerald-500" },
+                      { key: "hamstrings" as const, label: "Hamstrings", color: "bg-cyan-500" },
+                      { key: "calves" as const, label: "Calves", color: "bg-pink-500" },
+                    ]).map(r => {
+                      const pct = dist.total > 0 ? Math.round((dist[r.key] / dist.total) * 100) : 0;
+                      if (dist[r.key] === 0) return null;
+                      return (
+                        <div key={r.key} className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">{r.label}</span>
+                            <Badge variant="secondary">{pct}%</Badge>
+                          </div>
+                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full ${r.color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <p className="text-xs text-muted-foreground">Volume: {Math.round(dist[r.key]).toLocaleString()}</p>
                         </div>
-                        <Badge variant="secondary">
-                          {distribution.total > 0 ? Math.round((distribution.upper / distribution.total) * 100) : 0}%
-                        </Badge>
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-orange-500 rounded-full transition-all duration-500"
-                          style={{ width: `${distribution.total > 0 ? (distribution.upper / distribution.total) * 100 : 0}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">Volume: {Math.round(distribution.upper).toLocaleString()}</p>
-                    </div>
-
-                    {/* Core */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <Dumbbell className="w-4 h-4 text-yellow-500" />
-                          <span className="text-sm font-medium">Core</span>
-                        </div>
-                        <Badge variant="secondary">
-                          {distribution.total > 0 ? Math.round((distribution.core / distribution.total) * 100) : 0}%
-                        </Badge>
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-yellow-500 rounded-full transition-all duration-500"
-                          style={{ width: `${distribution.total > 0 ? (distribution.core / distribution.total) * 100 : 0}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">Volume: {Math.round(distribution.core).toLocaleString()}</p>
-                    </div>
-
-                    {/* Lower */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <ArrowDown className="w-4 h-4 text-blue-500" />
-                          <span className="text-sm font-medium">Lower Body</span>
-                        </div>
-                        <Badge variant="secondary">
-                          {distribution.total > 0 ? Math.round((distribution.lower / distribution.total) * 100) : 0}%
-                        </Badge>
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                          style={{ width: `${distribution.total > 0 ? (distribution.lower / distribution.total) * 100 : 0}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">Volume: {Math.round(distribution.lower).toLocaleString()}</p>
-                    </div>
+                      );
+                    })}
                   </CardContent>
                 </Card>
 
-                {/* Exercise List */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg">Detail Latihan</CardTitle>
@@ -293,12 +255,10 @@ export default function BodyMapPage() {
                   <CardContent className="space-y-3">
                     {Object.entries(exercisesByRegion).map(([region, exList]) => {
                       if (exList.length === 0) return null;
-                      const regionLabel = region === "upper" ? "Upper Body" : region === "lower" ? "Lower Body" : "Core";
-                      const regionColor = region === "upper" ? "text-orange-500" : region === "lower" ? "text-blue-500" : "text-yellow-500";
                       return (
                         <div key={region}>
-                          <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${regionColor}`}>
-                            {regionLabel}
+                          <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-muted-foreground">
+                            {region}
                           </p>
                           {exList.map((ex, i) => (
                             <div key={i} className="flex justify-between text-sm py-1 border-b border-border last:border-0">
