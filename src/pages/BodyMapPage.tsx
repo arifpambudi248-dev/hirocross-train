@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { BodyMapSVG } from "@/components/BodyMapSVG";
-import { calculateBodyDistribution, classifyExercise } from "@/lib/exerciseBodyMapping";
+import { BodyMapSVG, DetailedIntensities } from "@/components/BodyMapSVG";
+import { calculateDetailedBodyDistribution, classifyExercise } from "@/lib/exerciseBodyMapping";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
