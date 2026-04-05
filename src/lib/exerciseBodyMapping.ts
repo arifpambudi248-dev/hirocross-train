@@ -1,50 +1,75 @@
-// Maps exercise names (lowercase keywords) to body regions
-type BodyRegion = "upper" | "lower" | "core";
+// Detailed body region mapping
+export type BodyRegion = "chest" | "back" | "shoulders" | "arms" | "core" | "quads" | "hamstrings" | "calves";
 
-const UPPER_KEYWORDS = [
-  "bench", "press", "push up", "pushup", "pull up", "pullup", "chin up",
-  "row", "curl", "fly", "flye", "tricep", "bicep", "shoulder", "overhead",
-  "lateral raise", "front raise", "dip", "chest", "back", "lat",
-  "dumbbell press", "barbell press", "military press", "arnold",
-  "shrug", "upright", "face pull", "cable", "pec",
-  // Indonesian
-  "angkat", "tarik", "dorong", "dada", "bahu", "lengan", "punggung",
+const CHEST_KEYWORDS = [
+  "bench", "push up", "pushup", "fly", "flye", "chest", "pec", "dada", "dumbbell press", "barbell press",
+  "incline", "decline", "cable cross",
 ];
 
-const LOWER_KEYWORDS = [
-  "squat", "deadlift", "lunge", "leg press", "leg curl", "leg extension",
-  "calf", "hip thrust", "glute", "hamstring", "quad", "step up",
-  "bulgarian", "romanian", "sumo", "goblet", "front squat", "back squat",
-  "box jump", "jump", "sprint", "run", "jalan", "lari",
-  // Indonesian
-  "kaki", "paha", "betis", "pinggul", "jongkok",
+const BACK_KEYWORDS = [
+  "row", "pull up", "pullup", "chin up", "lat", "back", "deadlift", "face pull",
+  "cable row", "t-bar", "punggung", "tarik",
+];
+
+const SHOULDER_KEYWORDS = [
+  "shoulder", "overhead", "military press", "arnold", "lateral raise", "front raise",
+  "upright", "shrug", "delt", "bahu", "press behind",
+];
+
+const ARM_KEYWORDS = [
+  "curl", "tricep", "bicep", "hammer", "preacher", "skull crusher", "dip",
+  "extension", "kickback", "lengan", "angkat",
 ];
 
 const CORE_KEYWORDS = [
   "plank", "sit up", "situp", "crunch", "abs", "core", "twist",
   "russian twist", "leg raise", "hanging", "ab wheel", "rollout",
-  "side bend", "woodchop", "pallof", "bird dog", "dead bug",
-  // Indonesian
-  "perut",
+  "side bend", "woodchop", "pallof", "bird dog", "dead bug", "perut",
+];
+
+const QUAD_KEYWORDS = [
+  "squat", "leg press", "leg extension", "lunge", "bulgarian", "goblet",
+  "front squat", "back squat", "step up", "box jump", "jump",
+  "jongkok", "paha",
+];
+
+const HAMSTRING_KEYWORDS = [
+  "leg curl", "hamstring", "romanian", "rdl", "good morning", "hip thrust",
+  "glute", "sumo", "stiff leg", "pinggul",
+];
+
+const CALF_KEYWORDS = [
+  "calf", "calf raise", "betis", "tibialis",
 ];
 
 export function classifyExercise(exerciseName: string): BodyRegion {
   const name = exerciseName.toLowerCase();
-  
-  for (const kw of LOWER_KEYWORDS) {
-    if (name.includes(kw)) return "lower";
-  }
-  for (const kw of CORE_KEYWORDS) {
-    if (name.includes(kw)) return "core";
-  }
-  for (const kw of UPPER_KEYWORDS) {
-    if (name.includes(kw)) return "upper";
-  }
-  
-  // Default: upper for strength exercises
-  return "upper";
+
+  for (const kw of CALF_KEYWORDS) if (name.includes(kw)) return "calves";
+  for (const kw of HAMSTRING_KEYWORDS) if (name.includes(kw)) return "hamstrings";
+  for (const kw of QUAD_KEYWORDS) if (name.includes(kw)) return "quads";
+  for (const kw of CORE_KEYWORDS) if (name.includes(kw)) return "core";
+  for (const kw of CHEST_KEYWORDS) if (name.includes(kw)) return "chest";
+  for (const kw of BACK_KEYWORDS) if (name.includes(kw)) return "back";
+  for (const kw of SHOULDER_KEYWORDS) if (name.includes(kw)) return "shoulders";
+  for (const kw of ARM_KEYWORDS) if (name.includes(kw)) return "arms";
+
+  return "chest"; // default for unknown strength
 }
 
+export type DetailedBodyDistribution = {
+  chest: number;
+  back: number;
+  shoulders: number;
+  arms: number;
+  core: number;
+  quads: number;
+  hamstrings: number;
+  calves: number;
+  total: number;
+};
+
+// Keep backward compat
 export type BodyDistribution = {
   upper: number;
   lower: number;
@@ -52,20 +77,29 @@ export type BodyDistribution = {
   total: number;
 };
 
-export function calculateBodyDistribution(
+export function calculateDetailedBodyDistribution(
   exercises: { exercise_name: string; sets?: number | null; reps?: number | null; weight_kg?: number | null }[]
-): BodyDistribution {
-  let upper = 0, lower = 0, core = 0;
+): DetailedBodyDistribution {
+  const dist: DetailedBodyDistribution = { chest: 0, back: 0, shoulders: 0, arms: 0, core: 0, quads: 0, hamstrings: 0, calves: 0, total: 0 };
 
   for (const ex of exercises) {
     const region = classifyExercise(ex.exercise_name);
     const volume = (ex.sets || 1) * (ex.reps || 1) * (ex.weight_kg || 1);
-    
-    if (region === "upper") upper += volume;
-    else if (region === "lower") lower += volume;
-    else core += volume;
+    dist[region] += volume;
   }
 
-  const total = upper + lower + core;
-  return { upper, lower, core, total };
+  dist.total = dist.chest + dist.back + dist.shoulders + dist.arms + dist.core + dist.quads + dist.hamstrings + dist.calves;
+  return dist;
+}
+
+export function calculateBodyDistribution(
+  exercises: { exercise_name: string; sets?: number | null; reps?: number | null; weight_kg?: number | null }[]
+): BodyDistribution {
+  const d = calculateDetailedBodyDistribution(exercises);
+  return {
+    upper: d.chest + d.back + d.shoulders + d.arms,
+    lower: d.quads + d.hamstrings + d.calves,
+    core: d.core,
+    total: d.total,
+  };
 }

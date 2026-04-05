@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BodyMapSVG } from "@/components/BodyMapSVG";
-import { calculateBodyDistribution, classifyExercise } from "@/lib/exerciseBodyMapping";
-import { Dumbbell, TrendingUp, ArrowUp, ArrowDown } from "lucide-react";
+import { BodyMapSVG, DetailedIntensities } from "@/components/BodyMapSVG";
+import { calculateDetailedBodyDistribution } from "@/lib/exerciseBodyMapping";
+import { Dumbbell } from "lucide-react";
 
 interface SessionExercise {
   exercise_name: string;
@@ -17,29 +17,42 @@ interface BodyMapSectionProps {
   exercises: SessionExercise[];
 }
 
+const REGION_META: { key: keyof DetailedIntensities; label: string; color: string }[] = [
+  { key: "chest", label: "Chest", color: "bg-red-500" },
+  { key: "back", label: "Back", color: "bg-blue-500" },
+  { key: "shoulders", label: "Shoulders", color: "bg-orange-500" },
+  { key: "arms", label: "Arms", color: "bg-purple-500" },
+  { key: "core", label: "Core", color: "bg-yellow-500" },
+  { key: "quads", label: "Quads", color: "bg-emerald-500" },
+  { key: "hamstrings", label: "Hamstrings", color: "bg-cyan-500" },
+  { key: "calves", label: "Calves", color: "bg-pink-500" },
+];
+
 export function BodyMapSection({ exercises }: BodyMapSectionProps) {
   const strengthExercises = useMemo(
     () => exercises.filter((ex) => ex.exercise_type === "strength"),
     [exercises]
   );
 
-  const distribution = useMemo(
-    () => calculateBodyDistribution(strengthExercises),
+  const dist = useMemo(
+    () => calculateDetailedBodyDistribution(strengthExercises),
     [strengthExercises]
   );
 
-  const maxVolume = Math.max(distribution.upper, distribution.lower, distribution.core, 1);
-  const upperIntensity = distribution.total > 0 ? distribution.upper / maxVolume : 0;
-  const lowerIntensity = distribution.total > 0 ? distribution.lower / maxVolume : 0;
-  const coreIntensity = distribution.total > 0 ? distribution.core / maxVolume : 0;
+  const maxVolume = useMemo(() => {
+    const vals = REGION_META.map(r => dist[r.key]);
+    return Math.max(...vals, 1);
+  }, [dist]);
 
-  if (distribution.total === 0) return null;
+  const intensities: DetailedIntensities = useMemo(() => {
+    const result = {} as DetailedIntensities;
+    for (const r of REGION_META) {
+      result[r.key] = dist.total > 0 ? dist[r.key] / maxVolume : 0;
+    }
+    return result;
+  }, [dist, maxVolume]);
 
-  const regions = [
-    { label: "Upper Body", value: distribution.upper, total: distribution.total, icon: ArrowUp, color: "text-orange-500", barColor: "bg-orange-500" },
-    { label: "Core", value: distribution.core, total: distribution.total, icon: Dumbbell, color: "text-yellow-500", barColor: "bg-yellow-500" },
-    { label: "Lower Body", value: distribution.lower, total: distribution.total, icon: ArrowDown, color: "text-blue-500", barColor: "bg-blue-500" },
-  ];
+  if (dist.total === 0) return null;
 
   return (
     <Card className="mb-6">
@@ -48,37 +61,30 @@ export function BodyMapSection({ exercises }: BodyMapSectionProps) {
           <Dumbbell className="w-4 h-4 text-primary" />
           Body Map — Distribusi Strength
         </CardTitle>
-        <CardDescription>Visualisasi area tubuh yang dilatih bulan ini</CardDescription>
+        <CardDescription>Visualisasi area otot yang dilatih bulan ini</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex items-center justify-center">
-            <BodyMapSVG
-              upperIntensity={upperIntensity}
-              lowerIntensity={lowerIntensity}
-              coreIntensity={coreIntensity}
-            />
+            <BodyMapSVG intensities={intensities} />
           </div>
-          <div className="space-y-4 flex flex-col justify-center">
-            {regions.map((r) => {
-              const pct = r.total > 0 ? Math.round((r.value / r.total) * 100) : 0;
-              const Icon = r.icon;
+          <div className="space-y-3 flex flex-col justify-center">
+            {REGION_META.map((r) => {
+              const pct = dist.total > 0 ? Math.round((dist[r.key] / dist.total) * 100) : 0;
+              if (dist[r.key] === 0) return null;
               return (
-                <div key={r.label} className="space-y-1.5">
+                <div key={r.key} className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Icon className={`w-4 h-4 ${r.color}`} />
-                      <span className="text-sm font-medium">{r.label}</span>
-                    </div>
+                    <span className="text-sm font-medium">{r.label}</span>
                     <Badge variant="secondary">{pct}%</Badge>
                   </div>
                   <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${r.barColor} rounded-full transition-all duration-500`}
+                      className={`h-full ${r.color} rounded-full transition-all duration-500`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Volume: {Math.round(r.value).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">Volume: {Math.round(dist[r.key]).toLocaleString()}</p>
                 </div>
               );
             })}
