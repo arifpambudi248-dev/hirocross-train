@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import bodyMapImage from "@/assets/body-map.avif";
 
 interface BodyMapSVGProps {
   upperIntensity: number; // 0-1
@@ -7,19 +8,12 @@ interface BodyMapSVGProps {
 }
 
 const getHeatColor = (intensity: number) => {
-  if (intensity <= 0) return "hsl(var(--muted))";
-  // Interpolate from muted blue to bright orange/red
+  if (intensity <= 0) return "transparent";
   const r = Math.round(50 + intensity * 205);
   const g = Math.round(50 + intensity * 100 - intensity * intensity * 100);
   const b = Math.round(80 - intensity * 80);
-  const alpha = 0.3 + intensity * 0.7;
+  const alpha = 0.25 + intensity * 0.45;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
-const getGlowFilter = (intensity: number) => {
-  if (intensity <= 0.1) return "none";
-  const blur = 4 + intensity * 12;
-  return `drop-shadow(0 0 ${blur}px ${getHeatColor(intensity)})`;
 };
 
 export function BodyMapSVG({ upperIntensity, lowerIntensity, coreIntensity = 0 }: BodyMapSVGProps) {
@@ -28,103 +22,45 @@ export function BodyMapSVG({ upperIntensity, lowerIntensity, coreIntensity = 0 }
   const coreColor = useMemo(() => getHeatColor(coreIntensity), [coreIntensity]);
 
   return (
-    <svg viewBox="0 0 200 400" className="w-full max-w-[280px] mx-auto" xmlns="http://www.w3.org/2000/svg">
-      {/* Head */}
-      <ellipse cx="100" cy="35" rx="22" ry="28" fill="hsl(var(--muted))" stroke="hsl(var(--border))" strokeWidth="1.5" />
-      
-      {/* Neck */}
-      <rect x="92" y="60" width="16" height="14" rx="4" fill="hsl(var(--muted))" stroke="hsl(var(--border))" strokeWidth="1" />
-
-      {/* Upper Body Group */}
-      <g style={{ filter: getGlowFilter(upperIntensity) }}>
-        {/* Torso / Chest */}
-        <path
-          d="M60 74 Q60 70 70 70 L130 70 Q140 70 140 74 L145 130 Q145 140 135 142 L65 142 Q55 140 55 130 Z"
-          fill={upperColor}
-          stroke="hsl(var(--border))"
-          strokeWidth="1.5"
-        />
-        {/* Left Shoulder */}
-        <ellipse cx="55" cy="82" rx="14" ry="10" fill={upperColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Right Shoulder */}
-        <ellipse cx="145" cy="82" rx="14" ry="10" fill={upperColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Left Upper Arm */}
-        <rect x="30" y="82" width="18" height="45" rx="8" fill={upperColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Right Upper Arm */}
-        <rect x="152" y="82" width="18" height="45" rx="8" fill={upperColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Left Forearm */}
-        <rect x="28" y="127" width="16" height="42" rx="7" fill={upperColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Right Forearm */}
-        <rect x="156" y="127" width="16" height="42" rx="7" fill={upperColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Left Hand */}
-        <ellipse cx="36" cy="175" rx="8" ry="10" fill={upperColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Right Hand */}
-        <ellipse cx="164" cy="175" rx="8" ry="10" fill={upperColor} stroke="hsl(var(--border))" strokeWidth="1" />
-      </g>
-
-      {/* Core / Abs */}
-      <g style={{ filter: getGlowFilter(coreIntensity) }}>
-        <path
-          d="M65 142 L135 142 Q140 145 138 180 L130 200 Q120 205 100 205 Q80 205 70 200 L62 180 Q60 145 65 142 Z"
-          fill={coreColor}
-          stroke="hsl(var(--border))"
-          strokeWidth="1.5"
-        />
-      </g>
-
-      {/* Lower Body Group */}
-      <g style={{ filter: getGlowFilter(lowerIntensity) }}>
-        {/* Hip / Glutes */}
-        <path
-          d="M62 200 Q60 195 65 190 L135 190 Q140 195 138 200 L140 220 Q130 230 100 230 Q70 230 60 220 Z"
-          fill={lowerColor}
-          stroke="hsl(var(--border))"
-          strokeWidth="1.5"
-        />
-        {/* Left Thigh */}
-        <path
-          d="M68 225 Q65 222 67 220 L90 220 Q95 225 93 230 L88 295 Q85 305 78 305 L72 305 Q65 305 63 295 Z"
-          fill={lowerColor}
-          stroke="hsl(var(--border))"
-          strokeWidth="1.5"
-        />
-        {/* Right Thigh */}
-        <path
-          d="M110 220 Q115 222 132 225 L137 295 Q135 305 128 305 L122 305 Q115 305 112 295 L107 230 Q105 225 110 220 Z"
-          fill={lowerColor}
-          stroke="hsl(var(--border))"
-          strokeWidth="1.5"
-        />
-        {/* Left Knee */}
-        <ellipse cx="75" cy="310" rx="12" ry="8" fill={lowerColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Right Knee */}
-        <ellipse cx="125" cy="310" rx="12" ry="8" fill={lowerColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Left Shin */}
-        <rect x="66" y="316" width="18" height="48" rx="8" fill={lowerColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Right Shin */}
-        <rect x="116" y="316" width="18" height="48" rx="8" fill={lowerColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Left Foot */}
-        <ellipse cx="75" cy="372" rx="12" ry="7" fill={lowerColor} stroke="hsl(var(--border))" strokeWidth="1" />
-        {/* Right Foot */}
-        <ellipse cx="125" cy="372" rx="12" ry="7" fill={lowerColor} stroke="hsl(var(--border))" strokeWidth="1" />
-      </g>
+    <div className="relative w-full max-w-[280px] mx-auto">
+      <img
+        src={bodyMapImage}
+        alt="Body Map"
+        className="w-full h-auto rounded-lg"
+        draggable={false}
+      />
+      {/* Upper body overlay — head to mid-torso (~0% to ~38%) */}
+      <div
+        className="absolute left-[15%] right-[15%] top-[0%] bottom-[62%] rounded-t-lg transition-all duration-500 pointer-events-none"
+        style={{ backgroundColor: upperColor }}
+      />
+      {/* Core overlay — mid-torso to hips (~38% to ~55%) */}
+      <div
+        className="absolute left-[20%] right-[20%] top-[38%] bottom-[45%] transition-all duration-500 pointer-events-none"
+        style={{ backgroundColor: coreColor }}
+      />
+      {/* Lower body overlay — hips to feet (~55% to ~100%) */}
+      <div
+        className="absolute left-[10%] right-[10%] top-[55%] bottom-[0%] rounded-b-lg transition-all duration-500 pointer-events-none"
+        style={{ backgroundColor: lowerColor }}
+      />
 
       {/* Labels */}
       {upperIntensity > 0 && (
-        <text x="100" y="110" textAnchor="middle" className="text-[10px] font-bold fill-foreground">
+        <div className="absolute top-[15%] left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-foreground shadow">
           {Math.round(upperIntensity * 100)}%
-        </text>
+        </div>
       )}
       {coreIntensity > 0 && (
-        <text x="100" y="175" textAnchor="middle" className="text-[10px] font-bold fill-foreground">
+        <div className="absolute top-[43%] left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-foreground shadow">
           {Math.round(coreIntensity * 100)}%
-        </text>
+        </div>
       )}
       {lowerIntensity > 0 && (
-        <text x="100" y="270" textAnchor="middle" className="text-[10px] font-bold fill-foreground">
+        <div className="absolute top-[70%] left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-foreground shadow">
           {Math.round(lowerIntensity * 100)}%
-        </text>
+        </div>
       )}
-    </svg>
+    </div>
   );
 }
