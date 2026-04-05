@@ -110,12 +110,15 @@ export default function BodyMapPage() {
     setLoading(false);
   };
 
-  const distribution = useMemo(() => calculateBodyDistribution(exercises), [exercises]);
+  const dist = useMemo(() => calculateDetailedBodyDistribution(exercises), [exercises]);
 
-  const maxVolume = Math.max(distribution.upper, distribution.lower, distribution.core, 1);
-  const upperIntensity = distribution.total > 0 ? distribution.upper / maxVolume : 0;
-  const lowerIntensity = distribution.total > 0 ? distribution.lower / maxVolume : 0;
-  const coreIntensity = distribution.total > 0 ? distribution.core / maxVolume : 0;
+  const REGIONS: (keyof DetailedIntensities)[] = ["chest", "back", "shoulders", "arms", "core", "quads", "hamstrings", "calves"];
+  const maxVolume = useMemo(() => Math.max(...REGIONS.map(r => dist[r]), 1), [dist]);
+  const intensities: DetailedIntensities = useMemo(() => {
+    const result = {} as DetailedIntensities;
+    for (const r of REGIONS) result[r] = dist.total > 0 ? dist[r] / maxVolume : 0;
+    return result;
+  }, [dist, maxVolume]);
 
   const timeRangeLabel = timeRange === "today" ? "Hari Ini" : timeRange === "week" ? "Minggu Ini" : "30 Hari";
 
