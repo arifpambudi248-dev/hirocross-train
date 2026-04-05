@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import bodyMapImage from "@/assets/body-map.avif";
+import bodyMapImage from "@/assets/body-map.png";
 
 interface BodyMapSVGProps {
-  upperIntensity: number; // 0-1
-  lowerIntensity: number; // 0-1
-  coreIntensity?: number; // 0-1
+  upperIntensity: number;
+  lowerIntensity: number;
+  coreIntensity?: number;
 }
 
 const getHeatColor = (intensity: number) => {
@@ -12,7 +12,7 @@ const getHeatColor = (intensity: number) => {
   const r = Math.round(50 + intensity * 205);
   const g = Math.round(50 + intensity * 100 - intensity * intensity * 100);
   const b = Math.round(80 - intensity * 80);
-  const alpha = 0.25 + intensity * 0.45;
+  const alpha = 0.2 + intensity * 0.4;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
@@ -26,38 +26,50 @@ export function BodyMapSVG({ upperIntensity, lowerIntensity, coreIntensity = 0 }
       <img
         src={bodyMapImage}
         alt="Body Map"
-        className="w-full h-auto rounded-lg"
+        className="w-full h-auto"
         draggable={false}
       />
-      {/* Upper body overlay — head to mid-torso (~0% to ~38%) */}
+      {/* Upper body overlay — head to chest/shoulders (~4% to ~35%) */}
       <div
-        className="absolute left-[15%] right-[15%] top-[0%] bottom-[62%] rounded-t-lg transition-all duration-500 pointer-events-none"
+        className="absolute left-[5%] right-[52%] top-[4%] bottom-[65%] rounded-lg transition-all duration-500 pointer-events-none"
         style={{ backgroundColor: upperColor }}
       />
-      {/* Core overlay — mid-torso to hips (~38% to ~55%) */}
       <div
-        className="absolute left-[20%] right-[20%] top-[38%] bottom-[45%] transition-all duration-500 pointer-events-none"
+        className="absolute left-[52%] right-[5%] top-[4%] bottom-[65%] rounded-lg transition-all duration-500 pointer-events-none"
+        style={{ backgroundColor: upperColor }}
+      />
+      {/* Core overlay — abs/lower back (~35% to ~48%) */}
+      <div
+        className="absolute left-[12%] right-[58%] top-[35%] bottom-[52%] transition-all duration-500 pointer-events-none"
         style={{ backgroundColor: coreColor }}
       />
-      {/* Lower body overlay — hips to feet (~55% to ~100%) */}
       <div
-        className="absolute left-[10%] right-[10%] top-[55%] bottom-[0%] rounded-b-lg transition-all duration-500 pointer-events-none"
+        className="absolute left-[58%] right-[12%] top-[35%] bottom-[52%] transition-all duration-500 pointer-events-none"
+        style={{ backgroundColor: coreColor }}
+      />
+      {/* Lower body overlay — hips to feet (~48% to ~96%) */}
+      <div
+        className="absolute left-[8%] right-[55%] top-[48%] bottom-[4%] rounded-b-lg transition-all duration-500 pointer-events-none"
+        style={{ backgroundColor: lowerColor }}
+      />
+      <div
+        className="absolute left-[55%] right-[8%] top-[48%] bottom-[4%] rounded-b-lg transition-all duration-500 pointer-events-none"
         style={{ backgroundColor: lowerColor }}
       />
 
       {/* Labels */}
       {upperIntensity > 0 && (
-        <div className="absolute top-[15%] left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-foreground shadow">
+        <div className="absolute top-[18%] left-[25%] -translate-x-1/2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-foreground shadow">
           {Math.round(upperIntensity * 100)}%
         </div>
       )}
       {coreIntensity > 0 && (
-        <div className="absolute top-[43%] left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-foreground shadow">
+        <div className="absolute top-[40%] left-[25%] -translate-x-1/2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-foreground shadow">
           {Math.round(coreIntensity * 100)}%
         </div>
       )}
       {lowerIntensity > 0 && (
-        <div className="absolute top-[70%] left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-foreground shadow">
+        <div className="absolute top-[68%] left-[25%] -translate-x-1/2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-foreground shadow">
           {Math.round(lowerIntensity * 100)}%
         </div>
       )}
