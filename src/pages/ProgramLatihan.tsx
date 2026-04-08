@@ -1525,8 +1525,8 @@ export default function ProgramLatihan() {
             </div>
           )}
 
-          {/* Body Map */}
-          <BodyMapSection exercises={sessions.flatMap(s => s.exercises || [])} />
+          {/* Body Map — hanya tampilkan latihan hari ini */}
+          <BodyMapSection exercises={sessions.filter(s => s.date === format(new Date(), "yyyy-MM-dd")).flatMap(s => s.exercises || [])} />
 
           {/* Weekly Target from Annual Plan */}
           {weeklyBiomotorTarget && (
