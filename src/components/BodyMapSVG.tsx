@@ -18,17 +18,14 @@ interface BodyMapSVGProps {
 
 const getHeatColor = (intensity: number) => {
   if (intensity <= 0) return "transparent";
-  // green → yellow → red gradient
   const t = Math.min(intensity, 1);
+  // green → yellow → orange → red
   const r = Math.round(40 + t * 215);
-  const g = Math.round(180 - t * 140);
+  const g = Math.round(200 - t * 160);
   const b = Math.round(60 - t * 40);
-  const alpha = 0.15 + t * 0.45;
+  const alpha = 0.25 + t * 0.5;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
-
-// Each overlay region is positioned to match the uploaded anatomy image (front + back views)
-// The image has two figures side by side: front (left ~0-48%) and back (right ~52-100%)
 
 export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
   const colors = useMemo(() => ({
@@ -42,15 +39,21 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
     calves: getHeatColor(intensities.calves),
   }), [intensities]);
 
-  const overlay = (className: string, color: string) => (
+  // Narrow, precise overlay matching individual muscle shapes
+  const m = (style: React.CSSProperties, color: string) => (
     <div
-      className={`absolute transition-all duration-500 pointer-events-none rounded-sm ${className}`}
-      style={{ backgroundColor: color }}
+      className="absolute pointer-events-none transition-all duration-500"
+      style={{
+        ...style,
+        backgroundColor: color,
+        borderRadius: "40%",
+        mixBlendMode: "screen",
+      }}
     />
   );
 
   return (
-    <div className="relative w-full max-w-[320px] mx-auto select-none">
+    <div className="relative w-full max-w-[340px] mx-auto select-none">
       <img
         src={bodyMapImage}
         alt="Body Map"
@@ -58,51 +61,64 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
         draggable={false}
       />
 
-      {/* === FRONT FIGURE (left half) === */}
-      {/* Shoulders front – left & right deltoid */}
-      {overlay("left-[9%] w-[9%] top-[16%] h-[6%] rounded-md", colors.shoulders)}
-      {overlay("left-[33%] w-[9%] top-[16%] h-[6%] rounded-md", colors.shoulders)}
+      {/* ===== FRONT FIGURE (left ~8%-46%) ===== */}
 
-      {/* Chest front – pectorals */}
-      {overlay("left-[15%] w-[21%] top-[19%] h-[10%] rounded-md", colors.chest)}
+      {/* Shoulders / Deltoids front */}
+      {m({ left: "10%", width: "7%", top: "17%", height: "5%" }, colors.shoulders)}
+      {m({ left: "34%", width: "7%", top: "17%", height: "5%" }, colors.shoulders)}
 
-      {/* Arms front – biceps & forearms */}
-      {overlay("left-[4%] w-[7%] top-[22%] h-[19%] rounded-md", colors.arms)}
-      {overlay("left-[40%] w-[7%] top-[22%] h-[19%] rounded-md", colors.arms)}
+      {/* Chest / Pectorals - left & right pec separately */}
+      {m({ left: "15%", width: "9%", top: "20%", height: "7%" }, colors.chest)}
+      {m({ left: "27%", width: "9%", top: "20%", height: "7%" }, colors.chest)}
 
-      {/* Core front – abs & obliques */}
-      {overlay("left-[17%] w-[17%] top-[29%] h-[16%] rounded-md", colors.core)}
+      {/* Arms front - upper arm (bicep) */}
+      {m({ left: "7%", width: "5%", top: "23%", height: "11%" }, colors.arms)}
+      {m({ left: "39%", width: "5%", top: "23%", height: "11%" }, colors.arms)}
+      {/* Arms front - forearm */}
+      {m({ left: "5%", width: "4%", top: "35%", height: "10%" }, colors.arms)}
+      {m({ left: "42%", width: "4%", top: "35%", height: "10%" }, colors.arms)}
 
-      {/* Quads front */}
-      {overlay("left-[14%] w-[11%] top-[48%] h-[19%] rounded-md", colors.quads)}
-      {overlay("left-[27%] w-[11%] top-[48%] h-[19%] rounded-md", colors.quads)}
+      {/* Core / Abs */}
+      {m({ left: "19%", width: "13%", top: "27%", height: "15%" }, colors.core)}
+
+      {/* Quads front - left & right */}
+      {m({ left: "15%", width: "7%", top: "48%", height: "16%" }, colors.quads)}
+      {m({ left: "28%", width: "7%", top: "48%", height: "16%" }, colors.quads)}
 
       {/* Calves front */}
-      {overlay("left-[16%] w-[6%] top-[71%] h-[17%] rounded-md", colors.calves)}
-      {overlay("left-[29%] w-[6%] top-[71%] h-[17%] rounded-md", colors.calves)}
+      {m({ left: "16%", width: "5%", top: "67%", height: "14%" }, colors.calves)}
+      {m({ left: "30%", width: "5%", top: "67%", height: "14%" }, colors.calves)}
 
-      {/* === BACK FIGURE (right half) === */}
-      {/* Shoulders back – rear deltoids & traps */}
-      {overlay("left-[56%] w-[9%] top-[16%] h-[6%] rounded-md", colors.shoulders)}
-      {overlay("left-[80%] w-[9%] top-[16%] h-[6%] rounded-md", colors.shoulders)}
+      {/* ===== BACK FIGURE (right ~54%-92%) ===== */}
 
-      {/* Back – lats & traps */}
-      {overlay("left-[61%] w-[22%] top-[19%] h-[16%] rounded-md", colors.back)}
+      {/* Shoulders / Rear Deltoids */}
+      {m({ left: "55%", width: "7%", top: "17%", height: "5%" }, colors.shoulders)}
+      {m({ left: "82%", width: "7%", top: "17%", height: "5%" }, colors.shoulders)}
 
-      {/* Arms back – triceps & forearms */}
-      {overlay("left-[51%] w-[7%] top-[22%] h-[19%] rounded-md", colors.arms)}
-      {overlay("left-[87%] w-[7%] top-[22%] h-[19%] rounded-md", colors.arms)}
+      {/* Back / Lats & Traps - upper */}
+      {m({ left: "61%", width: "10%", top: "20%", height: "8%" }, colors.back)}
+      {m({ left: "73%", width: "10%", top: "20%", height: "8%" }, colors.back)}
+      {/* Back / Lats - lower */}
+      {m({ left: "62%", width: "8%", top: "28%", height: "8%" }, colors.back)}
+      {m({ left: "74%", width: "8%", top: "28%", height: "8%" }, colors.back)}
 
-      {/* Core back – lower back & glutes */}
-      {overlay("left-[63%] w-[18%] top-[35%] h-[12%] rounded-md", colors.core)}
+      {/* Arms back - triceps */}
+      {m({ left: "52%", width: "5%", top: "23%", height: "11%" }, colors.arms)}
+      {m({ left: "87%", width: "5%", top: "23%", height: "11%" }, colors.arms)}
+      {/* Arms back - forearm */}
+      {m({ left: "50%", width: "4%", top: "35%", height: "10%" }, colors.arms)}
+      {m({ left: "90%", width: "4%", top: "35%", height: "10%" }, colors.arms)}
 
-      {/* Hamstrings back */}
-      {overlay("left-[59%] w-[11%] top-[48%] h-[21%] rounded-md", colors.hamstrings)}
-      {overlay("left-[74%] w-[11%] top-[48%] h-[21%] rounded-md", colors.hamstrings)}
+      {/* Core back / Lower back & Glutes */}
+      {m({ left: "64%", width: "16%", top: "37%", height: "10%" }, colors.core)}
+
+      {/* Hamstrings */}
+      {m({ left: "60%", width: "7%", top: "50%", height: "16%" }, colors.hamstrings)}
+      {m({ left: "77%", width: "7%", top: "50%", height: "16%" }, colors.hamstrings)}
 
       {/* Calves back */}
-      {overlay("left-[62%] w-[7%] top-[72%] h-[16%] rounded-md", colors.calves)}
-      {overlay("left-[76%] w-[7%] top-[72%] h-[16%] rounded-md", colors.calves)}
+      {m({ left: "62%", width: "5%", top: "68%", height: "14%" }, colors.calves)}
+      {m({ left: "78%", width: "5%", top: "68%", height: "14%" }, colors.calves)}
     </div>
   );
 }
