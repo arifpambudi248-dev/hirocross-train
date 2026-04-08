@@ -23,7 +23,7 @@ const getHeatColor = (intensity: number) => {
   const r = Math.round(40 + t * 215);
   const g = Math.round(200 - t * 160);
   const b = Math.round(60 - t * 40);
-  const alpha = 0.25 + t * 0.5;
+  const alpha = 0.3 + t * 0.5;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
@@ -39,14 +39,13 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
     calves: getHeatColor(intensities.calves),
   }), [intensities]);
 
-  // Narrow, precise overlay matching individual muscle shapes
   const m = (style: React.CSSProperties, color: string) => (
     <div
       className="absolute pointer-events-none transition-all duration-500"
       style={{
         ...style,
         backgroundColor: color,
-        borderRadius: "40%",
+        borderRadius: "35%",
         mixBlendMode: "screen",
       }}
     />
@@ -61,64 +60,64 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
         draggable={false}
       />
 
-      {/* ===== FRONT FIGURE (left ~8%-46%) ===== */}
+      {/* ===== FRONT FIGURE (left ~5%-48%) ===== */}
 
-      {/* Shoulders / Deltoids front */}
-      {m({ left: "10%", width: "7%", top: "17%", height: "5%" }, colors.shoulders)}
-      {m({ left: "34%", width: "7%", top: "17%", height: "5%" }, colors.shoulders)}
+      {/* Shoulders / Deltoids front - small caps on each side */}
+      {m({ left: "9%", width: "6%", top: "15.5%", height: "4.5%" }, colors.shoulders)}
+      {m({ left: "35%", width: "6%", top: "15.5%", height: "4.5%" }, colors.shoulders)}
 
-      {/* Chest / Pectorals - left & right pec separately */}
-      {m({ left: "15%", width: "9%", top: "20%", height: "7%" }, colors.chest)}
-      {m({ left: "27%", width: "9%", top: "20%", height: "7%" }, colors.chest)}
+      {/* Chest / Pectorals front - left & right pec */}
+      {m({ left: "14%", width: "9%", top: "19%", height: "7%" }, colors.chest)}
+      {m({ left: "27%", width: "9%", top: "19%", height: "7%" }, colors.chest)}
 
-      {/* Arms front - upper arm (bicep) */}
-      {m({ left: "7%", width: "5%", top: "23%", height: "11%" }, colors.arms)}
-      {m({ left: "39%", width: "5%", top: "23%", height: "11%" }, colors.arms)}
+      {/* Arms front - bicep (upper arm) */}
+      {m({ left: "6%", width: "5%", top: "21%", height: "10%" }, colors.arms)}
+      {m({ left: "39%", width: "5%", top: "21%", height: "10%" }, colors.arms)}
       {/* Arms front - forearm */}
-      {m({ left: "5%", width: "4%", top: "35%", height: "10%" }, colors.arms)}
-      {m({ left: "42%", width: "4%", top: "35%", height: "10%" }, colors.arms)}
+      {m({ left: "4%", width: "4%", top: "32%", height: "11%" }, colors.arms)}
+      {m({ left: "42%", width: "4%", top: "32%", height: "11%" }, colors.arms)}
 
-      {/* Core / Abs */}
-      {m({ left: "19%", width: "13%", top: "27%", height: "15%" }, colors.core)}
+      {/* Core / Abs - narrow strip down the middle */}
+      {m({ left: "18%", width: "14%", top: "26%", height: "14%" }, colors.core)}
 
-      {/* Quads front - left & right */}
-      {m({ left: "15%", width: "7%", top: "48%", height: "16%" }, colors.quads)}
-      {m({ left: "28%", width: "7%", top: "48%", height: "16%" }, colors.quads)}
+      {/* Quads front - left & right thigh */}
+      {m({ left: "14%", width: "8%", top: "44%", height: "17%" }, colors.quads)}
+      {m({ left: "28%", width: "8%", top: "44%", height: "17%" }, colors.quads)}
 
-      {/* Calves front */}
-      {m({ left: "16%", width: "5%", top: "67%", height: "14%" }, colors.calves)}
-      {m({ left: "30%", width: "5%", top: "67%", height: "14%" }, colors.calves)}
+      {/* Calves front - left & right */}
+      {m({ left: "15%", width: "6%", top: "65%", height: "16%" }, colors.calves)}
+      {m({ left: "29%", width: "6%", top: "65%", height: "16%" }, colors.calves)}
 
-      {/* ===== BACK FIGURE (right ~54%-92%) ===== */}
+      {/* ===== BACK FIGURE (right ~52%-95%) ===== */}
 
       {/* Shoulders / Rear Deltoids */}
-      {m({ left: "55%", width: "7%", top: "17%", height: "5%" }, colors.shoulders)}
-      {m({ left: "82%", width: "7%", top: "17%", height: "5%" }, colors.shoulders)}
+      {m({ left: "56%", width: "6%", top: "15.5%", height: "4.5%" }, colors.shoulders)}
+      {m({ left: "83%", width: "6%", top: "15.5%", height: "4.5%" }, colors.shoulders)}
 
-      {/* Back / Lats & Traps - upper */}
-      {m({ left: "61%", width: "10%", top: "20%", height: "8%" }, colors.back)}
-      {m({ left: "73%", width: "10%", top: "20%", height: "8%" }, colors.back)}
-      {/* Back / Lats - lower */}
-      {m({ left: "62%", width: "8%", top: "28%", height: "8%" }, colors.back)}
-      {m({ left: "74%", width: "8%", top: "28%", height: "8%" }, colors.back)}
+      {/* Back / Traps - upper back center */}
+      {m({ left: "62%", width: "10%", top: "16%", height: "6%" }, colors.back)}
+      {m({ left: "73%", width: "10%", top: "16%", height: "6%" }, colors.back)}
+      {/* Back / Lats - mid back */}
+      {m({ left: "61%", width: "8%", top: "22%", height: "10%" }, colors.back)}
+      {m({ left: "76%", width: "8%", top: "22%", height: "10%" }, colors.back)}
 
       {/* Arms back - triceps */}
-      {m({ left: "52%", width: "5%", top: "23%", height: "11%" }, colors.arms)}
-      {m({ left: "87%", width: "5%", top: "23%", height: "11%" }, colors.arms)}
+      {m({ left: "53%", width: "5%", top: "21%", height: "10%" }, colors.arms)}
+      {m({ left: "87%", width: "5%", top: "21%", height: "10%" }, colors.arms)}
       {/* Arms back - forearm */}
-      {m({ left: "50%", width: "4%", top: "35%", height: "10%" }, colors.arms)}
-      {m({ left: "90%", width: "4%", top: "35%", height: "10%" }, colors.arms)}
+      {m({ left: "51%", width: "4%", top: "32%", height: "11%" }, colors.arms)}
+      {m({ left: "90%", width: "4%", top: "32%", height: "11%" }, colors.arms)}
 
-      {/* Core back / Lower back & Glutes */}
-      {m({ left: "64%", width: "16%", top: "37%", height: "10%" }, colors.core)}
+      {/* Lower back & Glutes */}
+      {m({ left: "63%", width: "19%", top: "33%", height: "10%" }, colors.core)}
 
-      {/* Hamstrings */}
-      {m({ left: "60%", width: "7%", top: "50%", height: "16%" }, colors.hamstrings)}
-      {m({ left: "77%", width: "7%", top: "50%", height: "16%" }, colors.hamstrings)}
+      {/* Hamstrings - back of thighs */}
+      {m({ left: "60%", width: "8%", top: "46%", height: "17%" }, colors.hamstrings)}
+      {m({ left: "77%", width: "8%", top: "46%", height: "17%" }, colors.hamstrings)}
 
       {/* Calves back */}
-      {m({ left: "62%", width: "5%", top: "68%", height: "14%" }, colors.calves)}
-      {m({ left: "78%", width: "5%", top: "68%", height: "14%" }, colors.calves)}
+      {m({ left: "62%", width: "6%", top: "66%", height: "16%" }, colors.calves)}
+      {m({ left: "77%", width: "6%", top: "66%", height: "16%" }, colors.calves)}
     </div>
   );
 }
