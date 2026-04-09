@@ -195,10 +195,6 @@ export default function BodyMapPage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   Buat sesi latihan dengan exercise bertipe "strength" terlebih dahulu
                 </p>
-                {/* Debug preview */}
-                <div className="mt-6 max-w-[340px] mx-auto">
-                  <BodyMapSVG intensities={{ chest: 0.9, back: 0.7, shoulders: 0.8, arms: 0.6, core: 0.5, quads: 0.85, hamstrings: 0.65, calves: 0.4 }} />
-                </div>
               </CardContent>
             </Card>
           ) : (
