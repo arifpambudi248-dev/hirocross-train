@@ -38,120 +38,106 @@ interface MuscleGroup {
   shapes: MuscleEllipse[];
 }
 
-// Coordinates mapped to 612×612 viewBox matching the anatomy PNG
+// Coordinates mapped to 612×612 viewBox, fine-tuned to anatomy image
 const MUSCLES: MuscleGroup[] = [
   // ========== FRONT FIGURE (center ~165) ==========
-
-  // Shoulders / Deltoids front
   {
     region: "shoulders",
     shapes: [
-      { cx: 80, cy: 132, rx: 20, ry: 16, rotate: 15 },   // left delt
-      { cx: 250, cy: 132, rx: 20, ry: 16, rotate: -15 },  // right delt
+      { cx: 92, cy: 130, rx: 15, ry: 13, rotate: 12 },
+      { cx: 238, cy: 130, rx: 15, ry: 13, rotate: -12 },
     ],
   },
-  // Chest / Pectorals
   {
     region: "chest",
     shapes: [
-      { cx: 120, cy: 168, rx: 30, ry: 16, rotate: -10 },  // left pec
-      { cx: 210, cy: 168, rx: 30, ry: 16, rotate: 10 },   // right pec
+      { cx: 127, cy: 168, rx: 24, ry: 14, rotate: -8 },
+      { cx: 203, cy: 168, rx: 24, ry: 14, rotate: 8 },
     ],
   },
-  // Arms front - biceps
   {
     region: "arms",
     shapes: [
-      { cx: 65, cy: 192, rx: 10, ry: 26, rotate: 8 },     // left bicep
-      { cx: 265, cy: 192, rx: 10, ry: 26, rotate: -8 },    // right bicep
-      { cx: 52, cy: 258, rx: 8, ry: 26, rotate: 10 },      // left forearm
-      { cx: 278, cy: 258, rx: 8, ry: 26, rotate: -10 },    // right forearm
+      { cx: 74, cy: 190, rx: 8, ry: 22, rotate: 6 },     // left bicep
+      { cx: 256, cy: 190, rx: 8, ry: 22, rotate: -6 },    // right bicep
+      { cx: 62, cy: 252, rx: 6, ry: 22, rotate: 8 },      // left forearm
+      { cx: 268, cy: 252, rx: 6, ry: 22, rotate: -8 },    // right forearm
     ],
   },
-  // Core / Abs
   {
     region: "core",
     shapes: [
-      { cx: 148, cy: 220, rx: 14, ry: 28 },   // left abs
-      { cx: 182, cy: 220, rx: 14, ry: 28 },   // right abs
-      { cx: 140, cy: 260, rx: 12, ry: 12 },   // left oblique
-      { cx: 190, cy: 260, rx: 12, ry: 12 },   // right oblique
+      { cx: 148, cy: 215, rx: 12, ry: 24 },   // left abs
+      { cx: 182, cy: 215, rx: 12, ry: 24 },   // right abs
+      { cx: 150, cy: 252, rx: 9, ry: 9 },     // left oblique
+      { cx: 180, cy: 252, rx: 9, ry: 9 },     // right oblique
     ],
   },
-  // Quads
   {
     region: "quads",
     shapes: [
-      { cx: 128, cy: 340, rx: 20, ry: 44, rotate: 3 },    // left quad outer
-      { cx: 150, cy: 338, rx: 14, ry: 42 },                 // left quad inner
-      { cx: 180, cy: 338, rx: 14, ry: 42 },                 // right quad inner
-      { cx: 202, cy: 340, rx: 20, ry: 44, rotate: -3 },    // right quad outer
+      { cx: 138, cy: 335, rx: 14, ry: 38, rotate: 2 },
+      { cx: 152, cy: 333, rx: 10, ry: 36 },
+      { cx: 178, cy: 333, rx: 10, ry: 36 },
+      { cx: 192, cy: 335, rx: 14, ry: 38, rotate: -2 },
     ],
   },
-  // Calves front
   {
     region: "calves",
     shapes: [
-      { cx: 132, cy: 448, rx: 12, ry: 34 },   // left shin/calf front
-      { cx: 198, cy: 448, rx: 12, ry: 34 },   // right shin/calf front
+      { cx: 142, cy: 442, rx: 9, ry: 28 },
+      { cx: 188, cy: 442, rx: 9, ry: 28 },
     ],
   },
 
   // ========== BACK FIGURE (center ~450) ==========
-
-  // Shoulders / Rear Deltoids
   {
     region: "shoulders",
     shapes: [
-      { cx: 365, cy: 132, rx: 20, ry: 16, rotate: -15 },  // left rear delt
-      { cx: 535, cy: 132, rx: 20, ry: 16, rotate: 15 },   // right rear delt
+      { cx: 377, cy: 130, rx: 15, ry: 13, rotate: -12 },
+      { cx: 523, cy: 130, rx: 15, ry: 13, rotate: 12 },
     ],
   },
-  // Back - traps + lats
   {
     region: "back",
     shapes: [
-      { cx: 420, cy: 148, rx: 18, ry: 12 },                // left trap
-      { cx: 480, cy: 148, rx: 18, ry: 12 },                // right trap
-      { cx: 408, cy: 190, rx: 16, ry: 30, rotate: 10 },   // left lat
-      { cx: 492, cy: 190, rx: 16, ry: 30, rotate: -10 },  // right lat
-      { cx: 432, cy: 170, rx: 12, ry: 18 },                // left mid-back
-      { cx: 468, cy: 170, rx: 12, ry: 18 },                // right mid-back
+      { cx: 424, cy: 148, rx: 14, ry: 10 },               // left trap
+      { cx: 476, cy: 148, rx: 14, ry: 10 },               // right trap
+      { cx: 414, cy: 186, rx: 13, ry: 26, rotate: 8 },    // left lat
+      { cx: 486, cy: 186, rx: 13, ry: 26, rotate: -8 },   // right lat
+      { cx: 436, cy: 168, rx: 10, ry: 14 },               // left mid-back
+      { cx: 464, cy: 168, rx: 10, ry: 14 },               // right mid-back
     ],
   },
-  // Arms back - triceps + forearms
   {
     region: "arms",
     shapes: [
-      { cx: 350, cy: 192, rx: 10, ry: 26, rotate: -8 },   // left tricep
-      { cx: 550, cy: 192, rx: 10, ry: 26, rotate: 8 },    // right tricep
-      { cx: 338, cy: 258, rx: 8, ry: 26, rotate: -10 },   // left forearm back
-      { cx: 562, cy: 258, rx: 8, ry: 26, rotate: 10 },    // right forearm back
+      { cx: 360, cy: 190, rx: 8, ry: 22, rotate: -6 },    // left tricep
+      { cx: 540, cy: 190, rx: 8, ry: 22, rotate: 6 },     // right tricep
+      { cx: 348, cy: 252, rx: 6, ry: 22, rotate: -8 },    // left forearm back
+      { cx: 552, cy: 252, rx: 6, ry: 22, rotate: 8 },     // right forearm back
     ],
   },
-  // Core back - lower back & glutes
   {
     region: "core",
     shapes: [
-      { cx: 450, cy: 240, rx: 22, ry: 14 },   // lower back
-      { cx: 430, cy: 275, rx: 18, ry: 14 },   // left glute
-      { cx: 470, cy: 275, rx: 18, ry: 14 },   // right glute
+      { cx: 450, cy: 236, rx: 18, ry: 11 },   // lower back
+      { cx: 436, cy: 275, rx: 14, ry: 12 },   // left glute
+      { cx: 464, cy: 275, rx: 14, ry: 12 },   // right glute
     ],
   },
-  // Hamstrings
   {
     region: "hamstrings",
     shapes: [
-      { cx: 418, cy: 340, rx: 18, ry: 44, rotate: 3 },    // left hamstring
-      { cx: 482, cy: 340, rx: 18, ry: 44, rotate: -3 },   // right hamstring
+      { cx: 425, cy: 335, rx: 14, ry: 38, rotate: 2 },
+      { cx: 475, cy: 335, rx: 14, ry: 38, rotate: -2 },
     ],
   },
-  // Calves back
   {
     region: "calves",
     shapes: [
-      { cx: 415, cy: 445, rx: 14, ry: 35, rotate: 2 },    // left calf back
-      { cx: 485, cy: 445, rx: 14, ry: 35, rotate: -2 },   // right calf back
+      { cx: 425, cy: 442, rx: 10, ry: 30, rotate: 1 },
+      { cx: 475, cy: 442, rx: 10, ry: 30, rotate: -1 },
     ],
   },
 ];
@@ -191,7 +177,7 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
       >
         <defs>
           <filter id="muscle-glow">
-            <feGaussianBlur stdDeviation="4" />
+            <feGaussianBlur stdDeviation="5" />
           </filter>
         </defs>
         {MUSCLES.map((group, gi) =>
