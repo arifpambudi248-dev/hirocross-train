@@ -19,15 +19,12 @@ interface BodyMapSVGProps {
 const getHeatColor = (intensity: number) => {
   if (intensity <= 0) return "rgba(0,0,0,0)";
   const t = Math.min(intensity, 1);
-  // green → yellow → orange → red
   const r = Math.round(40 + t * 215);
   const g = Math.round(200 - t * 160);
   const b = Math.round(60 - t * 40);
   return `rgb(${r}, ${g}, ${b})`;
 };
 
-// Each muscle is defined as SVG ellipses with cx, cy, rx, ry (in 612x612 viewBox)
-// Some use rotation via transform
 interface MuscleEllipse {
   cx: number;
   cy: number;
@@ -41,116 +38,120 @@ interface MuscleGroup {
   shapes: MuscleEllipse[];
 }
 
+// Coordinates mapped to 612×612 viewBox matching the anatomy PNG
 const MUSCLES: MuscleGroup[] = [
-  // ===== FRONT FIGURE =====
-  // Shoulders (deltoids) - front
+  // ========== FRONT FIGURE (center ~165) ==========
+
+  // Shoulders / Deltoids front
   {
     region: "shoulders",
     shapes: [
-      { cx: 82, cy: 148, rx: 18, ry: 14 },   // left front delt
-      { cx: 248, cy: 148, rx: 18, ry: 14 },   // right front delt
+      { cx: 80, cy: 132, rx: 20, ry: 16, rotate: 15 },   // left delt
+      { cx: 250, cy: 132, rx: 20, ry: 16, rotate: -15 },  // right delt
     ],
   },
-  // Chest (pectorals) - front
+  // Chest / Pectorals
   {
     region: "chest",
     shapes: [
-      { cx: 118, cy: 180, rx: 28, ry: 18, rotate: -8 },  // left pec
-      { cx: 212, cy: 180, rx: 28, ry: 18, rotate: 8 },   // right pec
+      { cx: 120, cy: 168, rx: 30, ry: 16, rotate: -10 },  // left pec
+      { cx: 210, cy: 168, rx: 30, ry: 16, rotate: 10 },   // right pec
     ],
   },
-  // Arms - front (biceps + forearms)
+  // Arms front - biceps
   {
     region: "arms",
     shapes: [
-      { cx: 68, cy: 200, rx: 11, ry: 28, rotate: 5 },    // left bicep
-      { cx: 262, cy: 200, rx: 11, ry: 28, rotate: -5 },   // right bicep
-      { cx: 55, cy: 268, rx: 9, ry: 28, rotate: 8 },     // left forearm
-      { cx: 275, cy: 268, rx: 9, ry: 28, rotate: -8 },    // right forearm
+      { cx: 65, cy: 192, rx: 10, ry: 26, rotate: 8 },     // left bicep
+      { cx: 265, cy: 192, rx: 10, ry: 26, rotate: -8 },    // right bicep
+      { cx: 52, cy: 258, rx: 8, ry: 26, rotate: 10 },      // left forearm
+      { cx: 278, cy: 258, rx: 8, ry: 26, rotate: -10 },    // right forearm
     ],
   },
-  // Core (abs) - front
+  // Core / Abs
   {
     region: "core",
     shapes: [
-      { cx: 145, cy: 230, rx: 16, ry: 30 },  // left abs
-      { cx: 185, cy: 230, rx: 16, ry: 30 },  // right abs
-      { cx: 165, cy: 270, rx: 22, ry: 14 },  // lower abs
+      { cx: 148, cy: 220, rx: 14, ry: 28 },   // left abs
+      { cx: 182, cy: 220, rx: 14, ry: 28 },   // right abs
+      { cx: 140, cy: 260, rx: 12, ry: 12 },   // left oblique
+      { cx: 190, cy: 260, rx: 12, ry: 12 },   // right oblique
     ],
   },
-  // Quads - front
+  // Quads
   {
     region: "quads",
     shapes: [
-      { cx: 132, cy: 340, rx: 18, ry: 42, rotate: 2 },   // left outer quad
-      { cx: 148, cy: 345, rx: 14, ry: 40 },                // left inner quad
-      { cx: 182, cy: 345, rx: 14, ry: 40 },                // right inner quad
-      { cx: 198, cy: 340, rx: 18, ry: 42, rotate: -2 },   // right outer quad
+      { cx: 128, cy: 340, rx: 20, ry: 44, rotate: 3 },    // left quad outer
+      { cx: 150, cy: 338, rx: 14, ry: 42 },                 // left quad inner
+      { cx: 180, cy: 338, rx: 14, ry: 42 },                 // right quad inner
+      { cx: 202, cy: 340, rx: 20, ry: 44, rotate: -3 },    // right quad outer
     ],
   },
-  // Calves - front
+  // Calves front
   {
     region: "calves",
     shapes: [
-      { cx: 135, cy: 445, rx: 11, ry: 32 },   // left calf front
-      { cx: 195, cy: 445, rx: 11, ry: 32 },   // right calf front
+      { cx: 132, cy: 448, rx: 12, ry: 34 },   // left shin/calf front
+      { cx: 198, cy: 448, rx: 12, ry: 34 },   // right shin/calf front
     ],
   },
 
-  // ===== BACK FIGURE =====
-  // Shoulders (rear deltoids) - back
+  // ========== BACK FIGURE (center ~450) ==========
+
+  // Shoulders / Rear Deltoids
   {
     region: "shoulders",
     shapes: [
-      { cx: 368, cy: 148, rx: 18, ry: 14 },   // left rear delt
-      { cx: 532, cy: 148, rx: 18, ry: 14 },   // right rear delt
+      { cx: 365, cy: 132, rx: 20, ry: 16, rotate: -15 },  // left rear delt
+      { cx: 535, cy: 132, rx: 20, ry: 16, rotate: 15 },   // right rear delt
     ],
   },
-  // Back (traps + lats)
+  // Back - traps + lats
   {
     region: "back",
     shapes: [
-      { cx: 420, cy: 155, rx: 20, ry: 12 },                // left trap
-      { cx: 490, cy: 155, rx: 20, ry: 12 },                // right trap
-      { cx: 405, cy: 200, rx: 18, ry: 32, rotate: 8 },    // left lat
-      { cx: 505, cy: 200, rx: 18, ry: 32, rotate: -8 },   // right lat
-      { cx: 430, cy: 175, rx: 14, ry: 20 },                // left mid-back
-      { cx: 480, cy: 175, rx: 14, ry: 20 },                // right mid-back
+      { cx: 420, cy: 148, rx: 18, ry: 12 },                // left trap
+      { cx: 480, cy: 148, rx: 18, ry: 12 },                // right trap
+      { cx: 408, cy: 190, rx: 16, ry: 30, rotate: 10 },   // left lat
+      { cx: 492, cy: 190, rx: 16, ry: 30, rotate: -10 },  // right lat
+      { cx: 432, cy: 170, rx: 12, ry: 18 },                // left mid-back
+      { cx: 468, cy: 170, rx: 12, ry: 18 },                // right mid-back
     ],
   },
-  // Arms - back (triceps + forearms)
+  // Arms back - triceps + forearms
   {
     region: "arms",
     shapes: [
-      { cx: 355, cy: 200, rx: 11, ry: 28, rotate: -5 },   // left tricep
-      { cx: 555, cy: 200, rx: 11, ry: 28, rotate: 5 },    // right tricep
-      { cx: 342, cy: 268, rx: 9, ry: 28, rotate: -8 },    // left forearm back
-      { cx: 568, cy: 268, rx: 9, ry: 28, rotate: 8 },     // right forearm back
+      { cx: 350, cy: 192, rx: 10, ry: 26, rotate: -8 },   // left tricep
+      { cx: 550, cy: 192, rx: 10, ry: 26, rotate: 8 },    // right tricep
+      { cx: 338, cy: 258, rx: 8, ry: 26, rotate: -10 },   // left forearm back
+      { cx: 562, cy: 258, rx: 8, ry: 26, rotate: 10 },    // right forearm back
     ],
   },
-  // Core (lower back / glutes) - back
+  // Core back - lower back & glutes
   {
     region: "core",
     shapes: [
-      { cx: 450, cy: 252, rx: 24, ry: 16 },   // lower back
-      { cx: 430, cy: 285, rx: 20, ry: 16 },   // left glute
-      { cx: 480, cy: 285, rx: 20, ry: 16 },   // right glute
+      { cx: 450, cy: 240, rx: 22, ry: 14 },   // lower back
+      { cx: 430, cy: 275, rx: 18, ry: 14 },   // left glute
+      { cx: 470, cy: 275, rx: 18, ry: 14 },   // right glute
     ],
   },
-  // Hamstrings - back
+  // Hamstrings
   {
     region: "hamstrings",
     shapes: [
-      { cx: 420, cy: 345, rx: 16, ry: 42, rotate: 2 },   // left hamstring
-      { cx: 490, cy: 345, rx: 16, ry: 42, rotate: -2 },  // right hamstring
+      { cx: 418, cy: 340, rx: 18, ry: 44, rotate: 3 },    // left hamstring
+      { cx: 482, cy: 340, rx: 18, ry: 44, rotate: -3 },   // right hamstring
     ],
   },
-  // Calves - back
+  // Calves back
   {
     region: "calves",
     shapes: [
-      { cx: 418, cy: 445, rx: 13, ry: 32 },   // left calf back
-      { cx: 492, cy: 445, rx: 13, ry: 32 },   // right calf back
+      { cx: 415, cy: 445, rx: 14, ry: 35, rotate: 2 },    // left calf back
+      { cx: 485, cy: 445, rx: 14, ry: 35, rotate: -2 },   // right calf back
     ],
   },
 ];
@@ -170,7 +171,7 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
   const opacities = useMemo(() => {
     const result = {} as Record<keyof DetailedIntensities, number>;
     for (const key of Object.keys(intensities) as (keyof DetailedIntensities)[]) {
-      result[key] = intensities[key] <= 0 ? 0 : 0.35 + Math.min(intensities[key], 1) * 0.45;
+      result[key] = intensities[key] <= 0 ? 0 : 0.4 + Math.min(intensities[key], 1) * 0.4;
     }
     return result;
   }, [intensities]);
@@ -189,8 +190,8 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
-          <filter id="muscle-blur">
-            <feGaussianBlur stdDeviation="6" />
+          <filter id="muscle-glow">
+            <feGaussianBlur stdDeviation="4" />
           </filter>
         </defs>
         {MUSCLES.map((group, gi) =>
@@ -207,7 +208,7 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
                 ry={shape.ry}
                 fill={color}
                 opacity={opacity}
-                filter="url(#muscle-blur)"
+                filter="url(#muscle-glow)"
                 style={{
                   mixBlendMode: "screen",
                   transition: "fill 0.5s ease, opacity 0.5s ease",
