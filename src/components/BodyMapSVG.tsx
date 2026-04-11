@@ -143,6 +143,15 @@ const MUSCLES: MuscleGroup[] = [
 ];
 
 export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
+  const maxRegion = useMemo(() => {
+    let max = 0;
+    let key: keyof DetailedIntensities | null = null;
+    for (const k of Object.keys(intensities) as (keyof DetailedIntensities)[]) {
+      if (intensities[k] > max) { max = intensities[k]; key = k; }
+    }
+    return key;
+  }, [intensities]);
+
   const colors = useMemo(() => ({
     chest: getHeatColor(intensities.chest),
     back: getHeatColor(intensities.back),
