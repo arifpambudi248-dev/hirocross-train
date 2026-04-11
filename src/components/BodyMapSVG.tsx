@@ -188,12 +188,26 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
           <filter id="muscle-glow">
             <feGaussianBlur stdDeviation="5" />
           </filter>
+          <filter id="muscle-pulse-glow">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
+        <style>{`
+          @keyframes muscle-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.9; }
+          }
+        `}</style>
         {MUSCLES.map((group, gi) =>
           group.shapes.map((shape, si) => {
             const color = colors[group.region];
             const opacity = opacities[group.region];
             if (opacity <= 0) return null;
+            const isMax = group.region === maxRegion;
             return (
               <ellipse
                 key={`${gi}-${si}`}
@@ -203,7 +217,7 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
                 ry={shape.ry}
                 fill={color}
                 opacity={opacity}
-                filter="url(#muscle-glow)"
+                filter={isMax ? "url(#muscle-pulse-glow)" : "url(#muscle-glow)"}
                 style={{
                   mixBlendMode: "screen",
                   transition: "fill 0.5s ease, opacity 0.5s ease",
@@ -211,6 +225,7 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
                     ? `rotate(${shape.rotate}deg)`
                     : undefined,
                   transformOrigin: `${shape.cx}px ${shape.cy}px`,
+                  animation: isMax ? "muscle-pulse 2s ease-in-out infinite" : undefined,
                 }}
               />
             );
