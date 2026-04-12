@@ -186,10 +186,10 @@ export function BodyMapSVG({ intensities }: BodyMapSVGProps) {
       >
         <defs>
           <filter id="muscle-glow">
-            <feGaussianBlur stdDeviation="5" />
+            <feGaussianBlur stdDeviation="3" />
           </filter>
           <filter id="muscle-pulse-glow">
-            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feGaussianBlur stdDeviation="5" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
