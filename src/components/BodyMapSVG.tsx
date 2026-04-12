@@ -51,8 +51,8 @@ const MUSCLES: MuscleGroup[] = [
   {
     region: "chest",
     shapes: [
-      { cx: 128, cy: 148, rx: 20, ry: 13, rotate: -6 },   // left pec
-      { cx: 202, cy: 148, rx: 20, ry: 13, rotate: 6 },    // right pec
+      { cx: 130, cy: 135, rx: 24, ry: 16, rotate: -8 },   // left pec
+      { cx: 200, cy: 135, rx: 24, ry: 16, rotate: 8 },    // right pec
     ],
   },
   {
