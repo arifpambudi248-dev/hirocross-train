@@ -644,12 +644,11 @@ export default function ProgramLatihan() {
         mixed: "Latihan Campuran",
       };
 
-      // Insert training session
-      const { data: sessionData, error: sessionError } = await supabase.from("training_sessions").insert({
-        user_id: selectedAthleteId,
-        athlete_name: athleteName,
-        date: formData.date,
-        session_name: sessionNames[formData.sessionType] || "Latihan",
+      // Count existing sessions on this date for auto-numbering
+      const existingOnDate = sessions.filter(s => s.date === formData.date).length;
+      const sessionNumber = existingOnDate + 1;
+      const baseName = sessionNames[formData.sessionType] || "Latihan";
+      const sessionName = `${baseName} - Sesi ${sessionNumber}`;
         rpe: formData.rpe,
         duration_minutes: formData.durationMinutes,
         load_auto: loadAuto,
