@@ -649,6 +649,13 @@ export default function ProgramLatihan() {
       const sessionNumber = existingOnDate + 1;
       const baseName = sessionNames[formData.sessionType] || "Latihan";
       const sessionName = `${baseName} - Sesi ${sessionNumber}`;
+
+      // Insert training session
+      const { data: sessionData, error: sessionError } = await supabase.from("training_sessions").insert({
+        user_id: selectedAthleteId,
+        athlete_name: athleteName,
+        date: formData.date,
+        session_name: sessionName,
         rpe: formData.rpe,
         duration_minutes: formData.durationMinutes,
         load_auto: loadAuto,
