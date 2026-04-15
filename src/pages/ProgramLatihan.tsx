@@ -1600,7 +1600,16 @@ export default function ProgramLatihan() {
             </Card>
           )}
 
-          {/* Filter and Calendar Grid */}
+          {/* Training Recommendations based on VCr and 1RM */}
+          {weeklyBiomotorTarget && selectedAthleteId && (
+            <div className="mb-6">
+              <TrainingRecommendationCard
+                athleteId={selectedAthleteId}
+                weekIntensityPercent={weeklyBiomotorTarget.intensity}
+                weekVolumePercent={weeklyBiomotorTarget.volume}
+              />
+            </div>
+          )}
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             {/* Filter Bar */}
             <div className="p-3 border-b border-border flex items-center gap-2 flex-wrap">
