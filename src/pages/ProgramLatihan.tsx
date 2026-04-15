@@ -34,6 +34,7 @@ import { BodyMapSection } from "@/components/BodyMapSection";
 import { exportSessionDetailToPDF } from "@/lib/exportUtils";
 import { TrainingSessionForm, SessionFormData, MainExercise, ExerciseType } from "@/components/TrainingSessionForm";
 import { BulkSessionForm } from "@/components/BulkSessionForm";
+import { TrainingRecommendationCard } from "@/components/TrainingRecommendationCard";
 
 type SessionExercise = {
   id: string;
