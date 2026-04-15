@@ -147,6 +147,26 @@ export const BENCHMARKS: CategoryBenchmarks = {
         },
       },
     },
+    {
+      testName: "VCr (Velocity at Cruise)",
+      unit: "m/s",
+      inverse: false,
+      description: "Kecepatan lari aerobik (jarak/waktu)",
+      norms: {
+        male: {
+          youth: { scale5: 4.0, scale4: 3.5, scale3: 3.0, scale2: 2.5, scale1: 2.0 },
+          junior: { scale5: 4.5, scale4: 4.0, scale3: 3.5, scale2: 3.0, scale1: 2.5 },
+          senior: { scale5: 5.0, scale4: 4.4, scale3: 3.8, scale2: 3.2, scale1: 2.6 },
+          master: { scale5: 4.2, scale4: 3.7, scale3: 3.2, scale2: 2.7, scale1: 2.2 },
+        },
+        female: {
+          youth: { scale5: 3.5, scale4: 3.0, scale3: 2.6, scale2: 2.2, scale1: 1.8 },
+          junior: { scale5: 3.8, scale4: 3.3, scale3: 2.9, scale2: 2.5, scale1: 2.1 },
+          senior: { scale5: 4.2, scale4: 3.7, scale3: 3.2, scale2: 2.7, scale1: 2.2 },
+          master: { scale5: 3.6, scale4: 3.1, scale3: 2.7, scale2: 2.3, scale1: 1.9 },
+        },
+      },
+    },
   ],
   kecepatan: [
     {
