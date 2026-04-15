@@ -444,8 +444,36 @@ export default function TesFisik() {
 
                   {selectedTestName && selectedBenchmark && (
                     <>
+                      {/* VCr Special Calculator */}
+                      {selectedTestName === "VCr (Velocity at Cruise)" && (
+                        <VCrCalculator
+                          onVCrCalculated={(vcr) => setTestValue(vcr.toFixed(2))}
+                        />
+                      )}
+
+                      {/* 1RM Special Calculator */}
+                      {selectedTestName.includes("1RM") && (
+                        <OneRMCalculator
+                          exerciseName={selectedTestName.replace(" 1RM", "")}
+                          onOneRMCalculated={(oneRM) => {
+                            if (athleteBodyWeight && athleteBodyWeight > 0) {
+                              setTestValue((oneRM / athleteBodyWeight).toFixed(2));
+                            } else {
+                              setTestValue(oneRM.toFixed(1));
+                            }
+                          }}
+                        />
+                      )}
+
+                      {/* Standard value input (hidden for VCr since calculator sets it) */}
                       <div className="space-y-2">
-                        <Label>Nilai Hasil Tes</Label>
+                        <Label>
+                          {selectedTestName === "VCr (Velocity at Cruise)" 
+                            ? "Hasil VCr (otomatis dari kalkulator)" 
+                            : selectedTestName.includes("1RM")
+                            ? `Hasil 1RM (${selectedBenchmark.unit === 'x BW' ? 'relatif BW' : 'absolut'})`
+                            : "Nilai Hasil Tes"}
+                        </Label>
                         <div className="flex gap-2">
                           <Input
                             type="number"
@@ -454,6 +482,7 @@ export default function TesFisik() {
                             onChange={(e) => setTestValue(e.target.value)}
                             placeholder="Masukkan nilai..."
                             className="flex-1"
+                            readOnly={selectedTestName === "VCr (Velocity at Cruise)"}
                           />
                           <div className="bg-muted px-4 py-2 rounded-md flex items-center min-w-[80px] justify-center">
                             <span className="font-semibold">
@@ -461,6 +490,13 @@ export default function TesFisik() {
                             </span>
                           </div>
                         </div>
+                        {selectedTestName.includes("1RM") && selectedBenchmark.unit === 'x BW' && (
+                          <p className="text-xs text-muted-foreground">
+                            {athleteBodyWeight 
+                              ? `Berat badan: ${athleteBodyWeight} kg. Nilai disimpan relatif terhadap BW.`
+                              : "⚠️ Berat badan belum diisi di profil. Isi terlebih dahulu untuk konversi otomatis."}
+                          </p>
+                        )}
                       </div>
 
                       {calculatedScore && (
