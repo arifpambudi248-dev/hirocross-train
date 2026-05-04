@@ -1171,6 +1171,22 @@ export default function ProgramLatihan() {
                   </SelectContent>
                 </Select>
               )}
+
+              {/* Annual Plan selector — useful when athlete has multiple plans */}
+              {annualPlans.length > 0 && (
+                <Select value={selectedAnnualPlanId} onValueChange={setSelectedAnnualPlanId}>
+                  <SelectTrigger className="w-56 bg-card border-border">
+                    <SelectValue placeholder="Pilih Annual Plan..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {annualPlans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.plan_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               
               <Select value={format(currentMonth, "yyyy-MM")} onValueChange={(val) => {
                 const [year, month] = val.split('-');
