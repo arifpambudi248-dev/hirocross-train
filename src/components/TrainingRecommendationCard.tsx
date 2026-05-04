@@ -7,6 +7,19 @@ import { Zap, Dumbbell, Timer } from "lucide-react";
 
 const VCR_ZONES = [60, 70, 80, 85, 90, 95, 100, 105];
 
+// Estimate reps for a given % 1RM (Epley-derived approximation)
+const estimateRepsForPercent = (pct: number): string => {
+  if (pct <= 50) return "20+";
+  if (pct <= 60) return "15-18";
+  if (pct <= 70) return "10-12";
+  if (pct <= 75) return "8-10";
+  if (pct <= 80) return "6-8";
+  if (pct <= 85) return "4-6";
+  if (pct <= 90) return "3-4";
+  if (pct <= 95) return "2";
+  return "1";
+};
+
 interface TrainingRecommendationCardProps {
   athleteId: string;
   weekIntensityPercent: number; // from annual plan e.g. 70
@@ -69,24 +82,15 @@ export function TrainingRecommendationCard({
     if (profile?.body_weight) setBodyWeight(profile.body_weight);
   };
 
-  // Determine recommended endurance intensity based on weekly plan intensity
+  // Direct 1:1 mapping — annual plan intensity = % of 1RM and % of VCr
+  // For VCr, snap to the nearest predefined zone for table highlight
   const getRecommendedVCrZone = (): number => {
-    if (weekIntensityPercent <= 40) return 70;
-    if (weekIntensityPercent <= 55) return 80;
-    if (weekIntensityPercent <= 70) return 85;
-    if (weekIntensityPercent <= 85) return 90;
-    if (weekIntensityPercent <= 95) return 95;
-    return 100;
+    return VCR_ZONES.reduce((prev, curr) =>
+      Math.abs(curr - weekIntensityPercent) < Math.abs(prev - weekIntensityPercent) ? curr : prev
+    );
   };
 
-  const getRecommended1RMPercent = (): number => {
-    if (weekIntensityPercent <= 40) return 50;
-    if (weekIntensityPercent <= 55) return 60;
-    if (weekIntensityPercent <= 70) return 70;
-    if (weekIntensityPercent <= 85) return 80;
-    if (weekIntensityPercent <= 95) return 85;
-    return 90;
-  };
+  const getRecommended1RMPercent = (): number => weekIntensityPercent;
 
   const recommendedVCrZone = getRecommendedVCrZone();
   const recommended1RMPercent = getRecommended1RMPercent();
@@ -185,18 +189,7 @@ export function TrainingRecommendationCard({
                       ? test.value * bodyWeight
                       : test.value;
                     const targetLoad = absoluteRM * (recommended1RMPercent / 100);
-                    
-                    // Estimate reps from % 1RM
-                    let estReps = "1";
-                    if (recommended1RMPercent <= 50) estReps = "20+";
-                    else if (recommended1RMPercent <= 60) estReps = "15-18";
-                    else if (recommended1RMPercent <= 70) estReps = "10-12";
-                    else if (recommended1RMPercent <= 75) estReps = "8-10";
-                    else if (recommended1RMPercent <= 80) estReps = "6-8";
-                    else if (recommended1RMPercent <= 85) estReps = "4-6";
-                    else if (recommended1RMPercent <= 90) estReps = "3-4";
-                    else if (recommended1RMPercent <= 95) estReps = "2";
-                    else estReps = "1";
+                    const estReps = estimateRepsForPercent(recommended1RMPercent);
 
                     return (
                       <TableRow key={test.test_name}>

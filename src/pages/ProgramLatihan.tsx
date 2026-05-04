@@ -303,8 +303,12 @@ export default function ProgramLatihan() {
 
       if (error) throw error;
       setAnnualPlans((data || []) as AnnualPlanOption[]);
-      if (data && data.length > 0 && !selectedAnnualPlanId) {
+      // Reset to most recent plan when athlete changes (or current id no longer valid)
+      const ids = (data || []).map(d => d.id);
+      if (data && data.length > 0 && !ids.includes(selectedAnnualPlanId)) {
         setSelectedAnnualPlanId(data[0].id);
+      } else if (!data || data.length === 0) {
+        setSelectedAnnualPlanId("");
       }
     } catch (error: any) {
       handleError(error, getFriendlyErrorMessage(error));
@@ -1166,6 +1170,22 @@ export default function ProgramLatihan() {
                     {athletes.map((athlete) => (
                       <SelectItem key={athlete.id} value={athlete.id}>
                         {athlete.athlete_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Annual Plan selector — useful when athlete has multiple plans */}
+              {annualPlans.length > 0 && (
+                <Select value={selectedAnnualPlanId} onValueChange={setSelectedAnnualPlanId}>
+                  <SelectTrigger className="w-56 bg-card border-border">
+                    <SelectValue placeholder="Pilih Annual Plan..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {annualPlans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.plan_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
