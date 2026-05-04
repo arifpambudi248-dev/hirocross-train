@@ -82,24 +82,15 @@ export function TrainingRecommendationCard({
     if (profile?.body_weight) setBodyWeight(profile.body_weight);
   };
 
-  // Determine recommended endurance intensity based on weekly plan intensity
+  // Direct 1:1 mapping — annual plan intensity = % of 1RM and % of VCr
+  // For VCr, snap to the nearest predefined zone for table highlight
   const getRecommendedVCrZone = (): number => {
-    if (weekIntensityPercent <= 40) return 70;
-    if (weekIntensityPercent <= 55) return 80;
-    if (weekIntensityPercent <= 70) return 85;
-    if (weekIntensityPercent <= 85) return 90;
-    if (weekIntensityPercent <= 95) return 95;
-    return 100;
+    return VCR_ZONES.reduce((prev, curr) =>
+      Math.abs(curr - weekIntensityPercent) < Math.abs(prev - weekIntensityPercent) ? curr : prev
+    );
   };
 
-  const getRecommended1RMPercent = (): number => {
-    if (weekIntensityPercent <= 40) return 50;
-    if (weekIntensityPercent <= 55) return 60;
-    if (weekIntensityPercent <= 70) return 70;
-    if (weekIntensityPercent <= 85) return 80;
-    if (weekIntensityPercent <= 95) return 85;
-    return 90;
-  };
+  const getRecommended1RMPercent = (): number => weekIntensityPercent;
 
   const recommendedVCrZone = getRecommendedVCrZone();
   const recommended1RMPercent = getRecommended1RMPercent();
