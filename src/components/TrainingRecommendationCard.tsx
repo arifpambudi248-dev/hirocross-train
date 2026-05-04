@@ -7,6 +7,19 @@ import { Zap, Dumbbell, Timer } from "lucide-react";
 
 const VCR_ZONES = [60, 70, 80, 85, 90, 95, 100, 105];
 
+// Estimate reps for a given % 1RM (Epley-derived approximation)
+const estimateRepsForPercent = (pct: number): string => {
+  if (pct <= 50) return "20+";
+  if (pct <= 60) return "15-18";
+  if (pct <= 70) return "10-12";
+  if (pct <= 75) return "8-10";
+  if (pct <= 80) return "6-8";
+  if (pct <= 85) return "4-6";
+  if (pct <= 90) return "3-4";
+  if (pct <= 95) return "2";
+  return "1";
+};
+
 interface TrainingRecommendationCardProps {
   athleteId: string;
   weekIntensityPercent: number; // from annual plan e.g. 70
