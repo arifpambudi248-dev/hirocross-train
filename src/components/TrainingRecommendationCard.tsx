@@ -189,18 +189,7 @@ export function TrainingRecommendationCard({
                       ? test.value * bodyWeight
                       : test.value;
                     const targetLoad = absoluteRM * (recommended1RMPercent / 100);
-                    
-                    // Estimate reps from % 1RM
-                    let estReps = "1";
-                    if (recommended1RMPercent <= 50) estReps = "20+";
-                    else if (recommended1RMPercent <= 60) estReps = "15-18";
-                    else if (recommended1RMPercent <= 70) estReps = "10-12";
-                    else if (recommended1RMPercent <= 75) estReps = "8-10";
-                    else if (recommended1RMPercent <= 80) estReps = "6-8";
-                    else if (recommended1RMPercent <= 85) estReps = "4-6";
-                    else if (recommended1RMPercent <= 90) estReps = "3-4";
-                    else if (recommended1RMPercent <= 95) estReps = "2";
-                    else estReps = "1";
+                    const estReps = estimateRepsForPercent(recommended1RMPercent);
 
                     return (
                       <TableRow key={test.test_name}>
