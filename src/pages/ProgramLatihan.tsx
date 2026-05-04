@@ -1710,17 +1710,31 @@ export default function ProgramLatihan() {
                 
                 return (
                   <Droppable key={idx} id={dayId}>
-                    <div className={`min-h-[120px] border-b border-r border-border ${!isCurrentMonth ? 'bg-muted/30' : ''}`}>
+                    <div
+                      className={`min-h-[120px] border-b border-r border-border cursor-pointer hover:bg-primary/5 transition-colors ${!isCurrentMonth ? 'bg-muted/30' : ''}`}
+                      onClick={(e) => {
+                        // Only open new form if clicking the cell itself (not a session inside)
+                        if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.daycell === "1") {
+                          handleOpenNewForm(dayId);
+                        }
+                      }}
+                      data-daycell="1"
+                    >
                       {/* Day Header */}
-                      <div className={`p-2 flex items-center justify-between ${isToday ? 'bg-primary/10' : ''}`}>
-                        <span className={`text-sm font-semibold ${isToday ? 'text-primary bg-primary/20 px-2 py-0.5 rounded-full' : isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                      <div
+                        className={`p-2 flex items-center justify-between ${isToday ? 'bg-primary/10' : ''}`}
+                        data-daycell="1"
+                        title="Klik untuk menambah sesi"
+                      >
+                        <span className={`text-sm font-semibold ${isToday ? 'text-primary bg-primary/20 px-2 py-0.5 rounded-full' : isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50'}`} data-daycell="1">
                           {format(day, "d")}
                         </span>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                          onClick={() => handleOpenNewForm(dayId)}
+                          onClick={(e) => { e.stopPropagation(); handleOpenNewForm(dayId); }}
+                          title="Tambah sesi baru"
                         >
                           <Plus className="w-3 h-3" />
                         </Button>
