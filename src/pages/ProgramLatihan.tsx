@@ -303,8 +303,12 @@ export default function ProgramLatihan() {
 
       if (error) throw error;
       setAnnualPlans((data || []) as AnnualPlanOption[]);
-      if (data && data.length > 0 && !selectedAnnualPlanId) {
+      // Reset to most recent plan when athlete changes (or current id no longer valid)
+      const ids = (data || []).map(d => d.id);
+      if (data && data.length > 0 && !ids.includes(selectedAnnualPlanId)) {
         setSelectedAnnualPlanId(data[0].id);
+      } else if (!data || data.length === 0) {
+        setSelectedAnnualPlanId("");
       }
     } catch (error: any) {
       handleError(error, getFriendlyErrorMessage(error));
