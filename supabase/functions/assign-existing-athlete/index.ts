@@ -6,28 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Password validation matching client-side rules
-function validatePassword(password: string): { valid: boolean; message: string } {
-  if (!password || password.length < 8) {
-    return { valid: false, message: "Password harus minimal 8 karakter" };
-  }
-  if (!/[A-Z]/.test(password)) {
-    return { valid: false, message: "Password harus mengandung huruf kapital" };
-  }
-  if (!/[a-z]/.test(password)) {
-    return { valid: false, message: "Password harus mengandung huruf kecil" };
-  }
-  if (!/[0-9]/.test(password)) {
-    return { valid: false, message: "Password harus mengandung angka" };
-  }
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    return { valid: false, message: "Password harus mengandung karakter spesial (!@#$%^&*)" };
-  }
-  return { valid: true, message: "" };
-}
+const jsonResponse = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -35,142 +20,137 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
-    // Get the authorization header to verify the coach
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Sesi tidak ditemukan. Silakan login kembali." }, 401);
     }
 
-    // Create client with user's token to verify they are a coach
-    const supabaseClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify the user is authenticated and is a coach
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Sesi tidak valid. Silakan login kembali." }, 401);
     }
 
-    // Check if user is a coach
-    const { data: roleData, error: roleError } = await supabaseClient
+    const { data: roles } = await userClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .single();
+      .eq("user_id", user.id);
 
-    if (roleError || roleData?.role !== "coach") {
-      return new Response(
-        JSON.stringify({ error: "Only coaches can create athletes" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const isCoach = roles?.some((role) => role.role === "coach" || role.role === "admin");
+    if (!isCoach) {
+      return jsonResponse({ error: "Hanya coach yang dapat assign atlet." }, 403);
     }
 
-    // Get request body
-    const { email, password, athlete_name } = await req.json();
+    const { athlete_id, email, direct_assign } = await req.json();
+    let athleteId = typeof athlete_id === "string" ? athlete_id : "";
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!email || !password || !athlete_name) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: email, password, athlete_name" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!athleteId && !normalizedEmail) {
+      return jsonResponse({ error: "Pilih atlet atau masukkan email akun atlet." }, 400);
     }
 
-    // Validate password server-side
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.valid) {
-      return new Response(
-        JSON.stringify({ error: passwordValidation.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const admin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Create admin client with service role key to create user
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    // Create the athlete user using admin API (doesn't affect current session)
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        athlete_name,
-        role: 'athlete'
+    if (!athleteId && normalizedEmail) {
+      const { data: usersResult, error: listError } = await admin.auth.admin.listUsers();
+      if (listError) {
+        console.error("listUsers error:", listError);
+        return jsonResponse({ error: "Gagal mencari akun atlet." }, 500);
       }
-    });
 
-    if (createError) {
-      console.error("Error creating user:", createError);
-      
-      // Handle specific error for email already exists
-      if (createError.message?.includes("already been registered") || createError.code === "email_exists") {
-        return new Response(
-          JSON.stringify({ 
-            error: "Email ini sudah terdaftar. Gunakan fitur 'Assign Atlet' untuk menambahkan atlet yang sudah memiliki akun.",
-            code: "EMAIL_EXISTS"
-          }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      const foundUser = usersResult.users.find(
+        (authUser) => authUser.email?.toLowerCase() === normalizedEmail
+      );
+
+      if (!foundUser) {
+        return jsonResponse({ error: "Akun dengan email ini belum terdaftar." }, 404);
       }
-      
-      return new Response(
-        JSON.stringify({ error: createError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+
+      athleteId = foundUser.id;
     }
 
-    if (!newUser.user) {
-      return new Response(
-        JSON.stringify({ error: "Failed to create athlete account" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (athleteId === user.id) {
+      return jsonResponse({ error: "Coach tidak dapat assign akun sendiri sebagai atlet." }, 400);
     }
 
-    // Assign athlete to coach with accepted status using admin client
-    const { error: assignError } = await supabaseAdmin
+    const { data: athleteRoles } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", athleteId);
+
+    const hasAthleteRole = athleteRoles?.some((role) => role.role === "athlete");
+    if (!hasAthleteRole) {
+      return jsonResponse({ error: "Akun ini bukan akun atlet." }, 400);
+    }
+
+    const { data: existing } = await admin
+      .from("coach_athletes")
+      .select("id, status")
+      .eq("coach_id", user.id)
+      .eq("athlete_id", athleteId)
+      .maybeSingle();
+
+    const nextStatus = direct_assign ? "accepted" : "pending";
+
+    if (existing) {
+      if (existing.status === "accepted") {
+        return jsonResponse({
+          success: true,
+          already_assigned: true,
+          message: "Atlet ini sudah aktif di roster Anda.",
+        });
+      }
+
+      const { error: updateError } = await admin
+        .from("coach_athletes")
+        .update({
+          status: nextStatus,
+          invited_by: "coach",
+          created_by: user.id,
+        })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        console.error("update assignment error:", updateError);
+        return jsonResponse({ error: "Gagal memperbarui status assign atlet." }, 500);
+      }
+
+      return jsonResponse({
+        success: true,
+        message: nextStatus === "accepted"
+          ? "Atlet berhasil diaktifkan di roster Anda."
+          : "Invitation berhasil dikirim ulang ke atlet.",
+      });
+    }
+
+    const { error: insertError } = await admin
       .from("coach_athletes")
       .insert({
         coach_id: user.id,
-        athlete_id: newUser.user.id,
-        status: 'accepted',
-        invited_by: 'coach',
-        created_by: user.id
+        athlete_id: athleteId,
+        status: nextStatus,
+        invited_by: "coach",
+        created_by: user.id,
       });
 
-    if (assignError) {
-      console.error("Error assigning athlete:", assignError);
-      // Try to clean up the created user
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      return new Response(
-        JSON.stringify({ error: "Failed to assign athlete to coach" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (insertError) {
+      console.error("insert assignment error:", insertError);
+      return jsonResponse({ error: "Gagal assign atlet. Silakan coba lagi." }, 500);
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        athlete: {
-          id: newUser.user.id,
-          email: newUser.user.email,
-          athlete_name
-        }
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
+    return jsonResponse({
+      success: true,
+      message: nextStatus === "accepted"
+        ? "Atlet berhasil langsung ditambahkan ke roster."
+        : "Invitation berhasil dikirim ke atlet.",
+    });
   } catch (error) {
     console.error("Unexpected error:", error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: "Terjadi kesalahan saat assign atlet." }, 500);
   }
 });
