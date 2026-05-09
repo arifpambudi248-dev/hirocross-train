@@ -111,7 +111,7 @@ export const SidebarNavigation = () => {
               <item.icon className="h-4 w-4" />
               {item.label}
               {item.requiresSubscription && (
-                <Gem className="h-3 w-3 ml-auto text-amber-400" title="Butuh langganan aktif" />
+                <Gem className="h-3 w-3 ml-auto text-amber-400" />
               )}
             </NavLink>
           ))}
@@ -128,7 +128,7 @@ export const SidebarNavigation = () => {
             >
               <item.icon className="h-4 w-4" />
               {item.label}
-              <Gem className="h-3 w-3 ml-auto text-amber-400" title="Butuh langganan aktif" />
+              <Gem className="h-3 w-3 ml-auto text-amber-400" />
             </NavLink>
           ))}
         </div>
