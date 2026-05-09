@@ -84,25 +84,25 @@ export const Navigation = () => {
   };
 
   const baseNavItems = [
-    { to: "/", icon: Calendar, label: "Dashboard" },
-    { to: "/annual-plan", icon: Calendar, label: "Annual Plan" },
-    { to: "/program-latihan", icon: ClipboardList, label: "Program Latihan" },
-    { to: "/tes-fisik", icon: Target, label: "Tes Kondisi Fisik" },
-    { to: "/readiness", icon: Activity, label: "Readiness" },
-    { to: "/laporan", icon: ClipboardList, label: "Laporan" },
-    { to: "/historical", icon: History, label: "Historis & Target" },
+    { to: "/", icon: Calendar, label: "Dashboard", requiresSubscription: false },
+    { to: "/annual-plan", icon: Calendar, label: "Annual Plan", requiresSubscription: true },
+    { to: "/program-latihan", icon: ClipboardList, label: "Program Latihan", requiresSubscription: true },
+    { to: "/tes-fisik", icon: Target, label: "Tes Kondisi Fisik", requiresSubscription: true },
+    { to: "/readiness", icon: Activity, label: "Readiness", requiresSubscription: true },
+    { to: "/laporan", icon: ClipboardList, label: "Laporan", requiresSubscription: true },
+    { to: "/historical", icon: History, label: "Historis & Target", requiresSubscription: true },
   ];
 
   const coachNavItems = [
-    { to: "/athlete-management", icon: Users, label: "Kelola Atlet" },
-    { to: "/athlete-comparison", icon: TrendingUp, label: "Perbandingan Atlet" },
-    { to: "/notifications", icon: Bell, label: "Notifikasi" },
+    { to: "/athlete-management", icon: Users, label: "Kelola Atlet", requiresSubscription: true },
+    { to: "/athlete-comparison", icon: TrendingUp, label: "Perbandingan Atlet", requiresSubscription: true },
+    { to: "/notifications", icon: Bell, label: "Notifikasi", requiresSubscription: true },
   ];
 
   const athleteNavItems = [
-    { to: "/profile", icon: User, label: "Profil" },
-    { to: "/notifications", icon: Bell, label: "Notifikasi" },
-    { to: "/subscription", icon: CreditCard, label: "Langganan" },
+    { to: "/profile", icon: User, label: "Profil", requiresSubscription: false },
+    { to: "/notifications", icon: Bell, label: "Notifikasi", requiresSubscription: true },
+    { to: "/subscription", icon: CreditCard, label: "Langganan", requiresSubscription: false },
   ];
 
   const adminNavItems = [
