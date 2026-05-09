@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
-import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users, Bell, CreditCard, Shield, UserCog } from "lucide-react";
+import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Menu, Users, Bell, CreditCard, Shield, UserCog, Gem } from "lucide-react";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -84,30 +84,30 @@ export const Navigation = () => {
   };
 
   const baseNavItems = [
-    { to: "/", icon: Calendar, label: "Dashboard" },
-    { to: "/annual-plan", icon: Calendar, label: "Annual Plan" },
-    { to: "/program-latihan", icon: ClipboardList, label: "Program Latihan" },
-    { to: "/tes-fisik", icon: Target, label: "Tes Kondisi Fisik" },
-    { to: "/readiness", icon: Activity, label: "Readiness" },
-    { to: "/laporan", icon: ClipboardList, label: "Laporan" },
-    { to: "/historical", icon: History, label: "Historis & Target" },
+    { to: "/", icon: Calendar, label: "Dashboard", requiresSubscription: false },
+    { to: "/annual-plan", icon: Calendar, label: "Annual Plan", requiresSubscription: true },
+    { to: "/program-latihan", icon: ClipboardList, label: "Program Latihan", requiresSubscription: true },
+    { to: "/tes-fisik", icon: Target, label: "Tes Kondisi Fisik", requiresSubscription: true },
+    { to: "/readiness", icon: Activity, label: "Readiness", requiresSubscription: true },
+    { to: "/laporan", icon: ClipboardList, label: "Laporan", requiresSubscription: true },
+    { to: "/historical", icon: History, label: "Historis & Target", requiresSubscription: true },
   ];
 
   const coachNavItems = [
-    { to: "/athlete-management", icon: Users, label: "Kelola Atlet" },
-    { to: "/athlete-comparison", icon: TrendingUp, label: "Perbandingan Atlet" },
-    { to: "/notifications", icon: Bell, label: "Notifikasi" },
+    { to: "/athlete-management", icon: Users, label: "Kelola Atlet", requiresSubscription: true },
+    { to: "/athlete-comparison", icon: TrendingUp, label: "Perbandingan Atlet", requiresSubscription: true },
+    { to: "/notifications", icon: Bell, label: "Notifikasi", requiresSubscription: true },
   ];
 
   const athleteNavItems = [
-    { to: "/profile", icon: User, label: "Profil" },
-    { to: "/notifications", icon: Bell, label: "Notifikasi" },
-    { to: "/subscription", icon: CreditCard, label: "Langganan" },
+    { to: "/profile", icon: User, label: "Profil", requiresSubscription: false },
+    { to: "/notifications", icon: Bell, label: "Notifikasi", requiresSubscription: true },
+    { to: "/subscription", icon: CreditCard, label: "Langganan", requiresSubscription: false },
   ];
 
   const adminNavItems = [
-    { to: "/admin/dashboard", icon: Shield, label: "Admin Dashboard" },
-    { to: "/admin/users", icon: UserCog, label: "Kelola User" },
+    { to: "/admin/dashboard", icon: Shield, label: "Admin Dashboard", requiresSubscription: false },
+    { to: "/admin/users", icon: UserCog, label: "Kelola User", requiresSubscription: false },
   ];
 
   let navItems = isCoach 
@@ -145,6 +145,9 @@ export const Navigation = () => {
                       >
                         <item.icon className="h-4 w-4" />
                         {item.label}
+                        {item.requiresSubscription && (
+                          <Gem className="h-3 w-3 ml-auto text-amber-400" />
+                        )}
                       </NavLink>
                     ))}
                   </div>

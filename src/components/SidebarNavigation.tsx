@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
-import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Users, Bell, CreditCard, Shield, UserCog, Dumbbell } from "lucide-react";
+import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Users, Bell, CreditCard, Shield, UserCog, Dumbbell, Gem } from "lucide-react";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -72,22 +72,22 @@ export const SidebarNavigation = () => {
   };
 
   const baseNavItems = [
-    { to: "/", icon: Calendar, label: "Setup" },
-    { to: "/annual-plan", icon: Calendar, label: "Annual Plan" },
-    { to: "/program-latihan", icon: ClipboardList, label: "Bulanan" },
-    { to: "/tes-fisik", icon: Target, label: "Tes & Pengukuran" },
-    { to: "/body-map", icon: Dumbbell, label: "Body Map" },
+    { to: "/", icon: Calendar, label: "Setup", requiresSubscription: false },
+    { to: "/annual-plan", icon: Calendar, label: "Annual Plan", requiresSubscription: true },
+    { to: "/program-latihan", icon: ClipboardList, label: "Bulanan", requiresSubscription: true },
+    { to: "/tes-fisik", icon: Target, label: "Tes & Pengukuran", requiresSubscription: true },
+    { to: "/body-map", icon: Dumbbell, label: "Body Map", requiresSubscription: true },
   ];
 
   const premiumNavItems = [
-    { to: "/athlete-management", icon: Users, label: "Monitoring Atlet", premium: true },
-    { to: "/laporan", icon: TrendingUp, label: "Monitoring Plan", premium: true },
-    { to: "/readiness", icon: Activity, label: "Readiness Check", premium: true },
+    { to: "/athlete-management", icon: Users, label: "Monitoring Atlet", requiresSubscription: true },
+    { to: "/laporan", icon: TrendingUp, label: "Monitoring Plan", requiresSubscription: true },
+    { to: "/readiness", icon: Activity, label: "Readiness Check", requiresSubscription: true },
   ];
 
   const adminNavItems = [
-    { to: "/admin/dashboard", icon: Shield, label: "Admin Dashboard" },
-    { to: "/admin/users", icon: UserCog, label: "Kelola User" },
+    { to: "/admin/dashboard", icon: Shield, label: "Admin Dashboard", requiresSubscription: false },
+    { to: "/admin/users", icon: UserCog, label: "Kelola User", requiresSubscription: false },
   ];
 
   return (
@@ -110,6 +110,9 @@ export const SidebarNavigation = () => {
             >
               <item.icon className="h-4 w-4" />
               {item.label}
+              {item.requiresSubscription && (
+                <Gem className="h-3 w-3 ml-auto text-amber-400" />
+              )}
             </NavLink>
           ))}
         </div>
@@ -125,9 +128,7 @@ export const SidebarNavigation = () => {
             >
               <item.icon className="h-4 w-4" />
               {item.label}
-              {item.premium && (
-                <span className="ml-auto w-2 h-2 rounded-full bg-warning" />
-              )}
+              <Gem className="h-3 w-3 ml-auto text-amber-400" />
             </NavLink>
           ))}
         </div>

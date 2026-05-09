@@ -9,7 +9,8 @@ import {
   Users, 
   TrendingUp, 
   Shield,
-  Home
+  Home,
+  Gem
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -54,31 +55,31 @@ export const BottomNavigation = () => {
   const getNavItems = () => {
     if (isCoach) {
       return [
-        { to: "/", icon: Home, label: "Home" },
-        { to: "/annual-plan", icon: Calendar, label: "Plan" },
-        { to: "/program-latihan", icon: ClipboardList, label: "Latihan" },
-        { to: "/athlete-management", icon: Users, label: "Atlet" },
-        { to: "/athlete-comparison", icon: TrendingUp, label: "Compare" },
+        { to: "/", icon: Home, label: "Home", requiresSubscription: false },
+        { to: "/annual-plan", icon: Calendar, label: "Plan", requiresSubscription: true },
+        { to: "/program-latihan", icon: ClipboardList, label: "Latihan", requiresSubscription: true },
+        { to: "/athlete-management", icon: Users, label: "Atlet", requiresSubscription: true },
+        { to: "/athlete-comparison", icon: TrendingUp, label: "Compare", requiresSubscription: true },
       ];
     }
 
     if (isAdmin) {
       return [
-        { to: "/", icon: Home, label: "Home" },
-        { to: "/admin/dashboard", icon: Shield, label: "Admin" },
-        { to: "/program-latihan", icon: ClipboardList, label: "Latihan" },
-        { to: "/tes-fisik", icon: Target, label: "Tes" },
-        { to: "/profile", icon: User, label: "Profil" },
+        { to: "/", icon: Home, label: "Home", requiresSubscription: false },
+        { to: "/admin/dashboard", icon: Shield, label: "Admin", requiresSubscription: false },
+        { to: "/program-latihan", icon: ClipboardList, label: "Latihan", requiresSubscription: true },
+        { to: "/tes-fisik", icon: Target, label: "Tes", requiresSubscription: true },
+        { to: "/profile", icon: User, label: "Profil", requiresSubscription: false },
       ];
     }
 
     // Default athlete navigation
     return [
-      { to: "/", icon: Home, label: "Home" },
-      { to: "/annual-plan", icon: Calendar, label: "Plan" },
-      { to: "/program-latihan", icon: ClipboardList, label: "Latihan" },
-      { to: "/readiness", icon: Activity, label: "Readiness" },
-      { to: "/profile", icon: User, label: "Profil" },
+      { to: "/", icon: Home, label: "Home", requiresSubscription: false },
+      { to: "/annual-plan", icon: Calendar, label: "Plan", requiresSubscription: true },
+      { to: "/program-latihan", icon: ClipboardList, label: "Latihan", requiresSubscription: true },
+      { to: "/readiness", icon: Activity, label: "Readiness", requiresSubscription: true },
+      { to: "/profile", icon: User, label: "Profil", requiresSubscription: false },
     ];
   };
 
@@ -94,7 +95,12 @@ export const BottomNavigation = () => {
             className="flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors min-w-[56px]"
             activeClassName="text-primary bg-primary/10"
           >
-            <item.icon className="h-5 w-5" />
+            <div className="relative">
+              <item.icon className="h-5 w-5" />
+              {item.requiresSubscription && (
+                <Gem className="absolute -top-1 -right-2 h-2.5 w-2.5 text-amber-400" />
+              )}
+            </div>
             <span className="text-[10px] font-medium leading-none">{item.label}</span>
           </NavLink>
         ))}
