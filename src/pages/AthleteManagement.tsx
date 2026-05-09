@@ -850,6 +850,18 @@ export default function AthleteManagement() {
                       />
                     </div>
                   </div>
+
+                  <div>
+                    <Label htmlFor="existing-athlete-email">Email Akun Atlet Terdaftar</Label>
+                    <Input
+                      id="existing-athlete-email"
+                      type="email"
+                      placeholder="nama@email.com"
+                      value={existingAthleteEmail}
+                      onChange={(e) => setExistingAthleteEmail(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
                   
                   <div>
                     <Label>Pilih Atlet</Label>
@@ -911,7 +923,7 @@ export default function AthleteManagement() {
                   </div>
                   <Button
                     onClick={handleAssignExistingAthlete}
-                    disabled={isSaving || !selectedExistingAthleteId}
+                    disabled={isSaving || (!selectedExistingAthleteId && !existingAthleteEmail.trim())}
                     className="w-full"
                   >
                     {isSaving ? (
