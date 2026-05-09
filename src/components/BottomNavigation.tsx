@@ -95,7 +95,12 @@ export const BottomNavigation = () => {
             className="flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors min-w-[56px]"
             activeClassName="text-primary bg-primary/10"
           >
-            <item.icon className="h-5 w-5" />
+            <div className="relative">
+              <item.icon className="h-5 w-5" />
+              {item.requiresSubscription && (
+                <Gem className="absolute -top-1 -right-2 h-2.5 w-2.5 text-amber-400" />
+              )}
+            </div>
             <span className="text-[10px] font-medium leading-none">{item.label}</span>
           </NavLink>
         ))}
