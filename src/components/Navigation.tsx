@@ -106,8 +106,8 @@ export const Navigation = () => {
   ];
 
   const adminNavItems = [
-    { to: "/admin/dashboard", icon: Shield, label: "Admin Dashboard" },
-    { to: "/admin/users", icon: UserCog, label: "Kelola User" },
+    { to: "/admin/dashboard", icon: Shield, label: "Admin Dashboard", requiresSubscription: false },
+    { to: "/admin/users", icon: UserCog, label: "Kelola User", requiresSubscription: false },
   ];
 
   let navItems = isCoach 
@@ -145,6 +145,9 @@ export const Navigation = () => {
                       >
                         <item.icon className="h-4 w-4" />
                         {item.label}
+                        {item.requiresSubscription && (
+                          <Gem className="h-3 w-3 ml-auto text-amber-400" />
+                        )}
                       </NavLink>
                     ))}
                   </div>
