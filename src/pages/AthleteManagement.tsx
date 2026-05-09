@@ -70,6 +70,7 @@ export default function AthleteManagement() {
   const [newAthleteName, setNewAthleteName] = useState("");
   const [newAthletePassword, setNewAthletePassword] = useState("");
   const [selectedExistingAthleteId, setSelectedExistingAthleteId] = useState("");
+  const [existingAthleteEmail, setExistingAthleteEmail] = useState("");
   const [editName, setEditName] = useState("");
   const [editAge, setEditAge] = useState("");
   const [editRHR, setEditRHR] = useState("");
@@ -364,8 +365,10 @@ export default function AthleteManagement() {
         // Handle specific email exists error - auto switch to assign dialog
         if (result.code === "EMAIL_EXISTS" || response.status === 409) {
           sonnerToast.info("Email sudah terdaftar", {
-            description: "Membuka dialog Assign Atlet untuk invite atlet yang sudah terdaftar..."
+            description: "Membuka dialog Assign Atlet untuk menggunakan akun yang sudah terdaftar..."
           });
+          setExistingAthleteEmail(newAthleteEmail);
+          setAssignSearchQuery(newAthleteName);
           setAddDialogOpen(false);
           setNewAthleteEmail("");
           setNewAthleteName("");
@@ -502,51 +505,35 @@ export default function AthleteManagement() {
   };
 
   const handleAssignExistingAthlete = async () => {
-    if (!selectedExistingAthleteId) {
-      sonnerToast.error("Pilih atlet yang akan di-assign");
+    const emailToAssign = existingAthleteEmail.trim().toLowerCase();
+
+    if (!selectedExistingAthleteId && !emailToAssign) {
+      sonnerToast.error("Pilih atlet atau masukkan email akun atlet");
       return;
     }
 
     try {
       setIsSaving(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
-      // Check if already assigned
-      const { data: existing } = await supabase
-        .from("coach_athletes")
-        .select("id")
-        .eq("coach_id", user.id)
-        .eq("athlete_id", selectedExistingAthleteId)
-        .single();
-
-      if (existing) {
-        sonnerToast.error("Atlet ini sudah di-assign ke Anda");
-        return;
-      }
-
-      // Direct assign mode: immediately accepted, Invitation mode: pending
-      const assignStatus = directAssignMode ? 'accepted' : 'pending';
-      
-      const { error } = await supabase
-        .from("coach_athletes")
-        .insert({
-          coach_id: user.id,
-          athlete_id: selectedExistingAthleteId,
-          status: assignStatus,
-          invited_by: 'coach',
-          created_by: user.id
-        });
+      const { data, error } = await supabase.functions.invoke("assign-existing-athlete", {
+        body: {
+          athlete_id: selectedExistingAthleteId || undefined,
+          email: emailToAssign || undefined,
+          direct_assign: directAssignMode,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      if (directAssignMode) {
-        sonnerToast.success("Atlet berhasil langsung ditambahkan ke roster");
-      } else {
-        sonnerToast.success("Invitation berhasil dikirim ke atlet");
-      }
+      const message = data?.message || (directAssignMode
+        ? "Atlet berhasil langsung ditambahkan ke roster"
+        : "Invitation berhasil dikirim ke atlet");
+      sonnerToast.success(message);
       setAssignDialogOpen(false);
       setSelectedExistingAthleteId("");
+      setExistingAthleteEmail("");
+      setAssignSearchQuery("");
       loadAthletes();
     } catch (error: any) {
       console.error("Error assigning athlete:", error);
@@ -863,6 +850,18 @@ export default function AthleteManagement() {
                       />
                     </div>
                   </div>
+
+                  <div>
+                    <Label htmlFor="existing-athlete-email">Email Akun Atlet Terdaftar</Label>
+                    <Input
+                      id="existing-athlete-email"
+                      type="email"
+                      placeholder="nama@email.com"
+                      value={existingAthleteEmail}
+                      onChange={(e) => setExistingAthleteEmail(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
                   
                   <div>
                     <Label>Pilih Atlet</Label>
@@ -924,7 +923,7 @@ export default function AthleteManagement() {
                   </div>
                   <Button
                     onClick={handleAssignExistingAthlete}
-                    disabled={isSaving || !selectedExistingAthleteId}
+                    disabled={isSaving || (!selectedExistingAthleteId && !existingAthleteEmail.trim())}
                     className="w-full"
                   >
                     {isSaving ? (
