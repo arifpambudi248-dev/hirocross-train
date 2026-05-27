@@ -140,7 +140,7 @@ export const SidebarNavigation = () => {
             >
               <item.icon className="h-4 w-4" />
               {item.label}
-              <Gem className="h-3 w-3 ml-auto text-amber-400" />
+              {!hasSubscription && <Gem className="h-3 w-3 ml-auto text-amber-400" />}
             </NavLink>
           ))}
         </div>
