@@ -109,7 +109,7 @@ export const BottomNavigation = () => {
           >
             <div className="relative">
               <item.icon className="h-5 w-5" />
-              {item.requiresSubscription && (
+              {item.requiresSubscription && !hasSubscription && (
                 <Gem className="absolute -top-1 -right-2 h-2.5 w-2.5 text-amber-400" />
               )}
             </div>
