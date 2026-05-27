@@ -380,11 +380,31 @@ export default function Notifications() {
     try {
       const normalizedQuery = searchQuery.trim();
 
+      // Get coach user_ids first (RLS allows athletes to discover coach roles)
+      const { data: coachRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "coach");
+
+      if (rolesError) throw rolesError;
+
+      const coachIds = (coachRoles || []).map((r) => r.user_id);
+      if (coachIds.length === 0) {
+        setCoaches([]);
+        return;
+      }
+
+      let profileQuery = supabase
+        .from("profiles")
+        .select("id, athlete_name, avatar_url")
+        .in("id", coachIds);
+
+      if (normalizedQuery) {
+        profileQuery = profileQuery.ilike("athlete_name", `%${normalizedQuery}%`);
+      }
+
       const [{ data: profiles, error: profilesError }, { data: allRelations, error: relationsError }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, athlete_name, avatar_url")
-          .ilike("athlete_name", normalizedQuery ? `%${normalizedQuery}%` : "%"),
+        profileQuery,
         supabase
           .from("coach_athletes")
           .select("coach_id, status")
