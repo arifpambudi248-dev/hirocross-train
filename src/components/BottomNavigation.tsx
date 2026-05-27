@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const BottomNavigation = () => {
   const [isCoach, setIsCoach] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
 
   useEffect(() => {
     checkRole();
@@ -46,6 +47,17 @@ export const BottomNavigation = () => {
       const roles = roleData?.map(r => r.role) || [];
       setIsCoach(roles.includes("coach"));
       setIsAdmin(roles.includes("admin"));
+
+      const today = new Date().toISOString().split("T")[0];
+      const { data: subData } = await supabase
+        .from("user_subscriptions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .gte("end_date", today)
+        .limit(1)
+        .maybeSingle();
+      setHasSubscription(!!subData || roles.includes("admin"));
     } catch (error) {
       console.error("Error checking role:", error);
     }
@@ -97,7 +109,7 @@ export const BottomNavigation = () => {
           >
             <div className="relative">
               <item.icon className="h-5 w-5" />
-              {item.requiresSubscription && (
+              {item.requiresSubscription && !hasSubscription && (
                 <Gem className="absolute -top-1 -right-2 h-2.5 w-2.5 text-amber-400" />
               )}
             </div>

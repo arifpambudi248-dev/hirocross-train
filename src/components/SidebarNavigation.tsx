@@ -14,6 +14,7 @@ export const SidebarNavigation = () => {
   const [athleteName, setAthleteName] = useState<string>("");
   const [isCoach, setIsCoach] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -44,6 +45,17 @@ export const SidebarNavigation = () => {
       const roles = roleData?.map(r => r.role) || [];
       setIsCoach(roles.includes("coach"));
       setIsAdmin(roles.includes("admin"));
+
+      const today = new Date().toISOString().split("T")[0];
+      const { data: subData } = await supabase
+        .from("user_subscriptions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .gte("end_date", today)
+        .limit(1)
+        .maybeSingle();
+      setHasSubscription(!!subData || roles.includes("admin"));
     } catch (error) {
       console.error("Error checking role:", error);
     }
@@ -110,7 +122,7 @@ export const SidebarNavigation = () => {
             >
               <item.icon className="h-4 w-4" />
               {item.label}
-              {item.requiresSubscription && (
+              {item.requiresSubscription && !hasSubscription && (
                 <Gem className="h-3 w-3 ml-auto text-amber-400" />
               )}
             </NavLink>
@@ -128,7 +140,7 @@ export const SidebarNavigation = () => {
             >
               <item.icon className="h-4 w-4" />
               {item.label}
-              <Gem className="h-3 w-3 ml-auto text-amber-400" />
+              {!hasSubscription && <Gem className="h-3 w-3 ml-auto text-amber-400" />}
             </NavLink>
           ))}
         </div>
