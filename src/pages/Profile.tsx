@@ -194,6 +194,11 @@ export default function Profile() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        sonnerToast.error("Hanya file gambar (JPG, PNG, GIF, WebP) yang diizinkan");
+        return;
+      }
       if (file.size > 2 * 1024 * 1024) {
         sonnerToast.error("Ukuran file maksimal 2MB");
         return;
