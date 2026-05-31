@@ -38,7 +38,8 @@ export const SubscriptionGuard = ({ children }: SubscriptionGuardProps) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setIsAllowed(true);
+        navigate('/auth');
+        setIsAllowed(false);
         setLoading(false);
         return;
       }
