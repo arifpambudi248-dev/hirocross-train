@@ -1,7 +1,7 @@
 import { Navigation } from "@/components/Navigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, TrendingUp, Activity, Target, Dumbbell, Heart, Users, AlertCircle, CheckCircle, Shield, AlertTriangle } from "lucide-react";
+import { Calendar, TrendingUp, Activity, Target, Dumbbell, Heart, Users, AlertCircle, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
