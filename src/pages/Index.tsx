@@ -5,7 +5,7 @@ import { Calendar, TrendingUp, Activity, Target, Dumbbell, Heart, Users, AlertCi
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { generateTrainingRecommendation } from "@/lib/trainingRecommendations";
 
