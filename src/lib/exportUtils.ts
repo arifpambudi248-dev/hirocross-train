@@ -1556,8 +1556,18 @@ const drawDetailedRadarChart = (
 export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
-  
+  const pageHeight = doc.internal.pageSize.height;
+  const BOTTOM_MARGIN = 20; // reserve space for footer
+
+  const ensureSpace = (needed: number) => {
+    if (yPos + needed > pageHeight - BOTTOM_MARGIN) {
+      doc.addPage();
+      yPos = 20;
+    }
+  };
+
   let yPos = addPDFHeader(doc, 'Laporan Tes Kondisi Fisik', data.athleteName);
+
   
   // Athlete profile section
   doc.setFillColor(250, 250, 250);
