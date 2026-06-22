@@ -1916,9 +1916,11 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       const speedoPerRow = Math.min(remainingCategories.length, 4);
       const numRows = Math.ceil(remainingCategories.length / speedoPerRow);
       const speedoBoxHeight = numRows * 40 + 20;
-      
+      ensureSpace(speedoBoxHeight + 10);
+
       doc.setFillColor(248, 248, 248);
       doc.roundedRect(14, yPos, pageWidth - 28, speedoBoxHeight, 2, 2, 'F');
+
       
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
