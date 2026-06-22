@@ -1556,8 +1556,18 @@ const drawDetailedRadarChart = (
 export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
-  
+  const pageHeight = doc.internal.pageSize.height;
+  const BOTTOM_MARGIN = 20; // reserve space for footer
+
+  const ensureSpace = (needed: number) => {
+    if (yPos + needed > pageHeight - BOTTOM_MARGIN) {
+      doc.addPage();
+      yPos = 20;
+    }
+  };
+
   let yPos = addPDFHeader(doc, 'Laporan Tes Kondisi Fisik', data.athleteName);
+
   
   // Athlete profile section
   doc.setFillColor(250, 250, 250);
@@ -1654,9 +1664,11 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       bmiColor = [239, 68, 68]; // Red
     }
     
-    // Draw BMI box with speedometer - increased height
+    ensureSpace(52);
+    // Draw BMI box with speedometer - increased height to fit legend
     doc.setFillColor(245, 245, 245);
-    doc.roundedRect(14, yPos, pageWidth - 28, 42, 2, 2, 'F');
+    doc.roundedRect(14, yPos, pageWidth - 28, 48, 2, 2, 'F');
+
     
     // Title
     doc.setFontSize(12);
@@ -1696,9 +1708,10 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     doc.text('Normal: 18.5 - 24.9  |  Kurus: < 18.5  |  Gemuk: 25 - 29.9  |  Obesitas: ≥ 30', 65, yPos + 42);
     
     doc.setTextColor(0, 0, 0);
-    yPos += 48;
+    yPos += 54;
   } else {
     yPos += 4;
+
   }
   
   // Overall summary box with main speedometer and detailed radar chart
@@ -1722,8 +1735,10 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     }));
     
     // SECTION 1: Overall Score with Speedometer
+    ensureSpace(70);
     doc.setFillColor(250, 250, 250);
     doc.roundedRect(14, yPos, pageWidth - 28, 60, 3, 3, 'F');
+
     
     // Title
     doc.setFontSize(14);
@@ -1829,9 +1844,11 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     if (data.testScores.length >= 3) {
       // Calculate box height based on content
       const radarBoxHeight = 95;
-      
+      ensureSpace(radarBoxHeight + 10);
+
       doc.setFillColor(252, 252, 252);
       doc.roundedRect(14, yPos, pageWidth - 28, radarBoxHeight, 3, 3, 'F');
+
       
       // Section title
       doc.setFontSize(14);
@@ -1899,9 +1916,11 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       const speedoPerRow = Math.min(remainingCategories.length, 4);
       const numRows = Math.ceil(remainingCategories.length / speedoPerRow);
       const speedoBoxHeight = numRows * 40 + 20;
-      
+      ensureSpace(speedoBoxHeight + 10);
+
       doc.setFillColor(248, 248, 248);
       doc.roundedRect(14, yPos, pageWidth - 28, speedoBoxHeight, 2, 2, 'F');
+
       
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
@@ -1931,17 +1950,15 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   }
   
   // Check if we need a new page before the table
-  if (yPos > 200) {
-    doc.addPage();
-    yPos = 20;
-  }
-  
+  ensureSpace(40);
+
   // Performance summary table with norms and percentage
   if (data.testScores && data.testScores.length > 0) {
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Detail Hasil Tes dengan Norma', 14, yPos);
     yPos += 10;
+
     
     // Group scores by category
     const scoresByCategory = data.testScores.reduce((acc, s) => {
@@ -2014,16 +2031,14 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   }
   
   // Check if we need a new page
-  if (yPos > 240) {
-    doc.addPage();
-    yPos = 20;
-  }
-  
+  ensureSpace(50);
+
   // Norms reference legend with percentage
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text('Keterangan Skala Penilaian (Persentase):', 14, yPos);
   yPos += 6;
+
   
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
@@ -2047,18 +2062,16 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   });
   
   yPos = (doc as any).lastAutoTable.finalY + 10;
-  
+
   // Check if we need a new page for history
-  if (yPos > 200) {
-    doc.addPage();
-    yPos = 20;
-  }
-  
+  ensureSpace(30);
+
   // All tests history
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('Riwayat Lengkap Tes Fisik', 14, yPos);
   yPos += 8;
+
   
   // Group tests by category for better organization
   const testsByCategory = data.tests.reduce((acc, test) => {
@@ -2068,11 +2081,9 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   }, {} as Record<string, PhysicalTest[]>);
   
   Object.entries(testsByCategory).forEach(([category, categoryTests]) => {
-    // Check if we need a new page
-    if (yPos > 250) {
-      doc.addPage();
-      yPos = 20;
-    }
+    // Check if we need a new page for the category header + a few rows
+    ensureSpace(30);
+
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
