@@ -2062,18 +2062,16 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   });
   
   yPos = (doc as any).lastAutoTable.finalY + 10;
-  
+
   // Check if we need a new page for history
-  if (yPos > 200) {
-    doc.addPage();
-    yPos = 20;
-  }
-  
+  ensureSpace(30);
+
   // All tests history
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('Riwayat Lengkap Tes Fisik', 14, yPos);
   yPos += 8;
+
   
   // Group tests by category for better organization
   const testsByCategory = data.tests.reduce((acc, test) => {
