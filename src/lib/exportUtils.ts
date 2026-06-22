@@ -2031,16 +2031,14 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   }
   
   // Check if we need a new page
-  if (yPos > 240) {
-    doc.addPage();
-    yPos = 20;
-  }
-  
+  ensureSpace(50);
+
   // Norms reference legend with percentage
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text('Keterangan Skala Penilaian (Persentase):', 14, yPos);
   yPos += 6;
+
   
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
