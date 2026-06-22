@@ -2081,11 +2081,9 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   }, {} as Record<string, PhysicalTest[]>);
   
   Object.entries(testsByCategory).forEach(([category, categoryTests]) => {
-    // Check if we need a new page
-    if (yPos > 250) {
-      doc.addPage();
-      yPos = 20;
-    }
+    // Check if we need a new page for the category header + a few rows
+    ensureSpace(30);
+
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
