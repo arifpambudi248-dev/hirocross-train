@@ -1844,9 +1844,11 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     if (data.testScores.length >= 3) {
       // Calculate box height based on content
       const radarBoxHeight = 95;
-      
+      ensureSpace(radarBoxHeight + 10);
+
       doc.setFillColor(252, 252, 252);
       doc.roundedRect(14, yPos, pageWidth - 28, radarBoxHeight, 3, 3, 'F');
+
       
       // Section title
       doc.setFontSize(14);
