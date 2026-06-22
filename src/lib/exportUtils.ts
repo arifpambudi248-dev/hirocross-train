@@ -1664,9 +1664,11 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
       bmiColor = [239, 68, 68]; // Red
     }
     
-    // Draw BMI box with speedometer - increased height
+    ensureSpace(52);
+    // Draw BMI box with speedometer - increased height to fit legend
     doc.setFillColor(245, 245, 245);
-    doc.roundedRect(14, yPos, pageWidth - 28, 42, 2, 2, 'F');
+    doc.roundedRect(14, yPos, pageWidth - 28, 48, 2, 2, 'F');
+
     
     // Title
     doc.setFontSize(12);
