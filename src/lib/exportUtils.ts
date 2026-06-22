@@ -1950,17 +1950,15 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
   }
   
   // Check if we need a new page before the table
-  if (yPos > 200) {
-    doc.addPage();
-    yPos = 20;
-  }
-  
+  ensureSpace(40);
+
   // Performance summary table with norms and percentage
   if (data.testScores && data.testScores.length > 0) {
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Detail Hasil Tes dengan Norma', 14, yPos);
     yPos += 10;
+
     
     // Group scores by category
     const scoresByCategory = data.testScores.reduce((acc, s) => {
