@@ -1735,8 +1735,10 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     }));
     
     // SECTION 1: Overall Score with Speedometer
+    ensureSpace(70);
     doc.setFillColor(250, 250, 250);
     doc.roundedRect(14, yPos, pageWidth - 28, 60, 3, 3, 'F');
+
     
     // Title
     doc.setFontSize(14);
