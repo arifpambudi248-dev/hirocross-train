@@ -1708,9 +1708,10 @@ export const exportPhysicalTestsToPDF = async (data: PhysicalTestExportData) => 
     doc.text('Normal: 18.5 - 24.9  |  Kurus: < 18.5  |  Gemuk: 25 - 29.9  |  Obesitas: ≥ 30', 65, yPos + 42);
     
     doc.setTextColor(0, 0, 0);
-    yPos += 48;
+    yPos += 54;
   } else {
     yPos += 4;
+
   }
   
   // Overall summary box with main speedometer and detailed radar chart
