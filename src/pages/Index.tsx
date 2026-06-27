@@ -1,21 +1,41 @@
 import { Navigation } from "@/components/Navigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, TrendingUp, Activity, Target, Dumbbell, Heart, Users, AlertCircle, CheckCircle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Calendar, TrendingUp, TrendingDown, Activity, Target, Dumbbell, Heart, Users, AlertCircle, CheckCircle, Trophy, Flame, Zap, Clock, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { format, subDays, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { generateTrainingRecommendation } from "@/lib/trainingRecommendations";
 
 type AthleteStats = {
   athlete_id: string;
   athlete_name: string;
+  avatar_url: string | null;
   latest_readiness: number;
   readiness_zone: string;
   weekly_load: number;
   avg_weekly_load: number;
+  sessions_count: number;
+  strength_volume: number;
+  cardio_distance: number;
+  skill_reps: number;
+  last_session_date: string | null;
+};
+
+type RecentSession = {
+  id: string;
+  athlete_name: string;
+  avatar_url: string | null;
+  session_name: string;
+  date: string;
+  load_final: number;
+  rpe: number;
 };
 
 const Index = () => {
