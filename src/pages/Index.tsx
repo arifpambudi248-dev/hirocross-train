@@ -172,7 +172,7 @@ const Index = () => {
     // Get athlete profiles only for assigned athletes
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, athlete_name")
+      .select("id, athlete_name, avatar_url")
       .in("id", athleteIds);
     
     if (!profiles) return;
@@ -192,14 +192,20 @@ const Index = () => {
         .limit(1)
         .maybeSingle();
 
-      // Get weekly load
+      // Get weekly sessions with all volume metrics
       const { data: weekSessions } = await supabase
         .from("training_sessions")
-        .select("load_final")
+        .select("load_final, strength_volume, cardio_distance, skill_reps, date")
         .eq("user_id", profile.id)
-        .gte("date", thisWeekStart);
+        .gte("date", thisWeekStart)
+        .order("date", { ascending: false });
 
       const weeklyLoad = weekSessions?.reduce((sum, s) => sum + (s.load_final || 0), 0) || 0;
+      const strengthVolume = weekSessions?.reduce((sum, s) => sum + (s.strength_volume || 0), 0) || 0;
+      const cardioDistance = weekSessions?.reduce((sum, s) => sum + (s.cardio_distance || 0), 0) || 0;
+      const skillReps = weekSessions?.reduce((sum, s) => sum + (s.skill_reps || 0), 0) || 0;
+      const sessionsCount = weekSessions?.length || 0;
+      const lastSessionDate = weekSessions && weekSessions.length > 0 ? weekSessions[0].date : null;
 
       // Get 4-week average
       const { data: fourWeekSessions } = await supabase
@@ -215,14 +221,47 @@ const Index = () => {
       stats.push({
         athlete_id: profile.id,
         athlete_name: profile.athlete_name,
+        avatar_url: profile.avatar_url,
         latest_readiness: readiness?.readiness_score || 0,
         readiness_zone: readiness?.readiness_zone || 'moderate',
         weekly_load: weeklyLoad,
-        avg_weekly_load: avgLoad
+        avg_weekly_load: avgLoad,
+        sessions_count: sessionsCount,
+        strength_volume: strengthVolume,
+        cardio_distance: cardioDistance,
+        skill_reps: skillReps,
+        last_session_date: lastSessionDate,
       });
     }
 
     setTeamStats(stats);
+
+    // Load recent sessions feed for the team (last 8)
+    const { data: recent } = await supabase
+      .from("training_sessions")
+      .select("id, user_id, session_name, date, load_final, rpe")
+      .in("user_id", athleteIds)
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(8);
+
+    if (recent) {
+      const profileMap = new Map(profiles.map(p => [p.id, p]));
+      setRecentSessions(
+        recent.map((s) => {
+          const p = profileMap.get(s.user_id);
+          return {
+            id: s.id,
+            athlete_name: p?.athlete_name || "Atlet",
+            avatar_url: p?.avatar_url || null,
+            session_name: s.session_name,
+            date: s.date,
+            load_final: s.load_final || 0,
+            rpe: s.rpe || 0,
+          };
+        })
+      );
+    }
 
     // Calculate team trends (last 4 weeks)
     const trends = [];
@@ -268,6 +307,11 @@ const Index = () => {
     }
 
     setTeamTrends(trends);
+
+    if (trends.length >= 2) {
+      setPreviousTeamLoad(trends[trends.length - 2].load);
+      setPreviousTeamReadiness(trends[trends.length - 2].readiness);
+    }
   }
 
   const getZoneColor = (zone: string) => {
