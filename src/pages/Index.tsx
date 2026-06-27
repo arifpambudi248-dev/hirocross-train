@@ -373,118 +373,383 @@ const Index = () => {
         )}
 
         {/* Coach Dashboard */}
-        {isCoach && (
+        {isCoach && (() => {
+          const totalLoad = teamStats.reduce((sum, a) => sum + a.weekly_load, 0);
+          const avgLoad = Math.round(totalLoad / Math.max(teamStats.length, 1));
+          const avgReadiness = Math.round(teamStats.reduce((sum, a) => sum + a.latest_readiness, 0) / Math.max(teamStats.length, 1));
+          const primeCount = teamStats.filter(a => a.readiness_zone === 'prime').length;
+          const moderateCount = teamStats.filter(a => a.readiness_zone === 'moderate').length;
+          const lowCount = teamStats.filter(a => a.readiness_zone === 'low').length;
+          const totalStrength = teamStats.reduce((s, a) => s + a.strength_volume, 0);
+          const totalCardio = teamStats.reduce((s, a) => s + a.cardio_distance, 0);
+          const totalSkill = teamStats.reduce((s, a) => s + a.skill_reps, 0);
+          const totalSessions = teamStats.reduce((s, a) => s + a.sessions_count, 0);
+
+          const loadDelta = previousTeamLoad > 0 ? Math.round(((totalLoad - previousTeamLoad) / previousTeamLoad) * 100) : 0;
+          const readinessDelta = previousTeamReadiness > 0 ? avgReadiness - previousTeamReadiness : 0;
+
+          const topPerformers = [...teamStats].sort((a, b) => b.weekly_load - a.weekly_load).slice(0, 3);
+          const needAttention = [...teamStats]
+            .filter(a => a.readiness_zone === 'low' || a.sessions_count === 0)
+            .sort((a, b) => a.latest_readiness - b.latest_readiness)
+            .slice(0, 3);
+
+          const zoneData = [
+            { name: 'Prime', value: primeCount, color: 'hsl(142 71% 45%)' },
+            { name: 'Moderate', value: moderateCount, color: 'hsl(45 93% 47%)' },
+            { name: 'Low', value: lowCount, color: 'hsl(0 84% 60%)' },
+          ].filter(d => d.value > 0);
+
+          const volumeData = [
+            { name: 'Strength', value: Math.round(totalStrength), fill: 'hsl(var(--primary))' },
+            { name: 'Cardio (m)', value: Math.round(totalCardio), fill: 'hsl(var(--chart-2))' },
+            { name: 'Skill', value: Math.round(totalSkill), fill: 'hsl(var(--chart-3))' },
+          ];
+
+          return (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
+            {/* Enhanced KPI Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
+              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-500/10 to-blue-500/5">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full -mr-10 -mt-10" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6 relative">
                   <CardTitle className="text-xs sm:text-sm font-medium">Total Atlet</CardTitle>
-                  <Users className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/20">
+                    <Users className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
+                  </div>
                 </CardHeader>
-                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold">{teamStats.length}</div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Atlet aktif</p>
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 relative">
+                  <div className="text-2xl sm:text-3xl font-bold">{teamStats.length}</div>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
+                    {totalSessions} sesi minggu ini
+                  </p>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
-                  <CardTitle className="text-xs sm:text-sm font-medium">Rata-rata Load</CardTitle>
-                  <Dumbbell className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold">
-                    {loading ? "..." : Math.round(teamStats.reduce((sum, a) => sum + a.weekly_load, 0) / Math.max(teamStats.length, 1))}
+              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-orange-500/10 to-orange-500/5">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/10 rounded-full -mr-10 -mt-10" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6 relative">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Total Load Tim</CardTitle>
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-orange-500/20">
+                    <Dumbbell className="h-3 w-3 sm:h-4 sm:w-4 text-orange-500" />
                   </div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">AU minggu ini</p>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 relative">
+                  <div className="text-2xl sm:text-3xl font-bold">{loading ? "..." : totalLoad.toLocaleString()}</div>
+                  <div className="flex items-center gap-1 mt-1">
+                    {loadDelta >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3 text-red-500" />
+                    )}
+                    <p className={`text-[10px] sm:text-xs ${loadDelta >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {Math.abs(loadDelta)}% vs minggu lalu
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
-                  <CardTitle className="text-xs sm:text-sm font-medium">Rata-rata Readiness</CardTitle>
-                  <Heart className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold">
-                    {loading ? "..." : Math.round(teamStats.reduce((sum, a) => sum + a.latest_readiness, 0) / Math.max(teamStats.length, 1))}%
+              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-pink-500/10 to-pink-500/5">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-pink-500/10 rounded-full -mr-10 -mt-10" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6 relative">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Avg Readiness</CardTitle>
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-pink-500/20">
+                    <Heart className="h-3 w-3 sm:h-4 sm:w-4 text-pink-500" />
                   </div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Kesiapan tim</p>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 relative">
+                  <div className="text-2xl sm:text-3xl font-bold">{loading ? "..." : avgReadiness}%</div>
+                  <div className="flex items-center gap-1 mt-1">
+                    {readinessDelta >= 0 ? (
+                      <TrendingUp className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3 text-red-500" />
+                    )}
+                    <p className={`text-[10px] sm:text-xs ${readinessDelta >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {readinessDelta >= 0 ? '+' : ''}{readinessDelta} pts
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6">
-                  <CardTitle className="text-xs sm:text-sm font-medium">Atlet Siap</CardTitle>
-                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold">
-                    {loading ? "..." : teamStats.filter(a => a.readiness_zone === 'prime').length}
+              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-green-500/10 to-green-500/5">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/10 rounded-full -mr-10 -mt-10" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 p-3 sm:p-4 lg:p-6 relative">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Atlet Siap Tempur</CardTitle>
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-green-500/20">
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                   </div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Zona prime</p>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 relative">
+                  <div className="text-2xl sm:text-3xl font-bold">{loading ? "..." : primeCount}<span className="text-sm text-muted-foreground">/{teamStats.length}</span></div>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
+                    {lowCount > 0 ? `${lowCount} perlu perhatian` : 'Tim dalam kondisi baik'}
+                  </p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Team Trends Chart */}
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
+              {/* Tren Tim - takes 2 cols */}
+              <Card className="lg:col-span-2">
+                <CardHeader className="p-3 sm:p-4 lg:p-6 pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm sm:text-base lg:text-lg flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                      Tren Tim (4 Minggu)
+                    </CardTitle>
+                    <Badge variant="outline" className="text-[10px]">Load & Readiness</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-2 sm:p-4 lg:p-6 pt-0">
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={teamTrends}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="week" stroke="hsl(var(--foreground))" tick={{ fontSize: 10 }} />
+                      <YAxis yAxisId="left" stroke="hsl(var(--primary))" tick={{ fontSize: 10 }} width={35} />
+                      <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--chart-2))" tick={{ fontSize: 10 }} width={35} />
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', fontSize: '12px', borderRadius: '8px' }} />
+                      <Legend wrapperStyle={{ fontSize: '11px' }} />
+                      <Line yAxisId="left" type="monotone" dataKey="load" stroke="hsl(var(--primary))" name="Total Load (AU)" strokeWidth={2.5} dot={{ r: 4 }} />
+                      <Line yAxisId="right" type="monotone" dataKey="readiness" stroke="hsl(var(--chart-2))" name="Readiness (%)" strokeWidth={2.5} dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Distribusi Readiness */}
+              <Card>
+                <CardHeader className="p-3 sm:p-4 lg:p-6 pb-2">
+                  <CardTitle className="text-sm sm:text-base lg:text-lg flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-pink-500" />
+                    Distribusi Zona
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-2 sm:p-4 lg:p-6 pt-0">
+                  {zoneData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={240}>
+                      <PieChart>
+                        <Pie data={zoneData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3}>
+                          {zoneData.map((entry, idx) => <Cell key={idx} fill={entry.color} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', fontSize: '12px', borderRadius: '8px' }} />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[240px] flex items-center justify-center text-sm text-muted-foreground">Belum ada data readiness</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Volume Breakdown */}
             <Card className="mb-4 sm:mb-6 lg:mb-8">
-              <CardHeader className="p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm sm:text-base lg:text-lg">Tren Tim (4 Minggu Terakhir)</CardTitle>
+              <CardHeader className="p-3 sm:p-4 lg:p-6 pb-2">
+                <CardTitle className="text-sm sm:text-base lg:text-lg flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  Volume Latihan Tim Minggu Ini
+                </CardTitle>
               </CardHeader>
-              <CardContent className="p-2 sm:p-4 lg:p-6 pt-0">
-                <ResponsiveContainer width="100%" height={200} className="sm:h-[250px] lg:h-[300px]">
-                  <LineChart data={teamTrends}>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="text-center p-3 rounded-lg bg-primary/5">
+                    <Dumbbell className="h-4 w-4 mx-auto mb-1 text-primary" />
+                    <div className="text-lg sm:text-xl font-bold">{Math.round(totalStrength).toLocaleString()}</div>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Strength kg</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-chart-2/5">
+                    <Activity className="h-4 w-4 mx-auto mb-1" style={{ color: 'hsl(var(--chart-2))' }} />
+                    <div className="text-lg sm:text-xl font-bold">{Math.round(totalCardio).toLocaleString()}</div>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Cardio meter</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-chart-3/5">
+                    <Zap className="h-4 w-4 mx-auto mb-1" style={{ color: 'hsl(var(--chart-3))' }} />
+                    <div className="text-lg sm:text-xl font-bold">{Math.round(totalSkill).toLocaleString()}</div>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Skill reps</p>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={volumeData} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="week" stroke="hsl(var(--foreground))" tick={{ fontSize: 10 }} />
-                    <YAxis yAxisId="left" stroke="hsl(var(--foreground))" tick={{ fontSize: 10 }} width={35} />
-                    <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--foreground))" tick={{ fontSize: 10 }} width={35} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        fontSize: '12px'
-                      }} 
-                    />
-                    <Legend wrapperStyle={{ fontSize: '10px' }} />
-                    <Line yAxisId="left" type="monotone" dataKey="load" stroke="hsl(var(--primary))" name="Total Load" strokeWidth={2} />
-                    <Line yAxisId="right" type="monotone" dataKey="readiness" stroke="hsl(var(--chart-2))" name="Avg Readiness (%)" strokeWidth={2} />
-                  </LineChart>
+                    <XAxis type="number" tick={{ fontSize: 10 }} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={70} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', fontSize: '12px', borderRadius: '8px' }} />
+                    <Bar dataKey="value" radius={[0, 6, 6, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Team Members Status */}
-            <Card className="mb-4 sm:mb-6 lg:mb-8">
-              <CardHeader className="p-3 sm:p-4 lg:p-6">
-                <CardTitle className="text-sm sm:text-base lg:text-lg">Status Atlet</CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
-                <div className="space-y-2 sm:space-y-3 lg:space-y-4">
-                  {teamStats.map((athlete) => (
-                    <div key={athlete.athlete_id} className="flex items-center justify-between p-2 sm:p-3 lg:p-4 border border-border rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm sm:text-base truncate">{athlete.athlete_name}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground">
-                          Load: {athlete.weekly_load} | Avg: {Math.round(athlete.avg_weekly_load)}
-                        </p>
+            {/* Top Performers + Need Attention */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
+              <Card className="border-l-4 border-l-green-500">
+                <CardHeader className="p-3 sm:p-4 lg:p-6 pb-2">
+                  <CardTitle className="text-sm sm:text-base lg:text-lg flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-amber-500" />
+                    Top Performer
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 space-y-2">
+                  {topPerformers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Belum ada data sesi minggu ini</p>
+                  ) : topPerformers.map((a, idx) => (
+                    <div key={a.athlete_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                        idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-gray-300 text-gray-800' : 'bg-orange-700 text-white'
+                      }`}>{idx + 1}</div>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={a.avatar_url || undefined} />
+                        <AvatarFallback>{a.athlete_name?.[0] || 'A'}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">{a.athlete_name}</p>
+                        <p className="text-[10px] text-muted-foreground">{a.sessions_count} sesi · {a.weekly_load} AU</p>
                       </div>
-                      <div className="text-right ml-2 shrink-0">
-                        <p className={`text-base sm:text-lg font-bold ${
-                          athlete.readiness_zone === 'prime' ? 'text-green-500' :
-                          athlete.readiness_zone === 'moderate' ? 'text-yellow-500' : 'text-red-500'
-                        }`}>
-                          {athlete.latest_readiness}%
-                        </p>
-                        <p className="text-[10px] sm:text-xs capitalize text-muted-foreground">{athlete.readiness_zone}</p>
-                      </div>
+                      <Flame className="h-4 w-4 text-orange-500" />
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-red-500">
+                <CardHeader className="p-3 sm:p-4 lg:p-6 pb-2">
+                  <CardTitle className="text-sm sm:text-base lg:text-lg flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    Perlu Perhatian
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 space-y-2">
+                  {needAttention.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Semua atlet dalam kondisi baik ✓</p>
+                  ) : needAttention.map((a) => (
+                    <div key={a.athlete_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={a.avatar_url || undefined} />
+                        <AvatarFallback>{a.athlete_name?.[0] || 'A'}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">{a.athlete_name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {a.sessions_count === 0 ? 'Belum latihan minggu ini' : `Readiness ${a.latest_readiness}% · ${a.readiness_zone}`}
+                        </p>
+                      </div>
+                      <Badge variant="destructive" className="text-[10px]">!</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Status Atlet - detailed */}
+            <Card className="mb-4 sm:mb-6 lg:mb-8">
+              <CardHeader className="p-3 sm:p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm sm:text-base lg:text-lg flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    Status Detail Atlet
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[10px]">{teamStats.length} atlet</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                <div className="space-y-2 sm:space-y-3">
+                  {teamStats.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">Belum ada atlet terdaftar</p>
+                  ) : teamStats.map((athlete) => {
+                    const loadPercent = Math.min(100, (athlete.weekly_load / Math.max(athlete.avg_weekly_load * 1.5, 100)) * 100);
+                    return (
+                      <div key={athlete.athlete_id} className="p-3 border border-border rounded-lg hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={athlete.avatar_url || undefined} />
+                            <AvatarFallback>{athlete.athlete_name?.[0] || 'A'}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm sm:text-base truncate">{athlete.athlete_name}</p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">
+                              {athlete.sessions_count} sesi · {athlete.last_session_date ? format(parseISO(athlete.last_session_date), 'd MMM', { locale: idLocale }) : 'belum latihan'}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-lg sm:text-xl font-bold ${
+                              athlete.readiness_zone === 'prime' ? 'text-green-500' :
+                              athlete.readiness_zone === 'moderate' ? 'text-yellow-500' : 'text-red-500'
+                            }`}>
+                              {athlete.latest_readiness}%
+                            </p>
+                            <Badge variant="outline" className={`text-[9px] capitalize ${
+                              athlete.readiness_zone === 'prime' ? 'border-green-500 text-green-500' :
+                              athlete.readiness_zone === 'moderate' ? 'border-yellow-500 text-yellow-500' : 'border-red-500 text-red-500'
+                            }`}>{athlete.readiness_zone}</Badge>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Load minggu ini: {athlete.weekly_load} AU</span>
+                            <span>Avg 4w: {Math.round(athlete.avg_weekly_load)}</span>
+                          </div>
+                          <Progress value={loadPercent} className="h-1.5" />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-border">
+                          <div className="text-center">
+                            <p className="text-[9px] text-muted-foreground">Strength</p>
+                            <p className="text-xs font-semibold">{Math.round(athlete.strength_volume)} kg</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[9px] text-muted-foreground">Cardio</p>
+                            <p className="text-xs font-semibold">{Math.round(athlete.cardio_distance)} m</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[9px] text-muted-foreground">Skill</p>
+                            <p className="text-xs font-semibold">{Math.round(athlete.skill_reps)} reps</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
+
+            {/* Recent Activity Feed */}
+            <Card className="mb-4 sm:mb-6 lg:mb-8">
+              <CardHeader className="p-3 sm:p-4 lg:p-6 pb-2">
+                <CardTitle className="text-sm sm:text-base lg:text-lg flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Aktivitas Terbaru
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
+                {recentSessions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Belum ada aktivitas latihan</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recentSessions.map((s) => (
+                      <div key={s.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={s.avatar_url || undefined} />
+                          <AvatarFallback>{s.athlete_name?.[0] || 'A'}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">
+                            <span className="text-primary">{s.athlete_name}</span> — {s.session_name}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(parseISO(s.date), 'EEE, d MMM', { locale: idLocale })} · RPE {s.rpe}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-[10px]">{s.load_final} AU</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </>
-        )}
+          );
+        })()}
 
         {/* Athlete Dashboard Overview */}
         {!isCoach && (
