@@ -49,6 +49,9 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [teamStats, setTeamStats] = useState<AthleteStats[]>([]);
   const [teamTrends, setTeamTrends] = useState<any[]>([]);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [previousTeamLoad, setPreviousTeamLoad] = useState<number>(0);
+  const [previousTeamReadiness, setPreviousTeamReadiness] = useState<number>(0);
 
   useEffect(() => {
     loadDashboardData();
