@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import Historical from "./pages/Historical";
 import AthleteManagement from "./pages/AthleteManagement";
 import AthleteComparison from "./pages/AthleteComparison";
+import CoachAthleteDetail from "./pages/CoachAthleteDetail";
 import BodyMapPage from "./pages/BodyMapPage";
 import Notifications from "./pages/Notifications";
 import Subscription from "./pages/Subscription";
