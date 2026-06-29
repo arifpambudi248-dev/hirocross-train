@@ -354,17 +354,32 @@ const Index = () => {
     <div className="min-h-screen bg-background pb-bottom-nav">
       <Navigation />
       <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
-        <div className="mb-4 sm:mb-6 lg:mb-8">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2">
-            {isCoach ? "Dashboard Pelatih" : "Sistem Periodisasi Latihan Atletik"}
-          </h1>
-          <p className="text-muted-foreground text-sm sm:text-base lg:text-lg">
-            {isCoach 
-              ? "Monitoring dan analisis performa tim secara keseluruhan"
-              : "Platform komprehensif untuk monitoring dan analisis performa atlet"
-            }
-          </p>
+        <div className="mb-4 sm:mb-6 lg:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2">
+              {isCoach ? "Dashboard Pelatih" : "Sistem Periodisasi Latihan Atletik"}
+            </h1>
+            <p className="text-muted-foreground text-sm sm:text-base lg:text-lg">
+              {isCoach
+                ? "Monitoring dan analisis performa tim secara keseluruhan"
+                : "Platform komprehensif untuk monitoring dan analisis performa atlet"}
+            </p>
+          </div>
+          {isCoach && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground hidden sm:inline">Periode:</span>
+              <Select value={coachPeriod} onValueChange={setCoachPeriod}>
+                <SelectTrigger className="w-full sm:w-[240px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(COACH_PERIODS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
+
 
         {/* Training Recommendation Alert */}
         {!isCoach && recommendation && (
