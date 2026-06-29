@@ -692,7 +692,7 @@ const Index = () => {
                   ) : teamStats.map((athlete) => {
                     const loadPercent = Math.min(100, (athlete.weekly_load / Math.max(athlete.avg_weekly_load * 1.5, 100)) * 100);
                     return (
-                      <div key={athlete.athlete_id} className="p-3 border border-border rounded-lg hover:shadow-md transition-shadow">
+                      <div key={athlete.athlete_id} onClick={() => navigate(`/coach/athlete/${athlete.athlete_id}`)} className="p-3 border border-border rounded-lg hover:shadow-md hover:border-primary transition-all cursor-pointer">
                         <div className="flex items-center gap-3 mb-2">
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={athlete.avatar_url || undefined} />
