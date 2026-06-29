@@ -54,10 +54,24 @@ const Index = () => {
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
   const [previousTeamLoad, setPreviousTeamLoad] = useState<number>(0);
   const [previousTeamReadiness, setPreviousTeamReadiness] = useState<number>(0);
+  const [coachPeriod, setCoachPeriod] = useState<string>("7");
+  const navigate = useNavigate();
+
+  const COACH_PERIODS: Record<string, { label: string; days: number }> = {
+    "7": { label: "Minggu Ini (7 hari)", days: 7 },
+    "14": { label: "2 Minggu", days: 14 },
+    "28": { label: "Bulan / Mesocycle (28 hari)", days: 28 },
+    "90": { label: "3 Bulan", days: 90 },
+  };
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (isCoach) loadTeamData(COACH_PERIODS[coachPeriod].days);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coachPeriod, isCoach]);
 
   async function loadDashboardData() {
     const { data: { user } } = await supabase.auth.getUser();
