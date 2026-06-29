@@ -656,7 +656,7 @@ const Index = () => {
                   {needAttention.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Semua atlet dalam kondisi baik ✓</p>
                   ) : needAttention.map((a) => (
-                    <div key={a.athlete_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div key={a.athlete_id} onClick={() => navigate(`/coach/athlete/${a.athlete_id}`)} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={a.avatar_url || undefined} />
                         <AvatarFallback>{a.athlete_name?.[0] || 'A'}</AvatarFallback>
