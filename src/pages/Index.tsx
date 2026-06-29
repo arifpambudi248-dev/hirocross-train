@@ -627,7 +627,7 @@ const Index = () => {
                   {topPerformers.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Belum ada data sesi minggu ini</p>
                   ) : topPerformers.map((a, idx) => (
-                    <div key={a.athlete_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div key={a.athlete_id} onClick={() => navigate(`/coach/athlete/${a.athlete_id}`)} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                       <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
                         idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-gray-300 text-gray-800' : 'bg-orange-700 text-white'
                       }`}>{idx + 1}</div>
