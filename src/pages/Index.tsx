@@ -157,16 +157,13 @@ const Index = () => {
       setRecentTests(tests);
     }
 
-    // If coach, load team data
-    if (userIsCoach) {
-      await loadTeamData();
-    }
+    // Coach team data is loaded by the coachPeriod effect
 
     setLoading(false);
   }
 
 
-  async function loadTeamData() {
+  async function loadTeamData(periodDays: number = 7) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -195,8 +192,12 @@ const Index = () => {
 
     const stats: AthleteStats[] = [];
     const now = new Date();
-    const thisWeekStart = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
+    const thisWeekStart = format(subDays(now, periodDays - 1), "yyyy-MM-dd");
+    const previousPeriodStart = format(subDays(now, periodDays * 2 - 1), "yyyy-MM-dd");
+    const previousPeriodEnd = format(subDays(now, periodDays), "yyyy-MM-dd");
     const fourWeeksAgo = format(subDays(now, 28), "yyyy-MM-dd");
+
+
 
     for (const profile of profiles) {
       // Get latest readiness
