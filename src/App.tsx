@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import Historical from "./pages/Historical";
 import AthleteManagement from "./pages/AthleteManagement";
 import AthleteComparison from "./pages/AthleteComparison";
+import CoachAthleteDetail from "./pages/CoachAthleteDetail";
 import BodyMapPage from "./pages/BodyMapPage";
 import Notifications from "./pages/Notifications";
 import Subscription from "./pages/Subscription";
@@ -105,6 +106,7 @@ const App = () => {
               <Route path="/historical" element={<Historical />} />
               <Route path="/athlete-management" element={<AthleteManagement />} />
               <Route path="/athlete-comparison" element={<AthleteComparison />} />
+              <Route path="/coach/athlete/:athleteId" element={<CoachAthleteDetail />} />
               <Route path="/body-map" element={<BodyMapPage />} />
               <Route path="/notifications" element={<Notifications />} />
               

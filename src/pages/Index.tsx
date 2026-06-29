@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Calendar, TrendingUp, TrendingDown, Activity, Target, Dumbbell, Heart, Users, AlertCircle, CheckCircle, Trophy, Flame, Zap, Clock, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { generateTrainingRecommendation } from "@/lib/trainingRecommendations";
 
 type AthleteStats = {
@@ -52,10 +54,24 @@ const Index = () => {
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
   const [previousTeamLoad, setPreviousTeamLoad] = useState<number>(0);
   const [previousTeamReadiness, setPreviousTeamReadiness] = useState<number>(0);
+  const [coachPeriod, setCoachPeriod] = useState<string>("7");
+  const navigate = useNavigate();
+
+  const COACH_PERIODS: Record<string, { label: string; days: number }> = {
+    "7": { label: "Minggu Ini (7 hari)", days: 7 },
+    "14": { label: "2 Minggu", days: 14 },
+    "28": { label: "Bulan / Mesocycle (28 hari)", days: 28 },
+    "90": { label: "3 Bulan", days: 90 },
+  };
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (isCoach) loadTeamData(COACH_PERIODS[coachPeriod].days);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coachPeriod, isCoach]);
 
   async function loadDashboardData() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -141,16 +157,13 @@ const Index = () => {
       setRecentTests(tests);
     }
 
-    // If coach, load team data
-    if (userIsCoach) {
-      await loadTeamData();
-    }
+    // Coach team data is loaded by the coachPeriod effect
 
     setLoading(false);
   }
 
 
-  async function loadTeamData() {
+  async function loadTeamData(periodDays: number = 7) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -179,8 +192,12 @@ const Index = () => {
 
     const stats: AthleteStats[] = [];
     const now = new Date();
-    const thisWeekStart = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
+    const thisWeekStart = format(subDays(now, periodDays - 1), "yyyy-MM-dd");
+    const previousPeriodStart = format(subDays(now, periodDays * 2 - 1), "yyyy-MM-dd");
+    const previousPeriodEnd = format(subDays(now, periodDays), "yyyy-MM-dd");
     const fourWeeksAgo = format(subDays(now, 28), "yyyy-MM-dd");
+
+
 
     for (const profile of profiles) {
       // Get latest readiness
@@ -337,17 +354,32 @@ const Index = () => {
     <div className="min-h-screen bg-background pb-bottom-nav">
       <Navigation />
       <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
-        <div className="mb-4 sm:mb-6 lg:mb-8">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2">
-            {isCoach ? "Dashboard Pelatih" : "Sistem Periodisasi Latihan Atletik"}
-          </h1>
-          <p className="text-muted-foreground text-sm sm:text-base lg:text-lg">
-            {isCoach 
-              ? "Monitoring dan analisis performa tim secara keseluruhan"
-              : "Platform komprehensif untuk monitoring dan analisis performa atlet"
-            }
-          </p>
+        <div className="mb-4 sm:mb-6 lg:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2">
+              {isCoach ? "Dashboard Pelatih" : "Sistem Periodisasi Latihan Atletik"}
+            </h1>
+            <p className="text-muted-foreground text-sm sm:text-base lg:text-lg">
+              {isCoach
+                ? "Monitoring dan analisis performa tim secara keseluruhan"
+                : "Platform komprehensif untuk monitoring dan analisis performa atlet"}
+            </p>
+          </div>
+          {isCoach && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground hidden sm:inline">Periode:</span>
+              <Select value={coachPeriod} onValueChange={setCoachPeriod}>
+                <SelectTrigger className="w-full sm:w-[240px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(COACH_PERIODS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
+
 
         {/* Training Recommendation Alert */}
         {!isCoach && recommendation && (
@@ -595,7 +627,7 @@ const Index = () => {
                   {topPerformers.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Belum ada data sesi minggu ini</p>
                   ) : topPerformers.map((a, idx) => (
-                    <div key={a.athlete_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div key={a.athlete_id} onClick={() => navigate(`/coach/athlete/${a.athlete_id}`)} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                       <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
                         idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-gray-300 text-gray-800' : 'bg-orange-700 text-white'
                       }`}>{idx + 1}</div>
@@ -624,7 +656,7 @@ const Index = () => {
                   {needAttention.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Semua atlet dalam kondisi baik ✓</p>
                   ) : needAttention.map((a) => (
-                    <div key={a.athlete_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div key={a.athlete_id} onClick={() => navigate(`/coach/athlete/${a.athlete_id}`)} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={a.avatar_url || undefined} />
                         <AvatarFallback>{a.athlete_name?.[0] || 'A'}</AvatarFallback>
@@ -660,7 +692,7 @@ const Index = () => {
                   ) : teamStats.map((athlete) => {
                     const loadPercent = Math.min(100, (athlete.weekly_load / Math.max(athlete.avg_weekly_load * 1.5, 100)) * 100);
                     return (
-                      <div key={athlete.athlete_id} className="p-3 border border-border rounded-lg hover:shadow-md transition-shadow">
+                      <div key={athlete.athlete_id} onClick={() => navigate(`/coach/athlete/${athlete.athlete_id}`)} className="p-3 border border-border rounded-lg hover:shadow-md hover:border-primary transition-all cursor-pointer">
                         <div className="flex items-center gap-3 mb-2">
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={athlete.avatar_url || undefined} />
