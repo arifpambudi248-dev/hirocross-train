@@ -250,8 +250,15 @@ export default function TesFisik() {
     setCalculatedScore(null);
   };
 
-  // Get available test names for selected category
-  const availableTests = BENCHMARKS[selectedCategory as keyof typeof BENCHMARKS] || [];
+  // Get available test names for selected category (built-in + user's custom items)
+  const availableTests = useMemo(() => {
+    const builtin = BENCHMARKS[selectedCategory as keyof typeof BENCHMARKS] || [];
+    const custom = customItems
+      .filter((c) => c.category === selectedCategory)
+      .map((c) => customItemToBenchmark(c));
+    return [...builtin, ...custom];
+  }, [selectedCategory, customItems]);
+
 
   // Prepare radar chart data - only use tests that have been performed
   const radarData = (() => {
