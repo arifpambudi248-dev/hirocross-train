@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Navigation } from "@/components/Navigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,13 +18,15 @@ import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, 
 import type { PhysicalTest } from "@/types/database";
 import { VCrCalculator } from "@/components/VCrCalculator";
 import { OneRMCalculator } from "@/components/OneRMCalculator";
+import { CustomTestManager } from "@/components/CustomTestManager";
+import { fetchCustomTestItems, customItemToBenchmark, type CustomTestItem } from "@/lib/customTestItems";
 import {
   BENCHMARKS,
   CATEGORIES,
   calculateScore,
   getScoreColor,
   getScoreLabel,
-  findBenchmark,
+  findBenchmark as findBenchmarkBuiltin,
   getBenchmarkScale,
   getAgeGroup,
   getAgeGroupLabel,
@@ -33,6 +35,7 @@ import {
 } from "@/lib/physicalTestBenchmarks";
 import { SPORT_CATEGORIES, getSportLabel, SPORT_BIOMOTOR_PRIORITY } from "@/lib/sportCategories";
 import { Speedometer, MiniSpeedometer } from "@/components/Speedometer";
+
 
 // Convert score (1-5) to percentage (0-100)
 const scoreToPercentage = (score: number): number => {
@@ -64,9 +67,33 @@ export default function TesFisik() {
   // Grouping view mode
   const [groupBy, setGroupBy] = useState<'category' | 'gender' | 'sport'>('category');
 
+  // Custom (user-private) test items
+  const [customItems, setCustomItems] = useState<CustomTestItem[]>([]);
+  const customMap = useMemo(
+    () => new Map(customItems.map((i) => [i.test_name, i])),
+    [customItems],
+  );
+  const findBenchmark = useCallback(
+    (name: string): TestBenchmark | undefined => {
+      const built = findBenchmarkBuiltin(name);
+      if (built) return built;
+      const c = customMap.get(name);
+      return c ? customItemToBenchmark(c) : undefined;
+    },
+    [customMap],
+  );
+  const reloadCustomItems = useCallback(async () => {
+    setCustomItems(await fetchCustomTestItems());
+  }, []);
+
+  useEffect(() => {
+    reloadCustomItems();
+  }, [reloadCustomItems]);
+
   useEffect(() => {
     loadUser();
   }, []);
+
 
   useEffect(() => {
     if (selectedAthleteId) {
@@ -223,8 +250,15 @@ export default function TesFisik() {
     setCalculatedScore(null);
   };
 
-  // Get available test names for selected category
-  const availableTests = BENCHMARKS[selectedCategory as keyof typeof BENCHMARKS] || [];
+  // Get available test names for selected category (built-in + user's custom items)
+  const availableTests = useMemo(() => {
+    const builtin = BENCHMARKS[selectedCategory as keyof typeof BENCHMARKS] || [];
+    const custom = customItems
+      .filter((c) => c.category === selectedCategory)
+      .map((c) => customItemToBenchmark(c));
+    return [...builtin, ...custom];
+  }, [selectedCategory, customItems]);
+
 
   // Prepare radar chart data - only use tests that have been performed
   const radarData = (() => {
@@ -330,7 +364,9 @@ export default function TesFisik() {
                 Ekspor PDF
               </Button>
             )}
+            <CustomTestManager onChanged={reloadCustomItems} />
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
+
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />

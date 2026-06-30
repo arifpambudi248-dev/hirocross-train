@@ -164,6 +164,48 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_test_items: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          inverse: boolean
+          norms: Json
+          test_name: string
+          unit: string
+          updated_at: string
+          use_age_based: boolean
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          inverse?: boolean
+          norms?: Json
+          test_name: string
+          unit: string
+          updated_at?: string
+          use_age_based?: boolean
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          inverse?: boolean
+          norms?: Json
+          test_name?: string
+          unit?: string
+          updated_at?: string
+          use_age_based?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       physical_tests: {
         Row: {
           athlete_id: string
