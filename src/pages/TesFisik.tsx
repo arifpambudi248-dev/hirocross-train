@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Navigation } from "@/components/Navigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,13 +18,15 @@ import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, 
 import type { PhysicalTest } from "@/types/database";
 import { VCrCalculator } from "@/components/VCrCalculator";
 import { OneRMCalculator } from "@/components/OneRMCalculator";
+import { CustomTestManager } from "@/components/CustomTestManager";
+import { fetchCustomTestItems, customItemToBenchmark, type CustomTestItem } from "@/lib/customTestItems";
 import {
   BENCHMARKS,
   CATEGORIES,
   calculateScore,
   getScoreColor,
   getScoreLabel,
-  findBenchmark,
+  findBenchmark as findBenchmarkBuiltin,
   getBenchmarkScale,
   getAgeGroup,
   getAgeGroupLabel,
@@ -33,6 +35,7 @@ import {
 } from "@/lib/physicalTestBenchmarks";
 import { SPORT_CATEGORIES, getSportLabel, SPORT_BIOMOTOR_PRIORITY } from "@/lib/sportCategories";
 import { Speedometer, MiniSpeedometer } from "@/components/Speedometer";
+
 
 // Convert score (1-5) to percentage (0-100)
 const scoreToPercentage = (score: number): number => {
