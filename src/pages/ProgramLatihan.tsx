@@ -1250,6 +1250,39 @@ export default function ProgramLatihan() {
                 </Dialog>
               )}
               
+              {isCoach && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const today = format(new Date(), "yyyy-MM-dd");
+                      const todaySessions = sessions.filter(s => s.date === today);
+                      exportDailyProgramToPDF(today, todaySessions as any, athleteName || "Atlet");
+                    }}
+                    title="Download program latihan hari ini"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    PDF Harian
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const ref = new Date();
+                      const ws = startOfWeek(ref, { weekStartsOn: 1 });
+                      const we = endOfWeek(ref, { weekStartsOn: 1 });
+                      const wsStr = format(ws, "yyyy-MM-dd");
+                      const weStr = format(we, "yyyy-MM-dd");
+                      const weekSessions = sessions.filter(s => s.date >= wsStr && s.date <= weStr);
+                      exportWeeklyProgramToPDF(wsStr, weStr, weekSessions as any, athleteName || "Atlet");
+                    }}
+                    title="Download program latihan minggu ini"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    PDF Mingguan
+                  </Button>
+                </>
+              )}
+
               <Button
                 variant={showVolumeChart ? "default" : "outline"}
                 onClick={() => setShowVolumeChart(!showVolumeChart)}
