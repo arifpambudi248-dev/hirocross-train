@@ -67,9 +67,33 @@ export default function TesFisik() {
   // Grouping view mode
   const [groupBy, setGroupBy] = useState<'category' | 'gender' | 'sport'>('category');
 
+  // Custom (user-private) test items
+  const [customItems, setCustomItems] = useState<CustomTestItem[]>([]);
+  const customMap = useMemo(
+    () => new Map(customItems.map((i) => [i.test_name, i])),
+    [customItems],
+  );
+  const findBenchmark = useCallback(
+    (name: string): TestBenchmark | undefined => {
+      const built = findBenchmarkBuiltin(name);
+      if (built) return built;
+      const c = customMap.get(name);
+      return c ? customItemToBenchmark(c) : undefined;
+    },
+    [customMap],
+  );
+  const reloadCustomItems = useCallback(async () => {
+    setCustomItems(await fetchCustomTestItems());
+  }, []);
+
+  useEffect(() => {
+    reloadCustomItems();
+  }, [reloadCustomItems]);
+
   useEffect(() => {
     loadUser();
   }, []);
+
 
   useEffect(() => {
     if (selectedAthleteId) {
