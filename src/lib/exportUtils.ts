@@ -531,6 +531,201 @@ export const exportSessionDetailToPDF = (
   doc.save(fileName);
 };
 
+// =========== Daily & Weekly Program Export (Coach) ===========
+
+const renderSessionBlock = (
+  doc: jsPDF,
+  session: SessionWithExercises,
+  startY: number
+): number => {
+  const pageHeight = doc.internal.pageSize.height;
+  let yPos = startY;
+
+  const ensure = (need: number) => {
+    if (yPos + need > pageHeight - 15) {
+      doc.addPage();
+      yPos = 20;
+    }
+  };
+
+  ensure(20);
+  // Session header bar
+  doc.setFillColor(BRAND_RED[0], BRAND_RED[1], BRAND_RED[2]);
+  doc.rect(14, yPos, doc.internal.pageSize.width - 28, 7, "F");
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255);
+  doc.text(
+    `${session.session_name || "Sesi Latihan"}  •  RPE ${session.rpe ?? "-"}/10  •  ${session.duration_minutes ?? "-"} mnt  •  Load ${session.load_final ?? 0} AU`,
+    16,
+    yPos + 5
+  );
+  doc.setTextColor(0, 0, 0);
+  yPos += 11;
+
+  const exs = session.exercises || [];
+  const strength = exs.filter(e => e.exercise_type === "strength");
+  const cardio = exs.filter(e => e.exercise_type === "cardio");
+  const skill = exs.filter(e => e.exercise_type === "skill");
+
+  if (strength.length > 0) {
+    ensure(20);
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Strength", "Set", "Rep", "Beban", "Volume"]],
+      body: strength.map(e => [
+        e.exercise_name,
+        e.sets?.toString() || "-",
+        e.reps?.toString() || "-",
+        e.weight_kg ? `${e.weight_kg} kg` : "-",
+        `${((e.sets || 0) * (e.reps || 0) * (e.weight_kg || 0)).toLocaleString()} kg`,
+      ]),
+      theme: "grid",
+      headStyles: { fillColor: [59, 130, 246] },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 3;
+  }
+
+  if (cardio.length > 0) {
+    ensure(20);
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Cardio / Endurance", "Jarak", "Waktu"]],
+      body: cardio.map(e => {
+        const dist = e.distance_meters || 0;
+        const distDisplay = dist >= 1000 ? `${(dist / 1000).toFixed(2)} km` : `${dist} m`;
+        const durSec = e.duration_seconds || 0;
+        const durDisplay = durSec > 0 ? `${Math.floor(durSec / 60)}:${String(durSec % 60).padStart(2, "0")}` : "-";
+        return [e.exercise_name, distDisplay, durDisplay];
+      }),
+      theme: "grid",
+      headStyles: { fillColor: [34, 197, 94] },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 3;
+  }
+
+  if (skill.length > 0) {
+    ensure(20);
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Skill / Teknik", "Repetisi"]],
+      body: skill.map(e => [e.exercise_name, e.repetitions?.toString() || "-"]),
+      theme: "grid",
+      headStyles: { fillColor: [249, 115, 22] },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 3;
+  }
+
+  if (session.notes) {
+    ensure(14);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Catatan:", 14, yPos);
+    doc.setFont("helvetica", "normal");
+    const splitNotes = doc.splitTextToSize(session.notes, doc.internal.pageSize.width - 40);
+    doc.text(splitNotes, 30, yPos);
+    yPos += splitNotes.length * 4 + 2;
+  }
+
+  yPos += 4;
+  return yPos;
+};
+
+export const exportDailyProgramToPDF = (
+  date: string,
+  sessions: SessionWithExercises[],
+  athleteName: string
+) => {
+  const doc = new jsPDF();
+  const dateLabel = new Date(date).toLocaleDateString("id-ID", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+  let yPos = addPDFHeader(doc, "Program Latihan Harian", `${athleteName} — ${dateLabel}`);
+
+  if (sessions.length === 0) {
+    doc.setFontSize(11);
+    doc.text("Tidak ada sesi latihan pada tanggal ini.", 14, yPos);
+  } else {
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    const totalLoad = sessions.reduce((s, x) => s + (x.load_final || 0), 0);
+    const totalDur = sessions.reduce((s, x) => s + (x.duration_minutes || 0), 0);
+    doc.text(`Total: ${sessions.length} sesi  •  ${totalDur} menit  •  ${totalLoad} AU`, 14, yPos);
+    yPos += 8;
+
+    for (const s of sessions) {
+      yPos = renderSessionBlock(doc, s, yPos);
+    }
+  }
+
+  doc.save(`program-harian-${athleteName.replace(/\s+/g, "-")}-${date}.pdf`);
+};
+
+export const exportWeeklyProgramToPDF = (
+  weekStart: string,
+  weekEnd: string,
+  sessions: SessionWithExercises[],
+  athleteName: string
+) => {
+  const doc = new jsPDF();
+  const startLabel = new Date(weekStart).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const endLabel = new Date(weekEnd).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  let yPos = addPDFHeader(doc, "Program Latihan Mingguan", `${athleteName} — ${startLabel} s/d ${endLabel}`);
+
+  if (sessions.length === 0) {
+    doc.setFontSize(11);
+    doc.text("Tidak ada sesi latihan pada minggu ini.", 14, yPos);
+    doc.save(`program-mingguan-${athleteName.replace(/\s+/g, "-")}-${weekStart}.pdf`);
+    return;
+  }
+
+  // Summary
+  const totalLoad = sessions.reduce((s, x) => s + (x.load_final || 0), 0);
+  const totalDur = sessions.reduce((s, x) => s + (x.duration_minutes || 0), 0);
+  const avgRPE = sessions.length > 0
+    ? (sessions.reduce((s, x) => s + (x.rpe || 0), 0) / sessions.length).toFixed(1)
+    : "-";
+  doc.setFontSize(10);
+  doc.text(`Ringkasan: ${sessions.length} sesi • ${totalDur} menit • ${totalLoad} AU • Avg RPE ${avgRPE}`, 14, yPos);
+  yPos += 8;
+
+  // Group by date
+  const byDate: Record<string, SessionWithExercises[]> = {};
+  for (const s of sessions) {
+    (byDate[s.date] = byDate[s.date] || []).push(s);
+  }
+  const sortedDates = Object.keys(byDate).sort();
+
+  for (const date of sortedDates) {
+    const pageHeight = doc.internal.pageSize.height;
+    if (yPos + 30 > pageHeight - 15) {
+      doc.addPage();
+      yPos = 20;
+    }
+    const dayLabel = new Date(date).toLocaleDateString("id-ID", {
+      weekday: "long", day: "numeric", month: "long",
+    });
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(BRAND_RED[0], BRAND_RED[1], BRAND_RED[2]);
+    doc.text(dayLabel, 14, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 6;
+    for (const s of byDate[date]) {
+      yPos = renderSessionBlock(doc, s, yPos);
+    }
+    yPos += 2;
+  }
+
+  doc.save(`program-mingguan-${athleteName.replace(/\s+/g, "-")}-${weekStart}.pdf`);
+};
+
 // Weekly volume data for charts
 export interface WeeklyVolumeData {
   week: string;
