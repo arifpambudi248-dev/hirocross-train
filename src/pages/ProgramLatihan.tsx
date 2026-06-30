@@ -31,7 +31,7 @@ import { z } from "zod";
 import { ExerciseForm, Exercise, ExercisePhase, PhaseNotes } from "@/components/ExerciseForm";
 import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
 import { BodyMapSection } from "@/components/BodyMapSection";
-import { exportSessionDetailToPDF } from "@/lib/exportUtils";
+import { exportSessionDetailToPDF, exportDailyProgramToPDF, exportWeeklyProgramToPDF } from "@/lib/exportUtils";
 import { TrainingSessionForm, SessionFormData, MainExercise, ExerciseType } from "@/components/TrainingSessionForm";
 import { BulkSessionForm } from "@/components/BulkSessionForm";
 import { TrainingRecommendationCard } from "@/components/TrainingRecommendationCard";
