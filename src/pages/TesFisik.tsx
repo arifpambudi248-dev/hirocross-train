@@ -364,7 +364,9 @@ export default function TesFisik() {
                 Ekspor PDF
               </Button>
             )}
+            <CustomTestManager onChanged={reloadCustomItems} />
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
+
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
