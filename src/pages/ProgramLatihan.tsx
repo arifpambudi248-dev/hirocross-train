@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, getDay, startOfWeek, endOfWeek } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair, Pencil, Users } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair, Pencil, Users, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { Droppable } from "@/components/Droppable";
@@ -31,7 +31,7 @@ import { z } from "zod";
 import { ExerciseForm, Exercise, ExercisePhase, PhaseNotes } from "@/components/ExerciseForm";
 import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
 import { BodyMapSection } from "@/components/BodyMapSection";
-import { exportSessionDetailToPDF } from "@/lib/exportUtils";
+import { exportSessionDetailToPDF, exportDailyProgramToPDF, exportWeeklyProgramToPDF } from "@/lib/exportUtils";
 import { TrainingSessionForm, SessionFormData, MainExercise, ExerciseType } from "@/components/TrainingSessionForm";
 import { BulkSessionForm } from "@/components/BulkSessionForm";
 import { TrainingRecommendationCard } from "@/components/TrainingRecommendationCard";
@@ -1250,6 +1250,39 @@ export default function ProgramLatihan() {
                 </Dialog>
               )}
               
+              {isCoach && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const today = format(new Date(), "yyyy-MM-dd");
+                      const todaySessions = sessions.filter(s => s.date === today);
+                      exportDailyProgramToPDF(today, todaySessions as any, athleteName || "Atlet");
+                    }}
+                    title="Download program latihan hari ini"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    PDF Harian
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const ref = new Date();
+                      const ws = startOfWeek(ref, { weekStartsOn: 1 });
+                      const we = endOfWeek(ref, { weekStartsOn: 1 });
+                      const wsStr = format(ws, "yyyy-MM-dd");
+                      const weStr = format(we, "yyyy-MM-dd");
+                      const weekSessions = sessions.filter(s => s.date >= wsStr && s.date <= weStr);
+                      exportWeeklyProgramToPDF(wsStr, weStr, weekSessions as any, athleteName || "Atlet");
+                    }}
+                    title="Download program latihan minggu ini"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    PDF Mingguan
+                  </Button>
+                </>
+              )}
+
               <Button
                 variant={showVolumeChart ? "default" : "outline"}
                 onClick={() => setShowVolumeChart(!showVolumeChart)}
