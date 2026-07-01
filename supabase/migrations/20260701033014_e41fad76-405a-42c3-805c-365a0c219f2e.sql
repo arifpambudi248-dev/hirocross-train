@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.prevent_coach_athletes_coach_id_change() FROM PUBLIC, anon, authenticated;
