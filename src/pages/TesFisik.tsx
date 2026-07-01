@@ -315,7 +315,7 @@ export default function TesFisik() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
             {tests.length > 0 && (
               <Button
                 variant="outline"
@@ -361,14 +361,18 @@ export default function TesFisik() {
                 }}
               >
                 <FileDown className="h-4 w-4" />
-                Ekspor PDF
+                  Ekspor PDF
               </Button>
             )}
-            <CustomTestManager onChanged={reloadCustomItems} />
+            <CustomTestManager
+              onChanged={reloadCustomItems}
+              prominent
+              buttonClassName="w-full sm:w-auto"
+            />
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
 
               <DialogTrigger asChild>
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
                   Tambah Tes
                 </Button>
@@ -619,6 +623,23 @@ export default function TesFisik() {
             </Dialog>
           </div>
         </div>
+
+        <Card className="mb-6 border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold">Tes Custom Saya</h2>
+              <p className="text-sm text-muted-foreground">
+                Tambahkan, edit, atau hapus item tes pribadi Anda sendiri.
+              </p>
+            </div>
+            <CustomTestManager
+              onChanged={reloadCustomItems}
+              prominent
+              buttonClassName="w-full sm:w-auto"
+              label="Buka Kelola Tes Custom"
+            />
+          </CardContent>
+        </Card>
 
         {/* Athlete Profile Card */}
         {selectedAthleteId && (
