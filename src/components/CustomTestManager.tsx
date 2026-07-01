@@ -28,9 +28,17 @@ const AGE_GROUPS: { key: AgeGroup; label: string }[] = [
 
 interface Props {
   onChanged?: () => void;
+  prominent?: boolean;
+  buttonClassName?: string;
+  label?: string;
 }
 
-export function CustomTestManager({ onChanged }: Props) {
+export function CustomTestManager({
+  onChanged,
+  prominent = false,
+  buttonClassName = "",
+  label = "Kelola Tes Custom",
+}: Props) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CustomTestItem[]>([]);
   const [editing, setEditing] = useState<Partial<CustomTestItem> | null>(null);
@@ -131,9 +139,9 @@ export function CustomTestManager({ onChanged }: Props) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant={prominent ? "default" : "outline"} className={`gap-2 ${buttonClassName}`}>
           <Settings2 className="h-4 w-4" />
-          Kelola Tes Custom
+          {label}
         </Button>
       </DialogTrigger>
       <DialogContent className="bg-card max-w-3xl max-h-[90vh] overflow-y-auto">
