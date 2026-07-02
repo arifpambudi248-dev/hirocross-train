@@ -259,11 +259,13 @@ export function CustomTestManager({
             </div>
 
             <div className="space-y-3">
-              <Label>Norma (5=Excellent ... 1=Poor)</Label>
+              <Label>Norma Rentang (5=Excellent ... 1=Poor)</Label>
               {!editing.use_age_based ? (
                 <NormRow
                   scale={editing.norms as BenchmarkScale}
                   onChange={(f, v) => setScaleField("_", f, v)}
+                  inverse={!!editing.inverse}
+                  unit={editing.unit || ""}
                 />
               ) : (
                 <div className="space-y-3">
@@ -273,15 +275,18 @@ export function CustomTestManager({
                       <NormRow
                         scale={(editing.norms as CustomNormAgeBased)[g.key]}
                         onChange={(f, v) => setScaleField(g.key, f, v)}
+                        inverse={!!editing.inverse}
+                        unit={editing.unit || ""}
                       />
                     </div>
                   ))}
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
+                Isi <b>batas ambang</b> tiap skala — sistem otomatis membaca hasil sebagai <b>rentang antara</b> (lihat label "Rentang" di bawah tiap input).
                 {editing.inverse
-                  ? "Karena 'lebih kecil = lebih baik', isi nilai menaik: 5 paling kecil, 1 paling besar."
-                  : "Isi nilai menurun: 5 paling besar, 1 paling kecil."}
+                  ? " Karena 'lebih kecil = lebih baik', isi menaik. Contoh: 5=≤25, 4=≤30, 3=≤35 → hasil 31–35 masuk Skala 3."
+                  : " Isi menurun. Contoh: 5=≥35, 4=≥31, 3=≥26 → hasil 31–34 masuk Skala 4."}
               </p>
             </div>
 
@@ -299,9 +304,13 @@ export function CustomTestManager({
 function NormRow({
   scale,
   onChange,
+  inverse,
+  unit,
 }: {
   scale: BenchmarkScale;
   onChange: (field: keyof BenchmarkScale, value: number) => void;
+  inverse?: boolean;
+  unit?: string;
 }) {
   const fields: { key: keyof BenchmarkScale; label: string }[] = [
     { key: "scale5", label: "5" },
@@ -310,9 +319,26 @@ function NormRow({
     { key: "scale2", label: "2" },
     { key: "scale1", label: "1" },
   ];
+
+  const rangeLabel = (idx: number): string => {
+    const cur = scale?.[fields[idx].key] ?? 0;
+    const u = unit ? ` ${unit}` : "";
+    if (!inverse) {
+      if (idx === 0) return `≥ ${cur}${u}`;
+      const prev = scale?.[fields[idx - 1].key] ?? 0;
+      if (idx === fields.length - 1) return `< ${prev}${u}`;
+      return `${cur} – <${prev}${u}`;
+    } else {
+      if (idx === 0) return `≤ ${cur}${u}`;
+      const prev = scale?.[fields[idx - 1].key] ?? 0;
+      if (idx === fields.length - 1) return `> ${prev}${u}`;
+      return `>${prev} – ≤${cur}${u}`;
+    }
+  };
+
   return (
     <div className="grid grid-cols-5 gap-2">
-      {fields.map((f) => (
+      {fields.map((f, i) => (
         <div key={f.key} className="space-y-1">
           <Label className="text-xs">Skala {f.label}</Label>
           <Input
@@ -321,6 +347,9 @@ function NormRow({
             value={scale?.[f.key] ?? 0}
             onChange={(e) => onChange(f.key, parseFloat(e.target.value) || 0)}
           />
+          <div className="text-[10px] text-muted-foreground leading-tight">
+            Rentang: <span className="font-medium text-foreground">{rangeLabel(i)}</span>
+          </div>
         </div>
       ))}
     </div>
