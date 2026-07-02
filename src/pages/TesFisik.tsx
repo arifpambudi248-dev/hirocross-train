@@ -624,22 +624,6 @@ export default function TesFisik() {
           </div>
         </div>
 
-        <Card className="mb-6 border-primary/30 bg-primary/5">
-          <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-semibold">Tes Custom Saya</h2>
-              <p className="text-sm text-muted-foreground">
-                Tambahkan, edit, atau hapus item tes pribadi Anda sendiri.
-              </p>
-            </div>
-            <CustomTestManager
-              onChanged={reloadCustomItems}
-              prominent
-              buttonClassName="w-full sm:w-auto"
-              label="Buka Kelola Tes Custom"
-            />
-          </CardContent>
-        </Card>
 
         {/* Athlete Profile Card */}
         {selectedAthleteId && (
