@@ -1255,9 +1255,15 @@ export default function ProgramLatihan() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      const today = format(new Date(), "yyyy-MM-dd");
-                      const todaySessions = sessions.filter(s => s.date === today);
-                      exportDailyProgramToPDF(today, todaySessions as any, athleteName || "Atlet");
+                      try {
+                        const today = format(new Date(), "yyyy-MM-dd");
+                        const todaySessions = sessions.filter(s => s.date === today);
+                        exportDailyProgramToPDF(today, todaySessions as any, athleteName || "Atlet");
+                        toast.success("PDF harian berhasil diunduh");
+                      } catch (err: any) {
+                        console.error("PDF harian failed:", err);
+                        toast.error(`Gagal unduh PDF harian: ${err?.message || err}`);
+                      }
                     }}
                     title="Download program latihan hari ini"
                   >
@@ -1267,13 +1273,19 @@ export default function ProgramLatihan() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      const ref = new Date();
-                      const ws = startOfWeek(ref, { weekStartsOn: 1 });
-                      const we = endOfWeek(ref, { weekStartsOn: 1 });
-                      const wsStr = format(ws, "yyyy-MM-dd");
-                      const weStr = format(we, "yyyy-MM-dd");
-                      const weekSessions = sessions.filter(s => s.date >= wsStr && s.date <= weStr);
-                      exportWeeklyProgramToPDF(wsStr, weStr, weekSessions as any, athleteName || "Atlet");
+                      try {
+                        const ref = new Date();
+                        const ws = startOfWeek(ref, { weekStartsOn: 1 });
+                        const we = endOfWeek(ref, { weekStartsOn: 1 });
+                        const wsStr = format(ws, "yyyy-MM-dd");
+                        const weStr = format(we, "yyyy-MM-dd");
+                        const weekSessions = sessions.filter(s => s.date >= wsStr && s.date <= weStr);
+                        exportWeeklyProgramToPDF(wsStr, weStr, weekSessions as any, athleteName || "Atlet");
+                        toast.success("PDF mingguan berhasil diunduh");
+                      } catch (err: any) {
+                        console.error("PDF mingguan failed:", err);
+                        toast.error(`Gagal unduh PDF mingguan: ${err?.message || err}`);
+                      }
                     }}
                     title="Download program latihan minggu ini"
                   >

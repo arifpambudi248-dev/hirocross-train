@@ -356,8 +356,13 @@ export default function TesFisik() {
                     height: athleteHeight || undefined,
                     sport: athleteSport || undefined,
                   };
-                  await exportPhysicalTestsToPDF(exportData);
-                  toast.success('PDF berhasil diekspor');
+                  try {
+                    await exportPhysicalTestsToPDF(exportData);
+                    toast.success('PDF berhasil diekspor');
+                  } catch (err: any) {
+                    console.error('PDF export failed:', err);
+                    toast.error(`Gagal ekspor PDF: ${err?.message || err}`);
+                  }
                 }}
               >
                 <FileDown className="h-4 w-4" />
