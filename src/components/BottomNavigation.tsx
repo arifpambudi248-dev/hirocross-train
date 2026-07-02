@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const BottomNavigation = () => {
   const [isCoach, setIsCoach] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [hasSubscription, setHasSubscription] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(true);
 
   useEffect(() => {
     checkRole();

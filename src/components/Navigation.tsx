@@ -21,7 +21,7 @@ export const Navigation = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isCoach, setIsCoach] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [hasSubscription, setHasSubscription] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(true);
 
   useEffect(() => {
     fetchProfile();

@@ -14,7 +14,7 @@ export const SidebarNavigation = () => {
   const [athleteName, setAthleteName] = useState<string>("");
   const [isCoach, setIsCoach] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [hasSubscription, setHasSubscription] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(true);
 
   useEffect(() => {
     fetchProfile();
