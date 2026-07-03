@@ -636,9 +636,13 @@ const AdminUserManagement = () => {
                 {/* Mobile Card View */}
                 <div className="block sm:hidden divide-y divide-border">
                   {filteredUsers.map((user) => (
-                    <div key={user.id} className="p-3 space-y-2">
+                    <div key={user.id} className={`p-3 space-y-2 ${selectedIds.has(user.id) ? 'bg-destructive/5' : ''}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedIds.has(user.id)}
+                            onCheckedChange={() => toggleSelect(user.id)}
+                          />
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={user.profile?.avatar_url || ''} />
                             <AvatarFallback className="text-xs">
