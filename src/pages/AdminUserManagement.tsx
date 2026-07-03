@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -60,6 +61,9 @@ const AdminUserManagement = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [inactiveDays, setInactiveDays] = useState<number>(60);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const isInactive = (u: UserData) => {
     const lastActivity = u.last_sign_in_at || u.created_at;
@@ -215,6 +219,76 @@ const AdminUserManagement = () => {
     }
   };
 
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllFiltered = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(filteredUsers.map(u => u.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const selectAllInactive = () => {
+    const inactiveIds = users.filter(u => isInactive(u) && !u.banned_until).map(u => u.id);
+    setSelectedIds(new Set(inactiveIds));
+    toast.success(`${inactiveIds.length} akun tidak aktif dipilih`);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setActionLoading(true);
+    setBulkProgress({ done: 0, total: ids.length });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      let success = 0;
+      let failed = 0;
+      for (const uid of ids) {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({ action: 'delete_user', user_id: uid })
+            }
+          );
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error);
+          success++;
+        } catch (e) {
+          failed++;
+          console.error('Bulk delete error for', uid, e);
+        }
+        setBulkProgress({ done: success + failed, total: ids.length });
+      }
+
+      if (failed === 0) {
+        toast.success(`${success} akun berhasil dihapus`);
+      } else {
+        toast.warning(`${success} berhasil, ${failed} gagal dihapus`);
+      }
+      setBulkDeleteDialog(false);
+      setSelectedIds(new Set());
+      loadUsers();
+    } finally {
+      setActionLoading(false);
+      setBulkProgress(null);
+    }
+  };
 
   const handleUpdateRole = async () => {
     if (!selectedUser || !newRole) return;
@@ -511,6 +585,44 @@ const AdminUserManagement = () => {
           </Card>
 
 
+          {/* Bulk Action Toolbar */}
+          <Card className={selectedIds.size > 0 ? 'border-destructive/50 bg-destructive/5' : ''}>
+            <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs sm:text-sm">
+                <Checkbox
+                  checked={filteredUsers.length > 0 && filteredUsers.every(u => selectedIds.has(u.id))}
+                  onCheckedChange={(c) => toggleSelectAllFiltered(!!c)}
+                />
+                <span>
+                  {selectedIds.size > 0
+                    ? `${selectedIds.size} akun dipilih`
+                    : `Pilih semua (${filteredUsers.length} tampil)`}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={selectAllInactive}>
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Pilih Semua Tidak Aktif ({inactiveDays}+ hari)
+                </Button>
+                {selectedIds.size > 0 && (
+                  <>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                      Batal Pilih
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setBulkDeleteDialog(true)}
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Hapus {selectedIds.size} Akun
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Users Table */}
           <Card>
             <CardHeader className="p-3 sm:p-4 lg:p-6">
@@ -524,9 +636,13 @@ const AdminUserManagement = () => {
                 {/* Mobile Card View */}
                 <div className="block sm:hidden divide-y divide-border">
                   {filteredUsers.map((user) => (
-                    <div key={user.id} className="p-3 space-y-2">
+                    <div key={user.id} className={`p-3 space-y-2 ${selectedIds.has(user.id) ? 'bg-destructive/5' : ''}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedIds.has(user.id)}
+                            onCheckedChange={() => toggleSelect(user.id)}
+                          />
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={user.profile?.avatar_url || ''} />
                             <AvatarFallback className="text-xs">
@@ -596,6 +712,12 @@ const AdminUserManagement = () => {
                 <Table className="hidden sm:table">
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                          checked={filteredUsers.length > 0 && filteredUsers.every(u => selectedIds.has(u.id))}
+                          onCheckedChange={(c) => toggleSelectAllFiltered(!!c)}
+                        />
+                      </TableHead>
                       <TableHead className="text-xs lg:text-sm">Pengguna</TableHead>
                       <TableHead className="text-xs lg:text-sm hidden md:table-cell">Email</TableHead>
                       <TableHead className="text-xs lg:text-sm">Role</TableHead>
@@ -607,7 +729,13 @@ const AdminUserManagement = () => {
                   </TableHeader>
                   <TableBody>
                     {filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
+                      <TableRow key={user.id} className={selectedIds.has(user.id) ? 'bg-destructive/5' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(user.id)}
+                            onCheckedChange={() => toggleSelect(user.id)}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 sm:gap-3">
                             <Avatar className="h-6 w-6 sm:h-8 sm:w-8">
@@ -799,7 +927,57 @@ const AdminUserManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteDialog} onOpenChange={(o) => !actionLoading && setBulkDeleteDialog(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Hapus {selectedIds.size} Akun Sekaligus?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Anda akan menghapus <strong>{selectedIds.size}</strong> akun secara permanen beserta
+                  seluruh data terkait (profil, sesi latihan, tes, dsb.). Tindakan ini <strong>tidak dapat dibatalkan</strong>.
+                </p>
+                <div className="max-h-40 overflow-y-auto rounded border bg-muted/30 p-2 text-xs space-y-1">
+                  {users.filter(u => selectedIds.has(u.id)).slice(0, 20).map(u => (
+                    <div key={u.id} className="truncate">
+                      • {u.profile?.athlete_name || u.user_metadata?.athlete_name || u.email}
+                      <span className="text-muted-foreground"> ({u.email})</span>
+                    </div>
+                  ))}
+                  {selectedIds.size > 20 && (
+                    <div className="text-muted-foreground italic">
+                      ...dan {selectedIds.size - 20} akun lainnya
+                    </div>
+                  )}
+                </div>
+                {bulkProgress && (
+                  <p className="text-xs text-muted-foreground">
+                    Memproses {bulkProgress.done} / {bulkProgress.total}...
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleBulkDelete(); }}
+              disabled={actionLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Ya, Hapus {selectedIds.size} Akun
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
 
   );
 };
