@@ -15,8 +15,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { 
   Users, Shield, UserCog, Search, Edit, Ban, 
-  CheckCircle, Key, Loader2, RefreshCcw, AlertTriangle
+  CheckCircle, Key, Loader2, RefreshCcw, AlertTriangle, Trash2
 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 
@@ -53,6 +58,16 @@ const AdminUserManagement = () => {
   const [newRole, setNewRole] = useState<string>('');
   const [newPassword, setNewPassword] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [inactiveDays, setInactiveDays] = useState<number>(60);
+
+  const isInactive = (u: UserData) => {
+    const lastActivity = u.last_sign_in_at || u.created_at;
+    if (!lastActivity) return true;
+    const days = (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24);
+    return days >= inactiveDays;
+  };
+
 
   useEffect(() => {
     checkAdminAccess();
@@ -162,10 +177,44 @@ const AdminUserManagement = () => {
       filtered = filtered.filter(u => !u.banned_until);
     } else if (statusFilter === 'suspended') {
       filtered = filtered.filter(u => u.banned_until);
+    } else if (statusFilter === 'inactive') {
+      filtered = filtered.filter(u => isInactive(u) && !u.banned_until);
     }
 
     setFilteredUsers(filtered);
   };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    setActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ action: 'delete_user', user_id: selectedUser.id })
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      toast.success('Akun berhasil dihapus');
+      setDeleteDialog(false);
+      setSelectedUser(null);
+      loadUsers();
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast.error(error.message || 'Gagal menghapus akun');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
 
   const handleUpdateRole = async () => {
     if (!selectedUser || !newRole) return;
@@ -366,7 +415,7 @@ const AdminUserManagement = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <Card>
               <CardContent className="p-3 sm:p-4 lg:pt-6">
                 <div className="text-lg sm:text-xl lg:text-2xl font-bold">{users.length}</div>
@@ -397,6 +446,15 @@ const AdminUserManagement = () => {
                 <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Atlet</p>
               </CardContent>
             </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4 lg:pt-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">
+                  {users.filter(u => isInactive(u) && !u.banned_until).length}
+                </div>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Tidak Aktif ({inactiveDays}+ hari)</p>
+              </CardContent>
+            </Card>
+
           </div>
 
           {/* Filters */}
@@ -425,19 +483,33 @@ const AdminUserManagement = () => {
                     </SelectContent>
                   </Select>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-[150px] text-xs sm:text-sm">
+                    <SelectTrigger className="w-full sm:w-[180px] text-xs sm:text-sm">
                       <SelectValue placeholder="Filter Status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Status</SelectItem>
                       <SelectItem value="active">Aktif</SelectItem>
                       <SelectItem value="suspended">Suspended</SelectItem>
+                      <SelectItem value="inactive">Tidak Aktif ({inactiveDays}+ hari)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={String(inactiveDays)} onValueChange={(v) => setInactiveDays(Number(v))}>
+                    <SelectTrigger className="w-full sm:w-[160px] text-xs sm:text-sm">
+                      <SelectValue placeholder="Ambang tidak aktif" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 hari</SelectItem>
+                      <SelectItem value="60">60 hari</SelectItem>
+                      <SelectItem value="90">90 hari</SelectItem>
+                      <SelectItem value="180">180 hari</SelectItem>
+                      <SelectItem value="365">1 tahun</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
             </CardContent>
           </Card>
+
 
           {/* Users Table */}
           <Card>
@@ -505,6 +577,15 @@ const AdminUserManagement = () => {
                               <Ban className="h-3 w-3 text-destructive" />
                             </Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 w-7 p-0"
+                            onClick={() => { setSelectedUser(user); setDeleteDialog(true); }}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+
                         </div>
                       </div>
                     </div>
@@ -553,18 +634,9 @@ const AdminUserManagement = () => {
                             ? format(new Date(user.last_sign_in_at), 'dd MMM yyyy HH:mm', { locale: localeId })
                             : '-'}
                         </TableCell>
-                        <TableCell>{getRoleBadge(user.role)}</TableCell>
-                        <TableCell>{getStatusBadge(user)}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {user.created_at && format(new Date(user.created_at), 'dd MMM yyyy', { locale: localeId })}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {user.last_sign_in_at 
-                            ? format(new Date(user.last_sign_in_at), 'dd MMM yyyy HH:mm', { locale: localeId })
-                            : '-'}
-                        </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-2 flex-wrap">
+
                             <Button
                               size="sm"
                               variant="outline"
@@ -606,7 +678,16 @@ const AdminUserManagement = () => {
                                 <Ban className="h-3 w-3 mr-1" /> Suspend
                               </Button>
                             )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-destructive border-destructive"
+                              onClick={() => { setSelectedUser(user); setDeleteDialog(true); }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" /> Hapus
+                            </Button>
                           </div>
+
                         </TableCell>
                       </TableRow>
                     ))}
@@ -691,7 +772,35 @@ const AdminUserManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete User Confirmation */}
+      <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Hapus Akun Permanen?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Akun <strong>{selectedUser?.profile?.athlete_name || selectedUser?.email}</strong> beserta
+              seluruh data terkait (profil, sesi latihan, tes, dsb.) akan dihapus permanen dan tidak dapat dikembalikan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={actionLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Hapus Permanen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 };
 
