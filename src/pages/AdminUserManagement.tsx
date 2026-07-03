@@ -15,8 +15,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { 
   Users, Shield, UserCog, Search, Edit, Ban, 
-  CheckCircle, Key, Loader2, RefreshCcw, AlertTriangle
+  CheckCircle, Key, Loader2, RefreshCcw, AlertTriangle, Trash2
 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 
