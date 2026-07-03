@@ -415,7 +415,7 @@ const AdminUserManagement = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <Card>
               <CardContent className="p-3 sm:p-4 lg:pt-6">
                 <div className="text-lg sm:text-xl lg:text-2xl font-bold">{users.length}</div>
