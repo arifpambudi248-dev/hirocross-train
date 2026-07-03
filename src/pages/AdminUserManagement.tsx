@@ -61,6 +61,9 @@ const AdminUserManagement = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [inactiveDays, setInactiveDays] = useState<number>(60);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const isInactive = (u: UserData) => {
     const lastActivity = u.last_sign_in_at || u.created_at;
