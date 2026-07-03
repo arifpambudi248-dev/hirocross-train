@@ -585,6 +585,44 @@ const AdminUserManagement = () => {
           </Card>
 
 
+          {/* Bulk Action Toolbar */}
+          <Card className={selectedIds.size > 0 ? 'border-destructive/50 bg-destructive/5' : ''}>
+            <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs sm:text-sm">
+                <Checkbox
+                  checked={filteredUsers.length > 0 && filteredUsers.every(u => selectedIds.has(u.id))}
+                  onCheckedChange={(c) => toggleSelectAllFiltered(!!c)}
+                />
+                <span>
+                  {selectedIds.size > 0
+                    ? `${selectedIds.size} akun dipilih`
+                    : `Pilih semua (${filteredUsers.length} tampil)`}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={selectAllInactive}>
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Pilih Semua Tidak Aktif ({inactiveDays}+ hari)
+                </Button>
+                {selectedIds.size > 0 && (
+                  <>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                      Batal Pilih
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setBulkDeleteDialog(true)}
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Hapus {selectedIds.size} Akun
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Users Table */}
           <Card>
             <CardHeader className="p-3 sm:p-4 lg:p-6">
