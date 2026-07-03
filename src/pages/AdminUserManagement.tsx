@@ -220,6 +220,76 @@ const AdminUserManagement = () => {
   };
 
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllFiltered = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(filteredUsers.map(u => u.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const selectAllInactive = () => {
+    const inactiveIds = users.filter(u => isInactive(u) && !u.banned_until).map(u => u.id);
+    setSelectedIds(new Set(inactiveIds));
+    toast.success(`${inactiveIds.length} akun tidak aktif dipilih`);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setActionLoading(true);
+    setBulkProgress({ done: 0, total: ids.length });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      let success = 0;
+      let failed = 0;
+      for (const uid of ids) {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({ action: 'delete_user', user_id: uid })
+            }
+          );
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error);
+          success++;
+        } catch (e) {
+          failed++;
+          console.error('Bulk delete error for', uid, e);
+        }
+        setBulkProgress({ done: success + failed, total: ids.length });
+      }
+
+      if (failed === 0) {
+        toast.success(`${success} akun berhasil dihapus`);
+      } else {
+        toast.warning(`${success} berhasil, ${failed} gagal dihapus`);
+      }
+      setBulkDeleteDialog(false);
+      setSelectedIds(new Set());
+      loadUsers();
+    } finally {
+      setActionLoading(false);
+      setBulkProgress(null);
+    }
+  };
+
   const handleUpdateRole = async () => {
     if (!selectedUser || !newRole) return;
     
