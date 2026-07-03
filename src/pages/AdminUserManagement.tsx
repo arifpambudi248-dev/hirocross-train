@@ -712,6 +712,12 @@ const AdminUserManagement = () => {
                 <Table className="hidden sm:table">
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                          checked={filteredUsers.length > 0 && filteredUsers.every(u => selectedIds.has(u.id))}
+                          onCheckedChange={(c) => toggleSelectAllFiltered(!!c)}
+                        />
+                      </TableHead>
                       <TableHead className="text-xs lg:text-sm">Pengguna</TableHead>
                       <TableHead className="text-xs lg:text-sm hidden md:table-cell">Email</TableHead>
                       <TableHead className="text-xs lg:text-sm">Role</TableHead>
@@ -723,7 +729,13 @@ const AdminUserManagement = () => {
                   </TableHeader>
                   <TableBody>
                     {filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
+                      <TableRow key={user.id} className={selectedIds.has(user.id) ? 'bg-destructive/5' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(user.id)}
+                            onCheckedChange={() => toggleSelect(user.id)}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 sm:gap-3">
                             <Avatar className="h-6 w-6 sm:h-8 sm:w-8">
