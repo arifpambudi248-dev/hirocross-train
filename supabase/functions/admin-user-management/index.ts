@@ -199,20 +199,59 @@ serve(async (req) => {
       }
 
       case "list_users": {
-        const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-        
-        if (authError) {
+        // Paginate to support up to 1000+ users
+        const perPage = 1000;
+        let page = 1;
+        let allUsers: any[] = [];
+        while (true) {
+          const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+          if (error) {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          allUsers = allUsers.concat(data.users);
+          if (data.users.length < perPage) break;
+          page++;
+          if (page > 10) break; // hard cap at 10k
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, users: allUsers }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "delete_user": {
+        if (!user_id) {
           return new Response(
-            JSON.stringify({ error: authError.message }),
+            JSON.stringify({ error: "user_id required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (user_id === user.id) {
+          return new Response(
+            JSON.stringify({ error: "Tidak dapat menghapus akun sendiri" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
         return new Response(
-          JSON.stringify({ success: true, users: authUsers.users }),
+          JSON.stringify({ success: true, message: "Akun berhasil dihapus" }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
 
       default:
         return new Response(
