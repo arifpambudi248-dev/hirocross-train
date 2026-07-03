@@ -634,18 +634,9 @@ const AdminUserManagement = () => {
                             ? format(new Date(user.last_sign_in_at), 'dd MMM yyyy HH:mm', { locale: localeId })
                             : '-'}
                         </TableCell>
-                        <TableCell>{getRoleBadge(user.role)}</TableCell>
-                        <TableCell>{getStatusBadge(user)}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {user.created_at && format(new Date(user.created_at), 'dd MMM yyyy', { locale: localeId })}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {user.last_sign_in_at 
-                            ? format(new Date(user.last_sign_in_at), 'dd MMM yyyy HH:mm', { locale: localeId })
-                            : '-'}
-                        </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-2 flex-wrap">
+
                             <Button
                               size="sm"
                               variant="outline"
