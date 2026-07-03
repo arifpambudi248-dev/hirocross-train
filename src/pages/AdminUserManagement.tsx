@@ -177,10 +177,44 @@ const AdminUserManagement = () => {
       filtered = filtered.filter(u => !u.banned_until);
     } else if (statusFilter === 'suspended') {
       filtered = filtered.filter(u => u.banned_until);
+    } else if (statusFilter === 'inactive') {
+      filtered = filtered.filter(u => isInactive(u) && !u.banned_until);
     }
 
     setFilteredUsers(filtered);
   };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    setActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ action: 'delete_user', user_id: selectedUser.id })
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      toast.success('Akun berhasil dihapus');
+      setDeleteDialog(false);
+      setSelectedUser(null);
+      loadUsers();
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast.error(error.message || 'Gagal menghapus akun');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
 
   const handleUpdateRole = async () => {
     if (!selectedUser || !newRole) return;
