@@ -446,6 +446,15 @@ const AdminUserManagement = () => {
                 <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Atlet</p>
               </CardContent>
             </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4 lg:pt-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">
+                  {users.filter(u => isInactive(u) && !u.banned_until).length}
+                </div>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Tidak Aktif ({inactiveDays}+ hari)</p>
+              </CardContent>
+            </Card>
+
           </div>
 
           {/* Filters */}
