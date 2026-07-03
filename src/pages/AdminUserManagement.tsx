@@ -927,7 +927,57 @@ const AdminUserManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteDialog} onOpenChange={(o) => !actionLoading && setBulkDeleteDialog(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Hapus {selectedIds.size} Akun Sekaligus?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Anda akan menghapus <strong>{selectedIds.size}</strong> akun secara permanen beserta
+                  seluruh data terkait (profil, sesi latihan, tes, dsb.). Tindakan ini <strong>tidak dapat dibatalkan</strong>.
+                </p>
+                <div className="max-h-40 overflow-y-auto rounded border bg-muted/30 p-2 text-xs space-y-1">
+                  {users.filter(u => selectedIds.has(u.id)).slice(0, 20).map(u => (
+                    <div key={u.id} className="truncate">
+                      • {u.profile?.athlete_name || u.user_metadata?.athlete_name || u.email}
+                      <span className="text-muted-foreground"> ({u.email})</span>
+                    </div>
+                  ))}
+                  {selectedIds.size > 20 && (
+                    <div className="text-muted-foreground italic">
+                      ...dan {selectedIds.size - 20} akun lainnya
+                    </div>
+                  )}
+                </div>
+                {bulkProgress && (
+                  <p className="text-xs text-muted-foreground">
+                    Memproses {bulkProgress.done} / {bulkProgress.total}...
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleBulkDelete(); }}
+              disabled={actionLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Ya, Hapus {selectedIds.size} Akun
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
 
   );
 };
