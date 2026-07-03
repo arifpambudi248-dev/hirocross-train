@@ -577,6 +577,15 @@ const AdminUserManagement = () => {
                               <Ban className="h-3 w-3 text-destructive" />
                             </Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 w-7 p-0"
+                            onClick={() => { setSelectedUser(user); setDeleteDialog(true); }}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+
                         </div>
                       </div>
                     </div>
