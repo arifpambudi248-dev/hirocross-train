@@ -474,19 +474,33 @@ const AdminUserManagement = () => {
                     </SelectContent>
                   </Select>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-[150px] text-xs sm:text-sm">
+                    <SelectTrigger className="w-full sm:w-[180px] text-xs sm:text-sm">
                       <SelectValue placeholder="Filter Status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Status</SelectItem>
                       <SelectItem value="active">Aktif</SelectItem>
                       <SelectItem value="suspended">Suspended</SelectItem>
+                      <SelectItem value="inactive">Tidak Aktif ({inactiveDays}+ hari)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={String(inactiveDays)} onValueChange={(v) => setInactiveDays(Number(v))}>
+                    <SelectTrigger className="w-full sm:w-[160px] text-xs sm:text-sm">
+                      <SelectValue placeholder="Ambang tidak aktif" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 hari</SelectItem>
+                      <SelectItem value="60">60 hari</SelectItem>
+                      <SelectItem value="90">90 hari</SelectItem>
+                      <SelectItem value="180">180 hari</SelectItem>
+                      <SelectItem value="365">1 tahun</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
             </CardContent>
           </Card>
+
 
           {/* Users Table */}
           <Card>
