@@ -58,6 +58,16 @@ const AdminUserManagement = () => {
   const [newRole, setNewRole] = useState<string>('');
   const [newPassword, setNewPassword] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [inactiveDays, setInactiveDays] = useState<number>(60);
+
+  const isInactive = (u: UserData) => {
+    const lastActivity = u.last_sign_in_at || u.created_at;
+    if (!lastActivity) return true;
+    const days = (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24);
+    return days >= inactiveDays;
+  };
+
 
   useEffect(() => {
     checkAdminAccess();
