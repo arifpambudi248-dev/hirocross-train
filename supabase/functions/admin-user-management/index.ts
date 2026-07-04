@@ -223,6 +223,57 @@ serve(async (req) => {
         );
       }
 
+      case "confirm_user": {
+        if (!user_id) {
+          return new Response(
+            JSON.stringify({ error: "user_id required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
+          email_confirm: true,
+        });
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ success: true, message: "Email confirmed" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "confirm_all_unconfirmed": {
+        const perPage = 1000;
+        let page = 1;
+        let all: any[] = [];
+        while (true) {
+          const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+          if (error) {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          all = all.concat(data.users);
+          if (data.users.length < perPage) break;
+          page++;
+          if (page > 10) break;
+        }
+        const unconfirmed = all.filter((u: any) => !u.email_confirmed_at && u.email);
+        let success = 0, failed = 0;
+        for (const u of unconfirmed) {
+          const { error } = await supabaseAdmin.auth.admin.updateUserById(u.id, { email_confirm: true });
+          if (error) { failed++; console.error("confirm error", u.id, error.message); } else { success++; }
+        }
+        return new Response(
+          JSON.stringify({ success: true, confirmed: success, failed, total: unconfirmed.length }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       case "delete_user": {
         if (!user_id) {
           return new Response(
