@@ -628,6 +628,7 @@ const AdminUserManagement = () => {
                       <SelectItem value="active">Aktif</SelectItem>
                       <SelectItem value="suspended">Suspended</SelectItem>
                       <SelectItem value="inactive">Tidak Aktif ({inactiveDays}+ hari)</SelectItem>
+                      <SelectItem value="unconfirmed">Belum Terkonfirmasi</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={String(inactiveDays)} onValueChange={(v) => setInactiveDays(Number(v))}>
