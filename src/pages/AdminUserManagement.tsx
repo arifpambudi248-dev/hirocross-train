@@ -74,6 +74,8 @@ const AdminUserManagement = () => {
     return days >= inactiveDays;
   };
 
+  const isUnconfirmed = (u: UserData) => !u.email_confirmed_at && !u.confirmed_at;
+
 
   useEffect(() => {
     checkAdminAccess();
