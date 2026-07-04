@@ -668,6 +668,16 @@ const AdminUserManagement = () => {
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   Pilih Semua Tidak Aktif ({inactiveDays}+ hari)
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-yellow-600 border-yellow-600 hover:bg-yellow-500/10"
+                  onClick={handleConfirmAllUnconfirmed}
+                  disabled={actionLoading || users.filter(u => isUnconfirmed(u)).length === 0}
+                >
+                  <MailCheck className="h-3 w-3 mr-1" />
+                  Konfirmasi Semua Belum Terkonfirmasi ({users.filter(u => isUnconfirmed(u)).length})
+                </Button>
                 {selectedIds.size > 0 && (
                   <>
                     <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
