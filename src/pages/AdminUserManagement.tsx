@@ -296,6 +296,55 @@ const AdminUserManagement = () => {
     }
   };
 
+  const handleConfirmUser = async (u: UserData) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ action: 'confirm_user', user_id: u.id })
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      toast.success('Email dikonfirmasi');
+      loadUsers();
+    } catch (e: any) {
+      toast.error(e.message || 'Gagal konfirmasi email');
+    }
+  };
+
+  const handleConfirmAllUnconfirmed = async () => {
+    setActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ action: 'confirm_all_unconfirmed' })
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      if (result.failed > 0) {
+        toast.warning(`${result.confirmed} dikonfirmasi, ${result.failed} gagal (dari ${result.total})`);
+      } else {
+        toast.success(`${result.confirmed} akun berhasil dikonfirmasi`);
+      }
+      loadUsers();
+    } catch (e: any) {
+      toast.error(e.message || 'Gagal konfirmasi massal');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleUpdateRole = async () => {
     if (!selectedUser || !newRole) return;
     
