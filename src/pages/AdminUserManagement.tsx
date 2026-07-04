@@ -864,6 +864,16 @@ const AdminUserManagement = () => {
                             >
                               <Key className="h-3 w-3 mr-1" /> Password
                             </Button>
+                            {isUnconfirmed(user) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-yellow-600 border-yellow-600"
+                                onClick={() => handleConfirmUser(user)}
+                              >
+                                <MailCheck className="h-3 w-3 mr-1" /> Konfirmasi
+                              </Button>
+                            )}
                             {user.banned_until ? (
                               <Button
                                 size="sm"
