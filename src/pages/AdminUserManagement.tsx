@@ -187,6 +187,8 @@ const AdminUserManagement = () => {
       filtered = filtered.filter(u => u.banned_until);
     } else if (statusFilter === 'inactive') {
       filtered = filtered.filter(u => isInactive(u) && !u.banned_until);
+    } else if (statusFilter === 'unconfirmed') {
+      filtered = filtered.filter(u => isUnconfirmed(u));
     }
 
     setFilteredUsers(filtered);
