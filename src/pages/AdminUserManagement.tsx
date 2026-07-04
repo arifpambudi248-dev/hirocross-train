@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { 
   Users, Shield, UserCog, Search, Edit, Ban, 
-  CheckCircle, Key, Loader2, RefreshCcw, AlertTriangle, Trash2
+  CheckCircle, Key, Loader2, RefreshCcw, AlertTriangle, Trash2, MailCheck
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -32,6 +32,8 @@ interface UserData {
   created_at: string;
   last_sign_in_at: string | null;
   banned_until: string | null;
+  email_confirmed_at: string | null;
+  confirmed_at?: string | null;
   user_metadata: {
     athlete_name?: string;
     role?: string;
@@ -71,6 +73,8 @@ const AdminUserManagement = () => {
     const days = (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24);
     return days >= inactiveDays;
   };
+
+  const isUnconfirmed = (u: UserData) => !u.email_confirmed_at && !u.confirmed_at;
 
 
   useEffect(() => {
@@ -183,6 +187,8 @@ const AdminUserManagement = () => {
       filtered = filtered.filter(u => u.banned_until);
     } else if (statusFilter === 'inactive') {
       filtered = filtered.filter(u => isInactive(u) && !u.banned_until);
+    } else if (statusFilter === 'unconfirmed') {
+      filtered = filtered.filter(u => isUnconfirmed(u));
     }
 
     setFilteredUsers(filtered);
@@ -287,6 +293,55 @@ const AdminUserManagement = () => {
     } finally {
       setActionLoading(false);
       setBulkProgress(null);
+    }
+  };
+
+  const handleConfirmUser = async (u: UserData) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ action: 'confirm_user', user_id: u.id })
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      toast.success('Email dikonfirmasi');
+      loadUsers();
+    } catch (e: any) {
+      toast.error(e.message || 'Gagal konfirmasi email');
+    }
+  };
+
+  const handleConfirmAllUnconfirmed = async () => {
+    setActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ action: 'confirm_all_unconfirmed' })
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      if (result.failed > 0) {
+        toast.warning(`${result.confirmed} dikonfirmasi, ${result.failed} gagal (dari ${result.total})`);
+      } else {
+        toast.success(`${result.confirmed} akun berhasil dikonfirmasi`);
+      }
+      loadUsers();
+    } catch (e: any) {
+      toast.error(e.message || 'Gagal konfirmasi massal');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -453,6 +508,9 @@ const AdminUserManagement = () => {
     if (user.banned_until) {
       return <Badge variant="destructive"><Ban className="w-3 h-3 mr-1" /> Suspended</Badge>;
     }
+    if (isUnconfirmed(user)) {
+      return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30"><MailCheck className="w-3 h-3 mr-1" /> Belum Konfirmasi</Badge>;
+    }
     return <Badge className="bg-green-500/10 text-green-600 border-green-500/30"><CheckCircle className="w-3 h-3 mr-1" /> Aktif</Badge>;
   };
 
@@ -489,7 +547,7 @@ const AdminUserManagement = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
             <Card>
               <CardContent className="p-3 sm:p-4 lg:pt-6">
                 <div className="text-lg sm:text-xl lg:text-2xl font-bold">{users.length}</div>
@@ -526,6 +584,14 @@ const AdminUserManagement = () => {
                   {users.filter(u => isInactive(u) && !u.banned_until).length}
                 </div>
                 <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Tidak Aktif ({inactiveDays}+ hari)</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4 lg:pt-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600">
+                  {users.filter(u => isUnconfirmed(u)).length}
+                </div>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">Belum Terkonfirmasi</p>
               </CardContent>
             </Card>
 
@@ -565,6 +631,7 @@ const AdminUserManagement = () => {
                       <SelectItem value="active">Aktif</SelectItem>
                       <SelectItem value="suspended">Suspended</SelectItem>
                       <SelectItem value="inactive">Tidak Aktif ({inactiveDays}+ hari)</SelectItem>
+                      <SelectItem value="unconfirmed">Belum Terkonfirmasi</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={String(inactiveDays)} onValueChange={(v) => setInactiveDays(Number(v))}>
@@ -603,6 +670,16 @@ const AdminUserManagement = () => {
                 <Button variant="outline" size="sm" onClick={selectAllInactive}>
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   Pilih Semua Tidak Aktif ({inactiveDays}+ hari)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-yellow-600 border-yellow-600 hover:bg-yellow-500/10"
+                  onClick={handleConfirmAllUnconfirmed}
+                  disabled={actionLoading || users.filter(u => isUnconfirmed(u)).length === 0}
+                >
+                  <MailCheck className="h-3 w-3 mr-1" />
+                  Konfirmasi Semua Belum Terkonfirmasi ({users.filter(u => isUnconfirmed(u)).length})
                 </Button>
                 {selectedIds.size > 0 && (
                   <>
@@ -787,6 +864,16 @@ const AdminUserManagement = () => {
                             >
                               <Key className="h-3 w-3 mr-1" /> Password
                             </Button>
+                            {isUnconfirmed(user) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-yellow-600 border-yellow-600"
+                                onClick={() => handleConfirmUser(user)}
+                              >
+                                <MailCheck className="h-3 w-3 mr-1" /> Konfirmasi
+                              </Button>
+                            )}
                             {user.banned_until ? (
                               <Button
                                 size="sm"
