@@ -32,6 +32,8 @@ interface UserData {
   created_at: string;
   last_sign_in_at: string | null;
   banned_until: string | null;
+  email_confirmed_at: string | null;
+  confirmed_at?: string | null;
   user_metadata: {
     athlete_name?: string;
     role?: string;
