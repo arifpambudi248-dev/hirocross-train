@@ -261,7 +261,7 @@ export default function TesFisik() {
 
 
   // Prepare radar chart data - only use tests that have been performed
-  const radarData = (() => {
+  const allRadarData = (() => {
     const performedTests = tests.filter(t => {
       const benchmark = findBenchmark(t.test_name);
       return benchmark !== undefined;
@@ -287,9 +287,14 @@ export default function TesFisik() {
         subject: test.test_name,
         score: percentage, // Now using percentage 0-100
         fullMark: 100,
+        category: test.category,
       };
-    }).filter(Boolean);
+    }).filter(Boolean) as Array<{ subject: string; score: number; fullMark: number; category: string }>;
   })();
+
+  // Separate body composition from other biomotor tests for dedicated charts
+  const radarData = allRadarData.filter(d => d.category !== 'komposisi_tubuh');
+  const bodyCompRadarData = allRadarData.filter(d => d.category === 'komposisi_tubuh');
 
   // Group tests by test name and calculate stats
   const testGroups = tests.reduce((acc, test) => {
@@ -893,13 +898,13 @@ export default function TesFisik() {
           </Card>
         )}
 
-        {/* Radar Chart */}
+        {/* Radar Chart - Biomotor (excludes body composition) */}
         {radarData.length > 0 && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-primary" />
-                Profil Performa Multi-Dimensi
+                Profil Performa Biomotor
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -909,7 +914,6 @@ export default function TesFisik() {
                   <PolarAngleAxis 
                     dataKey="subject" 
                     tick={({ payload, x, y, textAnchor, ...rest }) => {
-                      // Truncate long labels
                       const label = payload.value.length > 18 
                         ? payload.value.substring(0, 16) + '..' 
                         : payload.value;
@@ -952,11 +956,88 @@ export default function TesFisik() {
                 </RadarChart>
               </ResponsiveContainer>
               <p className="text-center text-sm text-muted-foreground mt-4">
-                Grafik menampilkan {radarData.length} item tes yang telah dilakukan (skala 0-100%)
+                Grafik menampilkan {radarData.length} item tes biomotor yang telah dilakukan (skala 0-100%). Komposisi tubuh ditampilkan pada grafik terpisah di bawah.
               </p>
             </CardContent>
           </Card>
         )}
+
+        {/* Radar Chart - Body Composition (Komposisi Tubuh) */}
+        {bodyCompRadarData.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Scale className="h-5 w-5 text-primary" />
+                Profil Komposisi Tubuh
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {bodyCompRadarData.length >= 3 ? (
+                <ResponsiveContainer width="100%" height={500}>
+                  <RadarChart data={bodyCompRadarData} cx="50%" cy="50%" outerRadius="70%">
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarAngleAxis 
+                      dataKey="subject" 
+                      tick={({ payload, x, y, textAnchor, ...rest }) => {
+                        const label = payload.value.length > 18 
+                          ? payload.value.substring(0, 16) + '..' 
+                          : payload.value;
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            textAnchor={textAnchor}
+                            fill="hsl(var(--foreground))"
+                            fontSize={10}
+                            {...rest}
+                          >
+                            {label}
+                          </text>
+                        );
+                      }}
+                    />
+                    <PolarRadiusAxis 
+                      angle={90} 
+                      domain={[0, 100]}
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Radar 
+                      name="Skor Komposisi Tubuh" 
+                      dataKey="score" 
+                      stroke="#22c55e"
+                      fill="#22c55e"
+                      fillOpacity={0.5}
+                      strokeWidth={2}
+                    />
+                    <Legend />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                      }}
+                      formatter={(value: any) => [`${value.toFixed(0)}%`, 'Skor']}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {bodyCompRadarData.map((d) => (
+                    <div key={d.subject} className="p-4 rounded-lg border bg-secondary/30 flex items-center justify-between">
+                      <span className="text-sm font-medium">{d.subject}</span>
+                      <span className="text-lg font-bold text-primary">{d.score.toFixed(0)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-center text-sm text-muted-foreground mt-4">
+                {bodyCompRadarData.length} item tes komposisi tubuh (Body Fat, Visceral Fat, BMR, Body Age, Balance, dll.) — skala 0-100%.
+                {bodyCompRadarData.length < 3 && " Tambahkan minimal 3 item tes untuk tampilan radar."}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
 
         {/* Test Results Grouped */}
         {groupBy === 'category' ? (
