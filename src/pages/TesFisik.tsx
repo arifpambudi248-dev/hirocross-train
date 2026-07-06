@@ -261,7 +261,7 @@ export default function TesFisik() {
 
 
   // Prepare radar chart data - only use tests that have been performed
-  const radarData = (() => {
+  const allRadarData = (() => {
     const performedTests = tests.filter(t => {
       const benchmark = findBenchmark(t.test_name);
       return benchmark !== undefined;
@@ -287,9 +287,14 @@ export default function TesFisik() {
         subject: test.test_name,
         score: percentage, // Now using percentage 0-100
         fullMark: 100,
+        category: test.category,
       };
-    }).filter(Boolean);
+    }).filter(Boolean) as Array<{ subject: string; score: number; fullMark: number; category: string }>;
   })();
+
+  // Separate body composition from other biomotor tests for dedicated charts
+  const radarData = allRadarData.filter(d => d.category !== 'komposisi_tubuh');
+  const bodyCompRadarData = allRadarData.filter(d => d.category === 'komposisi_tubuh');
 
   // Group tests by test name and calculate stats
   const testGroups = tests.reduce((acc, test) => {
