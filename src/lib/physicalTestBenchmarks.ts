@@ -1001,7 +1001,168 @@ export const BENCHMARKS: CategoryBenchmarks = {
         },
       },
     },
+    {
+      testName: "Body Fat",
+      unit: "%",
+      inverse: true,
+      description: "Persentase lemak tubuh (bioimpedance/skinfold)",
+      norms: {
+        male: {
+          youth:  { scale5: 7.99, scale4: 13, scale3: 17, scale2: 24, scale1: 25 },
+          junior: { scale5: 7.99, scale4: 13, scale3: 17, scale2: 24, scale1: 25 },
+          senior: { scale5: 7.99, scale4: 13, scale3: 17, scale2: 24, scale1: 25 },
+          master: { scale5: 7.99, scale4: 13, scale3: 17, scale2: 24, scale1: 25 },
+        },
+        female: {
+          youth:  { scale5: 15.99, scale4: 20, scale3: 24, scale2: 31, scale1: 32 },
+          junior: { scale5: 15.99, scale4: 20, scale3: 24, scale2: 31, scale1: 32 },
+          senior: { scale5: 15.99, scale4: 20, scale3: 24, scale2: 31, scale1: 32 },
+          master: { scale5: 15.99, scale4: 20, scale3: 24, scale2: 31, scale1: 32 },
+        },
+      },
+    },
+    {
+      testName: "Visceral Fat",
+      unit: "level",
+      inverse: true,
+      description: "Kadar lemak visceral (skala perangkat BIA)",
+      norms: {
+        male: {
+          youth:  { scale5: 3, scale4: 6, scale3: 9, scale2: 14, scale1: 15 },
+          junior: { scale5: 3, scale4: 6, scale3: 9, scale2: 14, scale1: 15 },
+          senior: { scale5: 3, scale4: 6, scale3: 9, scale2: 14, scale1: 15 },
+          master: { scale5: 3, scale4: 6, scale3: 9, scale2: 14, scale1: 15 },
+        },
+        female: {
+          youth:  { scale5: 3, scale4: 6, scale3: 9, scale2: 14, scale1: 15 },
+          junior: { scale5: 3, scale4: 6, scale3: 9, scale2: 14, scale1: 15 },
+          senior: { scale5: 3, scale4: 6, scale3: 9, scale2: 14, scale1: 15 },
+          master: { scale5: 3, scale4: 6, scale3: 9, scale2: 14, scale1: 15 },
+        },
+      },
+    },
+    {
+      testName: "Basal Metabolic Rate (BMR)",
+      unit: "kcal/day",
+      inverse: false,
+      description: "Laju metabolisme basal harian",
+      norms: {
+        male: {
+          youth:  { scale5: 2201, scale4: 1900, scale3: 1600, scale2: 1400, scale1: 0 },
+          junior: { scale5: 2201, scale4: 1900, scale3: 1600, scale2: 1400, scale1: 0 },
+          senior: { scale5: 2201, scale4: 1900, scale3: 1600, scale2: 1400, scale1: 0 },
+          master: { scale5: 2201, scale4: 1900, scale3: 1600, scale2: 1400, scale1: 0 },
+        },
+        female: {
+          youth:  { scale5: 1801, scale4: 1600, scale3: 1400, scale2: 1200, scale1: 0 },
+          junior: { scale5: 1801, scale4: 1600, scale3: 1400, scale2: 1200, scale1: 0 },
+          senior: { scale5: 1801, scale4: 1600, scale3: 1400, scale2: 1200, scale1: 0 },
+          master: { scale5: 1801, scale4: 1600, scale3: 1400, scale2: 1200, scale1: 0 },
+        },
+      },
+    },
+    {
+      testName: "Body Age (Selisih)",
+      unit: "tahun",
+      inverse: true,
+      description: "Isi selisih Body Age - Usia Aktual (mis. -3 = body age 3 tahun lebih muda)",
+      norms: {
+        male: {
+          youth:  { scale5: -5, scale4: -2, scale3: 1, scale2: 5, scale1: 6 },
+          junior: { scale5: -5, scale4: -2, scale3: 1, scale2: 5, scale1: 6 },
+          senior: { scale5: -5, scale4: -2, scale3: 1, scale2: 5, scale1: 6 },
+          master: { scale5: -5, scale4: -2, scale3: 1, scale2: 5, scale1: 6 },
+        },
+        female: {
+          youth:  { scale5: -5, scale4: -2, scale3: 1, scale2: 5, scale1: 6 },
+          junior: { scale5: -5, scale4: -2, scale3: 1, scale2: 5, scale1: 6 },
+          senior: { scale5: -5, scale4: -2, scale3: 1, scale2: 5, scale1: 6 },
+          master: { scale5: -5, scale4: -2, scale3: 1, scale2: 5, scale1: 6 },
+        },
+      },
+    },
+    {
+      testName: "Whole Body Balance",
+      unit: "% deviasi",
+      inverse: true,
+      description: "Isi selisih absolut dari 100% (mis. hasil 92% atau 108% → input 8)",
+      norms: {
+        male: {
+          youth:  { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          junior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          senior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          master: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+        },
+        female: {
+          youth:  { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          junior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          senior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          master: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+        },
+      },
+    },
+    {
+      testName: "Trunk Balance",
+      unit: "% deviasi",
+      inverse: true,
+      description: "Isi selisih absolut dari 100% pada segmen trunk",
+      norms: {
+        male: {
+          youth:  { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          junior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          senior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          master: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+        },
+        female: {
+          youth:  { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          junior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          senior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          master: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+        },
+      },
+    },
+    {
+      testName: "Arms Balance",
+      unit: "% deviasi",
+      inverse: true,
+      description: "Isi selisih absolut dari 100% pada segmen lengan",
+      norms: {
+        male: {
+          youth:  { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          junior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          senior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          master: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+        },
+        female: {
+          youth:  { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          junior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          senior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          master: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+        },
+      },
+    },
+    {
+      testName: "Legs Balance",
+      unit: "% deviasi",
+      inverse: true,
+      description: "Isi selisih absolut dari 100% pada segmen tungkai",
+      norms: {
+        male: {
+          youth:  { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          junior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          senior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          master: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+        },
+        female: {
+          youth:  { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          junior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          senior: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+          master: { scale5: 5, scale4: 10, scale3: 15, scale2: 20, scale1: 21 },
+        },
+      },
+    },
   ],
+
 };
 
 // List of available categories
