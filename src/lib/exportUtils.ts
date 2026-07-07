@@ -1672,27 +1672,27 @@ const drawDetailedRadarChart = (
   }
   
   // Draw axis labels with test names and values
-  doc.setFontSize(5);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('helvetica', 'bold');
   doc.setTextColor(40, 40, 40);
-  
+
   testScores.forEach((test, i) => {
-    const labelPoint = getPoint(i, 120);
-    
+    const labelPoint = getPoint(i, 122);
+
     // Truncate label if too long
     let displayLabel = test.testName;
-    const maxWidth = 22;
+    const maxWidth = 30;
+    doc.setFontSize(7);
     while (doc.getTextWidth(displayLabel) > maxWidth && displayLabel.length > 6) {
       displayLabel = displayLabel.slice(0, -1);
     }
     if (displayLabel.length < test.testName.length) {
       displayLabel = displayLabel.trim() + '..';
     }
-    
+
     // Determine text alignment based on position
     let align: 'left' | 'center' | 'right' = 'center';
     const normalizedAngle = ((labelPoint.angle % 360) + 360) % 360;
-    
+
     if (normalizedAngle > 300 || normalizedAngle < 60) {
       align = normalizedAngle > 330 || normalizedAngle < 30 ? 'center' : 'left';
     } else if (normalizedAngle >= 60 && normalizedAngle <= 120) {
@@ -1700,16 +1700,19 @@ const drawDetailedRadarChart = (
     } else {
       align = 'right';
     }
-    
-    doc.text(displayLabel, labelPoint.x, labelPoint.y, { align });
-    
-    // Add value below label
-    doc.setFontSize(4);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`${test.value} ${test.unit}`, labelPoint.x, labelPoint.y + 3, { align });
-    doc.setFontSize(5);
+
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(40, 40, 40);
+    doc.text(displayLabel, labelPoint.x, labelPoint.y, { align });
+
+    // Add value below label
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${test.value} ${test.unit}`, labelPoint.x, labelPoint.y + 3.5, { align });
   });
+
   
   // Draw filled polygon for scores
   const points = testScores.map((test, i) => getPoint(i, test.percentage));
