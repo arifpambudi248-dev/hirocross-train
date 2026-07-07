@@ -40,7 +40,8 @@ import { Speedometer, MiniSpeedometer } from "@/components/Speedometer";
 // Convert score (1-5) to percentage (1-100). Minimum 1 keeps radar charts
 // comprehensive even when a result is at the lowest norm (scale 1).
 const scoreToPercentage = (score: number): number => {
-  return Math.max(((score - 1) / 4) * 100, 1);
+  // 1 (or below) => 20%, 2 => 40%, 3 => 60%, 4 => 80%, 5 => 100%
+  return Math.min(100, Math.max(20, score * 20));
 };
 
 export default function TesFisik() {
