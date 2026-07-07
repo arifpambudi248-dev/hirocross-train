@@ -37,9 +37,10 @@ import { SPORT_CATEGORIES, getSportLabel, SPORT_BIOMOTOR_PRIORITY } from "@/lib/
 import { Speedometer, MiniSpeedometer } from "@/components/Speedometer";
 
 
-// Convert score (1-5) to percentage (0-100)
+// Convert score (1-5) to percentage (1-100). Minimum 1 keeps radar charts
+// comprehensive even when a result is at the lowest norm (scale 1).
 const scoreToPercentage = (score: number): number => {
-  return ((score - 1) / 4) * 100;
+  return Math.max(((score - 1) / 4) * 100, 1);
 };
 
 export default function TesFisik() {

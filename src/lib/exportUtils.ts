@@ -1293,9 +1293,10 @@ const getAgeGroupLabel = (age: number): string => {
   return '≥ 35 tahun (Master)';
 };
 
-// Convert score (1-5) to percentage (0-100)
+// Convert score (1-5) to percentage (1-100). Minimum 1 keeps radar charts
+// comprehensive even when a result is at the lowest norm (scale 1).
 const scoreToPercentage = (score: number): number => {
-  return ((score - 1) / 4) * 100;
+  return Math.max(((score - 1) / 4) * 100, 1);
 };
 
 // Helper function to draw mini speedometer
