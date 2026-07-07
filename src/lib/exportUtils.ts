@@ -1367,30 +1367,30 @@ const drawMiniSpeedometer = (
   doc.circle(centerX, centerY, 1.5, 'F');
   
   // Percentage text - positioned below arc
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(needleColor[0], needleColor[1], needleColor[2]);
-  doc.text(`${percentage.toFixed(0)}%`, centerX, centerY + radius + 6, { align: 'center' });
-  
-  // Label - truncate if too long
-  doc.setFontSize(8);
+  doc.text(`${percentage.toFixed(0)}%`, centerX, centerY + radius + 5, { align: 'center' });
+
+  // Label - allow slightly wider, truncate more gracefully
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(60, 60, 60);
-  
-  // Truncate label to prevent overflow
-  const maxLabelWidth = 34;
+
+  const maxLabelWidth = radius * 3.2;
   let displayLabel = label;
   while (doc.getTextWidth(displayLabel) > maxLabelWidth && displayLabel.length > 3) {
     displayLabel = displayLabel.slice(0, -1);
   }
   if (displayLabel.length < label.length) {
-    displayLabel = displayLabel.slice(0, -2) + '..';
+    displayLabel = displayLabel.slice(0, -1) + '…';
   }
-  
-  doc.text(displayLabel, centerX, centerY + radius + 12, { align: 'center' });
-  
+
+  doc.text(displayLabel, centerX, centerY + radius + 11, { align: 'center' });
+
   doc.setTextColor(0, 0, 0);
 };
+
 
 // Helper function to draw radar chart with improved label positioning
 const drawRadarChart = (
