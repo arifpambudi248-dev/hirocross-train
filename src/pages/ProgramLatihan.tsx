@@ -1127,7 +1127,24 @@ export default function ProgramLatihan() {
     };
   };
 
-  const goToPreviousMonth = () => {
+  const getBodyMapExercises = () => {
+    const today = new Date();
+    let startDate: Date;
+    if (bodyMapRange === "today") {
+      startDate = today;
+    } else if (bodyMapRange === "week") {
+      startDate = startOfWeek(today, { weekStartsOn: 1 });
+    } else {
+      startDate = startOfMonth(currentMonth);
+    }
+    const endDate = bodyMapRange === "month" ? endOfMonth(currentMonth) : today;
+    return sessions
+      .filter(s => {
+        const d = new Date(s.date);
+        return d >= startDate && d <= endDate;
+      })
+      .flatMap(s => s.exercises || []);
+  };
     setCurrentMonth(prev => subMonths(prev, 1));
   };
 
