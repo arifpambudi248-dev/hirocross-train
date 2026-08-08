@@ -1619,8 +1619,26 @@ export default function ProgramLatihan() {
             </div>
           )}
 
-          {/* Body Map — hanya tampilkan latihan hari ini */}
-          <BodyMapSection exercises={sessions.filter(s => s.date === format(new Date(), "yyyy-MM-dd")).flatMap(s => s.exercises || [])} />
+          {/* Body Map — selalu tampil, bisa pilih periode */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Dumbbell className="w-4 h-4 text-primary" />
+                <h3 className="font-semibold text-sm">Muscle Map</h3>
+              </div>
+              <Select value={bodyMapRange} onValueChange={(v) => setBodyMapRange(v as "today" | "week" | "month")}>
+                <SelectTrigger className="w-32 h-8 text-xs bg-card border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Hari Ini</SelectItem>
+                  <SelectItem value="week">Minggu Ini</SelectItem>
+                  <SelectItem value="month">Bulan Ini</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <BodyMapSection exercises={getBodyMapExercises()} />
+          </div>
 
           {/* Weekly Target from Annual Plan */}
           {weeklyBiomotorTarget && (
