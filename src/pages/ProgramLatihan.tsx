@@ -1145,6 +1145,8 @@ export default function ProgramLatihan() {
       })
       .flatMap(s => s.exercises || []);
   };
+
+  const goToPreviousMonth = () => {
     setCurrentMonth(prev => subMonths(prev, 1));
   };
 
