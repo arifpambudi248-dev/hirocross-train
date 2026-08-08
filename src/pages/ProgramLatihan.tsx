@@ -143,6 +143,9 @@ export default function ProgramLatihan() {
   // Exercise type filter
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<string>("all");
 
+  // Body Map range (selalu tampil, bisa dipilih periode)
+  const [bodyMapRange, setBodyMapRange] = useState<"today" | "week" | "month">("week");
+
   // Annual plan & weekly targets
   const [annualPlans, setAnnualPlans] = useState<AnnualPlanOption[]>([]);
   const [selectedAnnualPlanId, setSelectedAnnualPlanId] = useState<string>("");
