@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, getDay, startOfWeek, endOfWeek } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair, Pencil, Users, Download } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair, Pencil, Users, Download, Star, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { Droppable } from "@/components/Droppable";
@@ -145,6 +145,9 @@ export default function ProgramLatihan() {
 
   // Body Map range (selalu tampil, bisa dipilih periode)
   const [bodyMapRange, setBodyMapRange] = useState<"today" | "week" | "month">("week");
+  const [muscleFavorites, setMuscleFavorites] = useState<{ id: string; label: string; range: string; month: string }[]>([]);
+  const [saveFavoriteOpen, setSaveFavoriteOpen] = useState(false);
+  const [favoriteLabel, setFavoriteLabel] = useState("");
 
   // Annual plan & weekly targets
   const [annualPlans, setAnnualPlans] = useState<AnnualPlanOption[]>([]);
@@ -173,6 +176,50 @@ export default function ProgramLatihan() {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Muat Muscle Map favorit dari localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("muscle_map_favorites");
+      if (raw) setMuscleFavorites(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+
+  const persistMuscleFavorites = (list: typeof muscleFavorites) => {
+    setMuscleFavorites(list);
+    try { localStorage.setItem("muscle_map_favorites", JSON.stringify(list)); } catch { /* ignore */ }
+  };
+
+  const applyMuscleFavorite = (fav: { range: string; month: string }) => {
+    setBodyMapRange(fav.range as "today" | "week" | "month");
+    if (fav.month) {
+      const m = new Date(fav.month);
+      if (!isNaN(m.getTime())) setCurrentMonth(m);
+    }
+  };
+
+  const saveMuscleFavorite = () => {
+    const label = favoriteLabel.trim() || defaultMuscleFavoriteLabel();
+    const fav = {
+      id: Date.now().toString(),
+      label,
+      range: bodyMapRange,
+      month: bodyMapRange === "month" ? format(currentMonth, "yyyy-MM") : "",
+    };
+    persistMuscleFavorites([...muscleFavorites, fav]);
+    setFavoriteLabel("");
+    setSaveFavoriteOpen(false);
+    toast.success("Muscle Map disimpan sebagai favorit");
+  };
+
+  const deleteMuscleFavorite = (id: string) => {
+    persistMuscleFavorites(muscleFavorites.filter(f => f.id !== id));
+  };
+
+  const defaultMuscleFavoriteLabel = () => {
+    const rangeLabel = bodyMapRange === "today" ? "Hari Ini" : bodyMapRange === "week" ? "Minggu Ini" : format(currentMonth, "MMMM yyyy");
+    return `${rangeLabel} — Muscle Map`;
+  };
 
   useEffect(() => {
     if (selectedAthleteId) {
@@ -1146,6 +1193,25 @@ export default function ProgramLatihan() {
       .flatMap(s => s.exercises || []);
   };
 
+  const getBodyMapTotalLoad = () => {
+    const today = new Date();
+    let startDate: Date;
+    if (bodyMapRange === "today") {
+      startDate = today;
+    } else if (bodyMapRange === "week") {
+      startDate = startOfWeek(today, { weekStartsOn: 1 });
+    } else {
+      startDate = startOfMonth(currentMonth);
+    }
+    const endDate = bodyMapRange === "month" ? endOfMonth(currentMonth) : today;
+    return sessions
+      .filter(s => {
+        const d = new Date(s.date);
+        return d >= startDate && d <= endDate;
+      })
+      .reduce((sum, s) => sum + (s.load_final || 0), 0);
+  };
+
   const goToPreviousMonth = () => {
     setCurrentMonth(prev => subMonths(prev, 1));
   };
@@ -1621,23 +1687,43 @@ export default function ProgramLatihan() {
 
           {/* Body Map — selalu tampil, bisa pilih periode */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <Dumbbell className="w-4 h-4 text-primary" />
                 <h3 className="font-semibold text-sm">Muscle Map</h3>
+                {muscleFavorites.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {muscleFavorites.map(f => (
+                      <span key={f.id} className="inline-flex items-center gap-1 text-[10px] bg-card border border-border rounded-full px-2 py-0.5 text-muted-foreground">
+                        <button onClick={() => applyMuscleFavorite(f)} className="hover:text-primary">
+                          {f.label}
+                        </button>
+                        <button onClick={() => deleteMuscleFavorite(f.id)} className="text-muted-foreground/50 hover:text-red-400">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <Select value={bodyMapRange} onValueChange={(v) => setBodyMapRange(v as "today" | "week" | "month")}>
-                <SelectTrigger className="w-32 h-8 text-xs bg-card border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Hari Ini</SelectItem>
-                  <SelectItem value="week">Minggu Ini</SelectItem>
-                  <SelectItem value="month">Bulan Ini</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select value={bodyMapRange} onValueChange={(v) => setBodyMapRange(v as "today" | "week" | "month")}>
+                  <SelectTrigger className="w-32 h-8 text-xs bg-card border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Hari Ini</SelectItem>
+                    <SelectItem value="week">Minggu Ini</SelectItem>
+                    <SelectItem value="month">Bulan Ini</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setFavoriteLabel(""); setSaveFavoriteOpen(true); }}>
+                  <Star className="w-3.5 h-3.5 mr-1" />
+                  Simpan Favorit
+                </Button>
+              </div>
             </div>
-            <BodyMapSection exercises={getBodyMapExercises()} />
+            <BodyMapSection exercises={getBodyMapExercises()} totalLoad={getBodyMapTotalLoad()} />
           </div>
 
           {/* Weekly Target from Annual Plan */}
@@ -2138,7 +2224,33 @@ export default function ProgramLatihan() {
           )}
         </DialogContent>
       </Dialog>
+      {/* Simpan Muscle Map sebagai favorit */}
+      <Dialog open={saveFavoriteOpen} onOpenChange={setSaveFavoriteOpen}>
+        <DialogContent className="max-w-sm bg-card border-border" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Simpan Muscle Map sebagai Favorit</DialogTitle>
+            <DialogDescription>
+              Periode saat ini: {bodyMapRange === "today" ? "Hari Ini" : bodyMapRange === "week" ? "Minggu Ini" : `Bulan ${format(currentMonth, "MMMM yyyy")}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="fav-label">Label (opsional)</Label>
+              <Input
+                id="fav-label"
+                value={favoriteLabel}
+                onChange={(e) => setFavoriteLabel(e.target.value)}
+                placeholder={defaultMuscleFavoriteLabel()}
+              />
+            </div>
+            <Button className="w-full" onClick={saveMuscleFavorite}>
+              <Star className="w-4 h-4 mr-1" /> Simpan Favorit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <BottomNavigation />
+
     </DndContext>
   );
 }
