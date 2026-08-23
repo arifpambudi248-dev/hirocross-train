@@ -177,6 +177,50 @@ export default function ProgramLatihan() {
     checkAuth();
   }, []);
 
+  // Muat Muscle Map favorit dari localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("muscle_map_favorites");
+      if (raw) setMuscleFavorites(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+
+  const persistMuscleFavorites = (list: typeof muscleFavorites) => {
+    setMuscleFavorites(list);
+    try { localStorage.setItem("muscle_map_favorites", JSON.stringify(list)); } catch { /* ignore */ }
+  };
+
+  const applyMuscleFavorite = (fav: { range: string; month: string }) => {
+    setBodyMapRange(fav.range as "today" | "week" | "month");
+    if (fav.month) {
+      const m = new Date(fav.month);
+      if (!isNaN(m.getTime())) setCurrentMonth(m);
+    }
+  };
+
+  const saveMuscleFavorite = () => {
+    const label = favoriteLabel.trim() || defaultMuscleFavoriteLabel();
+    const fav = {
+      id: Date.now().toString(),
+      label,
+      range: bodyMapRange,
+      month: bodyMapRange === "month" ? format(currentMonth, "yyyy-MM") : "",
+    };
+    persistMuscleFavorites([...muscleFavorites, fav]);
+    setFavoriteLabel("");
+    setSaveFavoriteOpen(false);
+    toast.success("Muscle Map disimpan sebagai favorit");
+  };
+
+  const deleteMuscleFavorite = (id: string) => {
+    persistMuscleFavorites(muscleFavorites.filter(f => f.id !== id));
+  };
+
+  const defaultMuscleFavoriteLabel = () => {
+    const rangeLabel = bodyMapRange === "today" ? "Hari Ini" : bodyMapRange === "week" ? "Minggu Ini" : format(currentMonth, "MMMM yyyy");
+    return `${rangeLabel} — Muscle Map`;
+  };
+
   useEffect(() => {
     if (selectedAthleteId) {
       fetchSessions(selectedAthleteId);
