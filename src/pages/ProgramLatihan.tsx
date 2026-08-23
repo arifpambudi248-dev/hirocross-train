@@ -2224,7 +2224,33 @@ export default function ProgramLatihan() {
           )}
         </DialogContent>
       </Dialog>
+      {/* Simpan Muscle Map sebagai favorit */}
+      <Dialog open={saveFavoriteOpen} onOpenChange={setSaveFavoriteOpen}>
+        <DialogContent className="max-w-sm bg-card border-border" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Simpan Muscle Map sebagai Favorit</DialogTitle>
+            <DialogDescription>
+              Periode saat ini: {bodyMapRange === "today" ? "Hari Ini" : bodyMapRange === "week" ? "Minggu Ini" : `Bulan ${format(currentMonth, "MMMM yyyy")}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="fav-label">Label (opsional)</Label>
+              <Input
+                id="fav-label"
+                value={favoriteLabel}
+                onChange={(e) => setFavoriteLabel(e.target.value)}
+                placeholder={defaultMuscleFavoriteLabel()}
+              />
+            </div>
+            <Button className="w-full" onClick={saveMuscleFavorite}>
+              <Star className="w-4 h-4 mr-1" /> Simpan Favorit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <BottomNavigation />
+
     </DndContext>
   );
 }
