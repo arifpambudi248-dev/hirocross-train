@@ -115,10 +115,4 @@ export function BodyMapSection({ exercises, totalLoad = 0 }: BodyMapSectionProps
       </CardContent>
     </Card>
   );
-
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
