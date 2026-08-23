@@ -15,7 +15,17 @@ interface SessionExercise {
 
 interface BodyMapSectionProps {
   exercises: SessionExercise[];
+  /** Total load_final sesi pada periode terpilih, dipakai untuk indikator intensitas per otot */
+  totalLoad?: number;
 }
+
+const intensityLabel = (ratio: number) => {
+  if (ratio >= 0.75) return { label: "Sangat Tinggi", cls: "bg-red-500/15 text-red-400 border-red-500/30" };
+  if (ratio >= 0.5) return { label: "Tinggi", cls: "bg-orange-500/15 text-orange-400 border-orange-500/30" };
+  if (ratio >= 0.25) return { label: "Sedang", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" };
+  return { label: "Rendah", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" };
+};
+
 
 const REGION_META: { key: keyof DetailedIntensities; label: string; color: string }[] = [
   { key: "chest", label: "Chest", color: "bg-red-500" },
