@@ -38,7 +38,7 @@ const REGION_META: { key: keyof DetailedIntensities; label: string; color: strin
   { key: "calves", label: "Calves", color: "bg-pink-500" },
 ];
 
-export function BodyMapSection({ exercises }: BodyMapSectionProps) {
+export function BodyMapSection({ exercises, totalLoad = 0 }: BodyMapSectionProps) {
   const strengthExercises = useMemo(
     () => exercises.filter((ex) => ex.exercise_type === "strength"),
     [exercises]
@@ -71,7 +71,10 @@ export function BodyMapSection({ exercises }: BodyMapSectionProps) {
           <Dumbbell className="w-4 h-4 text-primary" />
           Body Map — Distribusi Strength
         </CardTitle>
-        <CardDescription>Visualisasi area otot yang dilatih bulan ini</CardDescription>
+        <CardDescription>
+          Visualisasi area otot yang dilatih
+          {totalLoad > 0 && ` — total load periode ini: ${Math.round(totalLoad).toLocaleString()} AU`}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -82,11 +85,17 @@ export function BodyMapSection({ exercises }: BodyMapSectionProps) {
             {REGION_META.map((r) => {
               const pct = dist.total > 0 ? Math.round((dist[r.key] / dist.total) * 100) : 0;
               if (dist[r.key] === 0) return null;
+              const ratio = intensities[r.key];
+              const ind = intensityLabel(ratio);
+              const regionLoad = totalLoad > 0 && dist.total > 0 ? (dist[r.key] / dist.total) * totalLoad : 0;
               return (
                 <div key={r.key} className="space-y-1">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center gap-2">
                     <span className="text-sm font-medium">{r.label}</span>
-                    <Badge variant="secondary">{pct}%</Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className={`text-[10px] ${ind.cls}`}>{ind.label}</Badge>
+                      <Badge variant="secondary">{pct}%</Badge>
+                    </div>
                   </div>
                   <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                     <div
@@ -94,10 +103,19 @@ export function BodyMapSection({ exercises }: BodyMapSectionProps) {
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Volume: {Math.round(dist[r.key]).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Volume: {Math.round(dist[r.key]).toLocaleString()}
+                    {regionLoad > 0 && ` · Load: ${Math.round(regionLoad).toLocaleString()} AU`}
+                  </p>
                 </div>
               );
             })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
           </div>
         </div>
       </CardContent>
