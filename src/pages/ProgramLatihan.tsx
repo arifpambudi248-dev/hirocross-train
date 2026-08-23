@@ -1687,23 +1687,43 @@ export default function ProgramLatihan() {
 
           {/* Body Map — selalu tampil, bisa pilih periode */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <Dumbbell className="w-4 h-4 text-primary" />
                 <h3 className="font-semibold text-sm">Muscle Map</h3>
+                {muscleFavorites.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {muscleFavorites.map(f => (
+                      <span key={f.id} className="inline-flex items-center gap-1 text-[10px] bg-card border border-border rounded-full px-2 py-0.5 text-muted-foreground">
+                        <button onClick={() => applyMuscleFavorite(f)} className="hover:text-primary">
+                          {f.label}
+                        </button>
+                        <button onClick={() => deleteMuscleFavorite(f.id)} className="text-muted-foreground/50 hover:text-red-400">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <Select value={bodyMapRange} onValueChange={(v) => setBodyMapRange(v as "today" | "week" | "month")}>
-                <SelectTrigger className="w-32 h-8 text-xs bg-card border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Hari Ini</SelectItem>
-                  <SelectItem value="week">Minggu Ini</SelectItem>
-                  <SelectItem value="month">Bulan Ini</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select value={bodyMapRange} onValueChange={(v) => setBodyMapRange(v as "today" | "week" | "month")}>
+                  <SelectTrigger className="w-32 h-8 text-xs bg-card border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Hari Ini</SelectItem>
+                    <SelectItem value="week">Minggu Ini</SelectItem>
+                    <SelectItem value="month">Bulan Ini</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setFavoriteLabel(""); setSaveFavoriteOpen(true); }}>
+                  <Star className="w-3.5 h-3.5 mr-1" />
+                  Simpan Favorit
+                </Button>
+              </div>
             </div>
-            <BodyMapSection exercises={getBodyMapExercises()} />
+            <BodyMapSection exercises={getBodyMapExercises()} totalLoad={getBodyMapTotalLoad()} />
           </div>
 
           {/* Weekly Target from Annual Plan */}
