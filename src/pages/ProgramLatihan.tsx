@@ -1193,6 +1193,25 @@ export default function ProgramLatihan() {
       .flatMap(s => s.exercises || []);
   };
 
+  const getBodyMapTotalLoad = () => {
+    const today = new Date();
+    let startDate: Date;
+    if (bodyMapRange === "today") {
+      startDate = today;
+    } else if (bodyMapRange === "week") {
+      startDate = startOfWeek(today, { weekStartsOn: 1 });
+    } else {
+      startDate = startOfMonth(currentMonth);
+    }
+    const endDate = bodyMapRange === "month" ? endOfMonth(currentMonth) : today;
+    return sessions
+      .filter(s => {
+        const d = new Date(s.date);
+        return d >= startDate && d <= endDate;
+      })
+      .reduce((sum, s) => sum + (s.load_final || 0), 0);
+  };
+
   const goToPreviousMonth = () => {
     setCurrentMonth(prev => subMonths(prev, 1));
   };
