@@ -145,6 +145,9 @@ export default function ProgramLatihan() {
 
   // Body Map range (selalu tampil, bisa dipilih periode)
   const [bodyMapRange, setBodyMapRange] = useState<"today" | "week" | "month">("week");
+  const [muscleFavorites, setMuscleFavorites] = useState<{ id: string; label: string; range: string; month: string }[]>([]);
+  const [saveFavoriteOpen, setSaveFavoriteOpen] = useState(false);
+  const [favoriteLabel, setFavoriteLabel] = useState("");
 
   // Annual plan & weekly targets
   const [annualPlans, setAnnualPlans] = useState<AnnualPlanOption[]>([]);
