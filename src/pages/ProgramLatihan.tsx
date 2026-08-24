@@ -1712,24 +1712,52 @@ export default function ProgramLatihan() {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <Select value={bodyMapRange} onValueChange={(v) => setBodyMapRange(v as "today" | "week" | "month")}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={bodyMapRange} onValueChange={(v) => setBodyMapRange(v as "day" | "week" | "month" | "all")}>
                   <SelectTrigger className="w-32 h-8 text-xs bg-card border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="today">Hari Ini</SelectItem>
-                    <SelectItem value="week">Minggu Ini</SelectItem>
-                    <SelectItem value="month">Bulan Ini</SelectItem>
+                    <SelectItem value="day">Harian</SelectItem>
+                    <SelectItem value="week">Mingguan</SelectItem>
+                    <SelectItem value="month">Bulanan</SelectItem>
+                    <SelectItem value="all">Semua Waktu</SelectItem>
                   </SelectContent>
                 </Select>
+                {(bodyMapRange === "day" || bodyMapRange === "week") && (
+                  <Input
+                    type="date"
+                    value={bodyMapAnchor}
+                    onChange={(e) => setBodyMapAnchor(e.target.value)}
+                    className="h-8 w-40 text-xs bg-card border-border"
+                  />
+                )}
+                {bodyMapRange === "month" && (
+                  <Input
+                    type="month"
+                    value={format(bodyMapAnchorDate, "yyyy-MM")}
+                    onChange={(e) => e.target.value && setBodyMapAnchor(`${e.target.value}-01`)}
+                    className="h-8 w-36 text-xs bg-card border-border"
+                  />
+                )}
+                {bodyMapRange !== "all" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs"
+                    onClick={() => setBodyMapAnchor(format(new Date(), "yyyy-MM-dd"))}
+                  >
+                    Sekarang
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setFavoriteLabel(""); setSaveFavoriteOpen(true); }}>
                   <Star className="w-3.5 h-3.5 mr-1" />
                   Simpan Favorit
                 </Button>
               </div>
             </div>
-            <BodyMapSection exercises={getBodyMapExercises()} totalLoad={getBodyMapTotalLoad()} />
+            <p className="text-xs text-muted-foreground mb-2">Periode: {bodyMapPeriodLabel}</p>
+            <BodyMapSection exercises={getBodyMapExercises()} totalLoad={getBodyMapTotalLoad()} periodLabel={bodyMapPeriodLabel} />
           </div>
 
           {/* Weekly Target from Annual Plan */}
