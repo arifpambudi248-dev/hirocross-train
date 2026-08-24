@@ -191,11 +191,16 @@ export default function ProgramLatihan() {
     try { localStorage.setItem("muscle_map_favorites", JSON.stringify(list)); } catch { /* ignore */ }
   };
 
-  const applyMuscleFavorite = (fav: { range: string; month: string }) => {
-    setBodyMapRange(fav.range as "today" | "week" | "month");
+  const applyMuscleFavorite = (fav: { range: string; month: string; anchor?: string }) => {
+    const r = fav.range === "today" ? "day" : fav.range;
+    setBodyMapRange(r as "day" | "week" | "month" | "all");
+    if (fav.anchor) setBodyMapAnchor(fav.anchor);
     if (fav.month) {
       const m = new Date(fav.month);
-      if (!isNaN(m.getTime())) setCurrentMonth(m);
+      if (!isNaN(m.getTime())) {
+        setCurrentMonth(startOfMonth(m));
+        setBodyMapAnchor(format(startOfMonth(m), "yyyy-MM-dd"));
+      }
     }
   };
 
@@ -205,7 +210,8 @@ export default function ProgramLatihan() {
       id: Date.now().toString(),
       label,
       range: bodyMapRange,
-      month: bodyMapRange === "month" ? format(currentMonth, "yyyy-MM") : "",
+      month: bodyMapRange === "month" ? format(bodyMapAnchorDate, "yyyy-MM") : "",
+      anchor: bodyMapAnchor,
     };
     persistMuscleFavorites([...muscleFavorites, fav]);
     setFavoriteLabel("");
@@ -218,8 +224,7 @@ export default function ProgramLatihan() {
   };
 
   const defaultMuscleFavoriteLabel = () => {
-    const rangeLabel = bodyMapRange === "today" ? "Hari Ini" : bodyMapRange === "week" ? "Minggu Ini" : format(currentMonth, "MMMM yyyy");
-    return `${rangeLabel} — Muscle Map`;
+    return `${bodyMapPeriodLabel} — Muscle Map`;
   };
 
   useEffect(() => {
