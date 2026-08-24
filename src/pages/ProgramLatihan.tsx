@@ -191,7 +191,32 @@ export default function ProgramLatihan() {
     try { localStorage.setItem("muscle_map_favorites", JSON.stringify(list)); } catch { /* ignore */ }
   };
 
-  const applyMuscleFavorite = (fav: { range: string; month: string; anchor?: string }) => {
+  const bodyMapAnchorDate = useMemo(() => {
+    const d = new Date(bodyMapAnchor);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }, [bodyMapAnchor]);
+
+  const bodyMapInterval = useMemo(() => {
+    if (bodyMapRange === "all") return { start: new Date(1970, 0, 1), end: new Date(2999, 11, 31) };
+    if (bodyMapRange === "day") return { start: bodyMapAnchorDate, end: bodyMapAnchorDate };
+    if (bodyMapRange === "week") {
+      return {
+        start: startOfWeek(bodyMapAnchorDate, { weekStartsOn: 1 }),
+        end: endOfWeek(bodyMapAnchorDate, { weekStartsOn: 1 }),
+      };
+    }
+    return { start: startOfMonth(bodyMapAnchorDate), end: endOfMonth(bodyMapAnchorDate) };
+  }, [bodyMapRange, bodyMapAnchorDate]);
+
+  const bodyMapPeriodLabel = useMemo(() => {
+    if (bodyMapRange === "all") return "Semua Waktu";
+    if (bodyMapRange === "day") return format(bodyMapAnchorDate, "d MMMM yyyy", { locale: localeId });
+    if (bodyMapRange === "week")
+      return `${format(bodyMapInterval.start, "d MMM", { locale: localeId })} – ${format(bodyMapInterval.end, "d MMM yyyy", { locale: localeId })}`;
+    return format(bodyMapAnchorDate, "MMMM yyyy", { locale: localeId });
+  }, [bodyMapRange, bodyMapAnchorDate, bodyMapInterval]);
+
+
     const r = fav.range === "today" ? "day" : fav.range;
     setBodyMapRange(r as "day" | "week" | "month" | "all");
     if (fav.anchor) setBodyMapAnchor(fav.anchor);
