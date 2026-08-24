@@ -144,8 +144,9 @@ export default function ProgramLatihan() {
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<string>("all");
 
   // Body Map range (selalu tampil, bisa dipilih periode)
-  const [bodyMapRange, setBodyMapRange] = useState<"today" | "week" | "month">("week");
-  const [muscleFavorites, setMuscleFavorites] = useState<{ id: string; label: string; range: string; month: string }[]>([]);
+  const [bodyMapRange, setBodyMapRange] = useState<"day" | "week" | "month" | "all">("week");
+  const [bodyMapAnchor, setBodyMapAnchor] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [muscleFavorites, setMuscleFavorites] = useState<{ id: string; label: string; range: string; month: string; anchor?: string }[]>([]);
   const [saveFavoriteOpen, setSaveFavoriteOpen] = useState(false);
   const [favoriteLabel, setFavoriteLabel] = useState("");
 
