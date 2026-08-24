@@ -216,7 +216,7 @@ export default function ProgramLatihan() {
     return format(bodyMapAnchorDate, "MMMM yyyy", { locale: localeId });
   }, [bodyMapRange, bodyMapAnchorDate, bodyMapInterval]);
 
-
+  const applyMuscleFavorite = (fav: { range: string; month: string; anchor?: string }) => {
     const r = fav.range === "today" ? "day" : fav.range;
     setBodyMapRange(r as "day" | "week" | "month" | "all");
     if (fav.anchor) setBodyMapAnchor(fav.anchor);
