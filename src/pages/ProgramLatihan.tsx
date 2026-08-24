@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navigation } from "@/components/Navigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1205,43 +1205,18 @@ export default function ProgramLatihan() {
     };
   };
 
-  const getBodyMapExercises = () => {
-    const today = new Date();
-    let startDate: Date;
-    if (bodyMapRange === "today") {
-      startDate = today;
-    } else if (bodyMapRange === "week") {
-      startDate = startOfWeek(today, { weekStartsOn: 1 });
-    } else {
-      startDate = startOfMonth(currentMonth);
-    }
-    const endDate = bodyMapRange === "month" ? endOfMonth(currentMonth) : today;
-    return sessions
-      .filter(s => {
-        const d = new Date(s.date);
-        return d >= startDate && d <= endDate;
-      })
-      .flatMap(s => s.exercises || []);
-  };
+  const bodyMapSessions = useMemo(() => {
+    return sessions.filter(s => {
+      const d = new Date(s.date);
+      if (isNaN(d.getTime())) return false;
+      return d >= new Date(format(bodyMapInterval.start, "yyyy-MM-dd")) &&
+             d <= new Date(format(bodyMapInterval.end, "yyyy-MM-dd") + "T23:59:59");
+    });
+  }, [sessions, bodyMapInterval]);
 
-  const getBodyMapTotalLoad = () => {
-    const today = new Date();
-    let startDate: Date;
-    if (bodyMapRange === "today") {
-      startDate = today;
-    } else if (bodyMapRange === "week") {
-      startDate = startOfWeek(today, { weekStartsOn: 1 });
-    } else {
-      startDate = startOfMonth(currentMonth);
-    }
-    const endDate = bodyMapRange === "month" ? endOfMonth(currentMonth) : today;
-    return sessions
-      .filter(s => {
-        const d = new Date(s.date);
-        return d >= startDate && d <= endDate;
-      })
-      .reduce((sum, s) => sum + (s.load_final || 0), 0);
-  };
+  const getBodyMapExercises = () => bodyMapSessions.flatMap(s => s.exercises || []);
+
+  const getBodyMapTotalLoad = () => bodyMapSessions.reduce((sum, s) => sum + (s.load_final || 0), 0);
 
   const goToPreviousMonth = () => {
     setCurrentMonth(prev => subMonths(prev, 1));
@@ -2261,7 +2236,7 @@ export default function ProgramLatihan() {
           <DialogHeader>
             <DialogTitle>Simpan Muscle Map sebagai Favorit</DialogTitle>
             <DialogDescription>
-              Periode saat ini: {bodyMapRange === "today" ? "Hari Ini" : bodyMapRange === "week" ? "Minggu Ini" : `Bulan ${format(currentMonth, "MMMM yyyy")}`}
+              Periode saat ini: {bodyMapPeriodLabel}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
