@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navigation } from "@/components/Navigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -144,8 +144,9 @@ export default function ProgramLatihan() {
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<string>("all");
 
   // Body Map range (selalu tampil, bisa dipilih periode)
-  const [bodyMapRange, setBodyMapRange] = useState<"today" | "week" | "month">("week");
-  const [muscleFavorites, setMuscleFavorites] = useState<{ id: string; label: string; range: string; month: string }[]>([]);
+  const [bodyMapRange, setBodyMapRange] = useState<"day" | "week" | "month" | "all">("week");
+  const [bodyMapAnchor, setBodyMapAnchor] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [muscleFavorites, setMuscleFavorites] = useState<{ id: string; label: string; range: string; month: string; anchor?: string }[]>([]);
   const [saveFavoriteOpen, setSaveFavoriteOpen] = useState(false);
   const [favoriteLabel, setFavoriteLabel] = useState("");
 
@@ -190,11 +191,41 @@ export default function ProgramLatihan() {
     try { localStorage.setItem("muscle_map_favorites", JSON.stringify(list)); } catch { /* ignore */ }
   };
 
-  const applyMuscleFavorite = (fav: { range: string; month: string }) => {
-    setBodyMapRange(fav.range as "today" | "week" | "month");
+  const bodyMapAnchorDate = useMemo(() => {
+    const d = new Date(bodyMapAnchor);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }, [bodyMapAnchor]);
+
+  const bodyMapInterval = useMemo(() => {
+    if (bodyMapRange === "all") return { start: new Date(1970, 0, 1), end: new Date(2999, 11, 31) };
+    if (bodyMapRange === "day") return { start: bodyMapAnchorDate, end: bodyMapAnchorDate };
+    if (bodyMapRange === "week") {
+      return {
+        start: startOfWeek(bodyMapAnchorDate, { weekStartsOn: 1 }),
+        end: endOfWeek(bodyMapAnchorDate, { weekStartsOn: 1 }),
+      };
+    }
+    return { start: startOfMonth(bodyMapAnchorDate), end: endOfMonth(bodyMapAnchorDate) };
+  }, [bodyMapRange, bodyMapAnchorDate]);
+
+  const bodyMapPeriodLabel = useMemo(() => {
+    if (bodyMapRange === "all") return "Semua Waktu";
+    if (bodyMapRange === "day") return format(bodyMapAnchorDate, "d MMMM yyyy", { locale: localeId });
+    if (bodyMapRange === "week")
+      return `${format(bodyMapInterval.start, "d MMM", { locale: localeId })} – ${format(bodyMapInterval.end, "d MMM yyyy", { locale: localeId })}`;
+    return format(bodyMapAnchorDate, "MMMM yyyy", { locale: localeId });
+  }, [bodyMapRange, bodyMapAnchorDate, bodyMapInterval]);
+
+  const applyMuscleFavorite = (fav: { range: string; month: string; anchor?: string }) => {
+    const r = fav.range === "today" ? "day" : fav.range;
+    setBodyMapRange(r as "day" | "week" | "month" | "all");
+    if (fav.anchor) setBodyMapAnchor(fav.anchor);
     if (fav.month) {
       const m = new Date(fav.month);
-      if (!isNaN(m.getTime())) setCurrentMonth(m);
+      if (!isNaN(m.getTime())) {
+        setCurrentMonth(startOfMonth(m));
+        setBodyMapAnchor(format(startOfMonth(m), "yyyy-MM-dd"));
+      }
     }
   };
 
@@ -204,7 +235,8 @@ export default function ProgramLatihan() {
       id: Date.now().toString(),
       label,
       range: bodyMapRange,
-      month: bodyMapRange === "month" ? format(currentMonth, "yyyy-MM") : "",
+      month: bodyMapRange === "month" ? format(bodyMapAnchorDate, "yyyy-MM") : "",
+      anchor: bodyMapAnchor,
     };
     persistMuscleFavorites([...muscleFavorites, fav]);
     setFavoriteLabel("");
@@ -217,8 +249,7 @@ export default function ProgramLatihan() {
   };
 
   const defaultMuscleFavoriteLabel = () => {
-    const rangeLabel = bodyMapRange === "today" ? "Hari Ini" : bodyMapRange === "week" ? "Minggu Ini" : format(currentMonth, "MMMM yyyy");
-    return `${rangeLabel} — Muscle Map`;
+    return `${bodyMapPeriodLabel} — Muscle Map`;
   };
 
   useEffect(() => {
@@ -1174,43 +1205,18 @@ export default function ProgramLatihan() {
     };
   };
 
-  const getBodyMapExercises = () => {
-    const today = new Date();
-    let startDate: Date;
-    if (bodyMapRange === "today") {
-      startDate = today;
-    } else if (bodyMapRange === "week") {
-      startDate = startOfWeek(today, { weekStartsOn: 1 });
-    } else {
-      startDate = startOfMonth(currentMonth);
-    }
-    const endDate = bodyMapRange === "month" ? endOfMonth(currentMonth) : today;
-    return sessions
-      .filter(s => {
-        const d = new Date(s.date);
-        return d >= startDate && d <= endDate;
-      })
-      .flatMap(s => s.exercises || []);
-  };
+  const bodyMapSessions = useMemo(() => {
+    return sessions.filter(s => {
+      const d = new Date(s.date);
+      if (isNaN(d.getTime())) return false;
+      return d >= new Date(format(bodyMapInterval.start, "yyyy-MM-dd")) &&
+             d <= new Date(format(bodyMapInterval.end, "yyyy-MM-dd") + "T23:59:59");
+    });
+  }, [sessions, bodyMapInterval]);
 
-  const getBodyMapTotalLoad = () => {
-    const today = new Date();
-    let startDate: Date;
-    if (bodyMapRange === "today") {
-      startDate = today;
-    } else if (bodyMapRange === "week") {
-      startDate = startOfWeek(today, { weekStartsOn: 1 });
-    } else {
-      startDate = startOfMonth(currentMonth);
-    }
-    const endDate = bodyMapRange === "month" ? endOfMonth(currentMonth) : today;
-    return sessions
-      .filter(s => {
-        const d = new Date(s.date);
-        return d >= startDate && d <= endDate;
-      })
-      .reduce((sum, s) => sum + (s.load_final || 0), 0);
-  };
+  const getBodyMapExercises = () => bodyMapSessions.flatMap(s => s.exercises || []);
+
+  const getBodyMapTotalLoad = () => bodyMapSessions.reduce((sum, s) => sum + (s.load_final || 0), 0);
 
   const goToPreviousMonth = () => {
     setCurrentMonth(prev => subMonths(prev, 1));
@@ -1706,24 +1712,52 @@ export default function ProgramLatihan() {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <Select value={bodyMapRange} onValueChange={(v) => setBodyMapRange(v as "today" | "week" | "month")}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={bodyMapRange} onValueChange={(v) => setBodyMapRange(v as "day" | "week" | "month" | "all")}>
                   <SelectTrigger className="w-32 h-8 text-xs bg-card border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="today">Hari Ini</SelectItem>
-                    <SelectItem value="week">Minggu Ini</SelectItem>
-                    <SelectItem value="month">Bulan Ini</SelectItem>
+                    <SelectItem value="day">Harian</SelectItem>
+                    <SelectItem value="week">Mingguan</SelectItem>
+                    <SelectItem value="month">Bulanan</SelectItem>
+                    <SelectItem value="all">Semua Waktu</SelectItem>
                   </SelectContent>
                 </Select>
+                {(bodyMapRange === "day" || bodyMapRange === "week") && (
+                  <Input
+                    type="date"
+                    value={bodyMapAnchor}
+                    onChange={(e) => setBodyMapAnchor(e.target.value)}
+                    className="h-8 w-40 text-xs bg-card border-border"
+                  />
+                )}
+                {bodyMapRange === "month" && (
+                  <Input
+                    type="month"
+                    value={format(bodyMapAnchorDate, "yyyy-MM")}
+                    onChange={(e) => e.target.value && setBodyMapAnchor(`${e.target.value}-01`)}
+                    className="h-8 w-36 text-xs bg-card border-border"
+                  />
+                )}
+                {bodyMapRange !== "all" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs"
+                    onClick={() => setBodyMapAnchor(format(new Date(), "yyyy-MM-dd"))}
+                  >
+                    Sekarang
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setFavoriteLabel(""); setSaveFavoriteOpen(true); }}>
                   <Star className="w-3.5 h-3.5 mr-1" />
                   Simpan Favorit
                 </Button>
               </div>
             </div>
-            <BodyMapSection exercises={getBodyMapExercises()} totalLoad={getBodyMapTotalLoad()} />
+            <p className="text-xs text-muted-foreground mb-2">Periode: {bodyMapPeriodLabel}</p>
+            <BodyMapSection exercises={getBodyMapExercises()} totalLoad={getBodyMapTotalLoad()} periodLabel={bodyMapPeriodLabel} />
           </div>
 
           {/* Weekly Target from Annual Plan */}
@@ -2230,7 +2264,7 @@ export default function ProgramLatihan() {
           <DialogHeader>
             <DialogTitle>Simpan Muscle Map sebagai Favorit</DialogTitle>
             <DialogDescription>
-              Periode saat ini: {bodyMapRange === "today" ? "Hari Ini" : bodyMapRange === "week" ? "Minggu Ini" : `Bulan ${format(currentMonth, "MMMM yyyy")}`}
+              Periode saat ini: {bodyMapPeriodLabel}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
