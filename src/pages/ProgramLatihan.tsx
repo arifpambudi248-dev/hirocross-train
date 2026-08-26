@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { computeSessionLoad } from "@/lib/trainingLoad";
-import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, getDay, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, getDay, startOfWeek, endOfWeek, addDays, subDays, addWeeks, subWeeks } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { Plus, Trash2, ChevronLeft, ChevronRight, Activity, Save, Bookmark, GripVertical, Eye, Dumbbell, Footprints, Target, FileText, BarChart3, CheckCircle, Circle, Zap, Crosshair, Pencil, Users, Download, Star, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -31,6 +31,7 @@ import { z } from "zod";
 import { ExerciseForm, Exercise, ExercisePhase, PhaseNotes } from "@/components/ExerciseForm";
 import { WeeklyVolumeChart } from "@/components/WeeklyVolumeChart";
 import { BodyMapSection } from "@/components/BodyMapSection";
+import { MuscleMapSessionTable } from "@/components/MuscleMapSessionTable";
 import { exportSessionDetailToPDF, exportDailyProgramToPDF, exportWeeklyProgramToPDF } from "@/lib/exportUtils";
 import { TrainingSessionForm, SessionFormData, MainExercise, ExerciseType } from "@/components/TrainingSessionForm";
 import { BulkSessionForm } from "@/components/BulkSessionForm";
@@ -1218,6 +1219,16 @@ export default function ProgramLatihan() {
 
   const getBodyMapTotalLoad = () => bodyMapSessions.reduce((sum, s) => sum + (s.load_final || 0), 0);
 
+  const shiftBodyMapPeriod = (dir: -1 | 1) => {
+    if (bodyMapRange === "all") return;
+    const base = bodyMapAnchorDate;
+    let next = base;
+    if (bodyMapRange === "day") next = dir === 1 ? addDays(base, 1) : subDays(base, 1);
+    else if (bodyMapRange === "week") next = dir === 1 ? addWeeks(base, 1) : subWeeks(base, 1);
+    else next = dir === 1 ? addMonths(base, 1) : subMonths(base, 1);
+    setBodyMapAnchor(format(next, "yyyy-MM-dd"));
+  };
+
   const goToPreviousMonth = () => {
     setCurrentMonth(prev => subMonths(prev, 1));
   };
@@ -1741,14 +1752,36 @@ export default function ProgramLatihan() {
                   />
                 )}
                 {bodyMapRange !== "all" && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 text-xs"
-                    onClick={() => setBodyMapAnchor(format(new Date(), "yyyy-MM-dd"))}
-                  >
-                    Sekarang
-                  </Button>
+                  <>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-8 w-8"
+                        aria-label="Periode sebelumnya"
+                        onClick={() => shiftBodyMapPeriod(-1)}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-8 w-8"
+                        aria-label="Periode berikutnya"
+                        onClick={() => shiftBodyMapPeriod(1)}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-xs"
+                      onClick={() => setBodyMapAnchor(format(new Date(), "yyyy-MM-dd"))}
+                    >
+                      {bodyMapRange === "month" ? "Bulan Ini" : bodyMapRange === "week" ? "Minggu Ini" : "Hari Ini"}
+                    </Button>
+                  </>
                 )}
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setFavoriteLabel(""); setSaveFavoriteOpen(true); }}>
                   <Star className="w-3.5 h-3.5 mr-1" />
@@ -1758,6 +1791,7 @@ export default function ProgramLatihan() {
             </div>
             <p className="text-xs text-muted-foreground mb-2">Periode: {bodyMapPeriodLabel}</p>
             <BodyMapSection exercises={getBodyMapExercises()} totalLoad={getBodyMapTotalLoad()} periodLabel={bodyMapPeriodLabel} />
+            <MuscleMapSessionTable sessions={bodyMapSessions} periodLabel={bodyMapPeriodLabel} />
           </div>
 
           {/* Weekly Target from Annual Plan */}
