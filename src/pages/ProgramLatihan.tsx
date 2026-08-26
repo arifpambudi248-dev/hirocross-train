@@ -1790,6 +1790,7 @@ export default function ProgramLatihan() {
             </div>
             <p className="text-xs text-muted-foreground mb-2">Periode: {bodyMapPeriodLabel}</p>
             <BodyMapSection exercises={getBodyMapExercises()} totalLoad={getBodyMapTotalLoad()} periodLabel={bodyMapPeriodLabel} />
+            <MuscleMapSessionTable sessions={bodyMapSessions} periodLabel={bodyMapPeriodLabel} />
           </div>
 
           {/* Weekly Target from Annual Plan */}
