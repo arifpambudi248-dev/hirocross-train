@@ -1218,6 +1218,16 @@ export default function ProgramLatihan() {
 
   const getBodyMapTotalLoad = () => bodyMapSessions.reduce((sum, s) => sum + (s.load_final || 0), 0);
 
+  const shiftBodyMapPeriod = (dir: -1 | 1) => {
+    if (bodyMapRange === "all") return;
+    const base = bodyMapAnchorDate;
+    let next = base;
+    if (bodyMapRange === "day") next = dir === 1 ? addDays(base, 1) : subDays(base, 1);
+    else if (bodyMapRange === "week") next = dir === 1 ? addWeeks(base, 1) : subWeeks(base, 1);
+    else next = dir === 1 ? addMonths(base, 1) : subMonths(base, 1);
+    setBodyMapAnchor(format(next, "yyyy-MM-dd"));
+  };
+
   const goToPreviousMonth = () => {
     setCurrentMonth(prev => subMonths(prev, 1));
   };
