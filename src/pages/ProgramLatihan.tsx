@@ -1751,14 +1751,36 @@ export default function ProgramLatihan() {
                   />
                 )}
                 {bodyMapRange !== "all" && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 text-xs"
-                    onClick={() => setBodyMapAnchor(format(new Date(), "yyyy-MM-dd"))}
-                  >
-                    Sekarang
-                  </Button>
+                  <>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-8 w-8"
+                        aria-label="Periode sebelumnya"
+                        onClick={() => shiftBodyMapPeriod(-1)}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-8 w-8"
+                        aria-label="Periode berikutnya"
+                        onClick={() => shiftBodyMapPeriod(1)}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-xs"
+                      onClick={() => setBodyMapAnchor(format(new Date(), "yyyy-MM-dd"))}
+                    >
+                      {bodyMapRange === "month" ? "Bulan Ini" : bodyMapRange === "week" ? "Minggu Ini" : "Hari Ini"}
+                    </Button>
+                  </>
                 )}
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setFavoriteLabel(""); setSaveFavoriteOpen(true); }}>
                   <Star className="w-3.5 h-3.5 mr-1" />
