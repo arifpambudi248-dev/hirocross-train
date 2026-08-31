@@ -650,6 +650,66 @@ export type Database = {
           },
         ]
       }
+      vbt_sets: {
+        Row: {
+          athlete_id: string
+          best_velocity: number | null
+          created_at: string
+          date: string
+          est_1rm: number | null
+          exercise: string
+          id: string
+          load_kg: number | null
+          mean_velocity: number | null
+          method: string
+          notes: string | null
+          peak_velocity: number | null
+          rep_velocities: Json
+          reps: number
+          rom_cm: number | null
+          velocity_loss_pct: number | null
+          zone: string | null
+        }
+        Insert: {
+          athlete_id: string
+          best_velocity?: number | null
+          created_at?: string
+          date?: string
+          est_1rm?: number | null
+          exercise: string
+          id?: string
+          load_kg?: number | null
+          mean_velocity?: number | null
+          method?: string
+          notes?: string | null
+          peak_velocity?: number | null
+          rep_velocities?: Json
+          reps?: number
+          rom_cm?: number | null
+          velocity_loss_pct?: number | null
+          zone?: string | null
+        }
+        Update: {
+          athlete_id?: string
+          best_velocity?: number | null
+          created_at?: string
+          date?: string
+          est_1rm?: number | null
+          exercise?: string
+          id?: string
+          load_kg?: number | null
+          mean_velocity?: number | null
+          method?: string
+          notes?: string | null
+          peak_velocity?: number | null
+          rep_velocities?: Json
+          reps?: number
+          rom_cm?: number | null
+          velocity_loss_pct?: number | null
+          zone?: string | null
+        }
+        Relationships: []
+      }
       weekly_biomotor_actuals: {
         Row: {
           created_at: string
