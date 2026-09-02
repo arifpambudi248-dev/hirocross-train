@@ -35,6 +35,8 @@ const CoachAthleteDetail = () => {
   const [range, setRange] = useState("28");
   const [sessions, setSessions] = useState<any[]>([]);
   const [readiness, setReadiness] = useState<any[]>([]);
+  const [vbtSets, setVbtSets] = useState<any[]>([]);
+  const [vbtExercise, setVbtExercise] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
@@ -86,8 +88,16 @@ const CoachAthleteDetail = () => {
       .gte("date", startDate)
       .order("date", { ascending: true });
 
+    const { data: v } = await supabase
+      .from("vbt_sets")
+      .select("id, date, exercise, load_kg, method, reps, mean_velocity, best_velocity, velocity_loss_pct, zone, est_1rm")
+      .eq("athlete_id", athleteId)
+      .gte("date", startDate)
+      .order("date", { ascending: true });
+
     setSessions(s || []);
     setReadiness(r || []);
+    setVbtSets(v || []);
     setLoading(false);
   }
 
