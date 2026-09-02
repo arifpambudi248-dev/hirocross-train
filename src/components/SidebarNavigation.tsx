@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "./NavLink";
-import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Users, Bell, CreditCard, Shield, UserCog, Dumbbell, Gem } from "lucide-react";
+import { Activity, Calendar, ClipboardList, TrendingUp, Target, LogOut, User, History, Users, Bell, CreditCard, Shield, UserCog, Dumbbell, Gem, Zap } from "lucide-react";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -89,6 +89,7 @@ export const SidebarNavigation = () => {
     { to: "/program-latihan", icon: ClipboardList, label: "Bulanan", requiresSubscription: true },
     { to: "/tes-fisik", icon: Target, label: "Tes & Pengukuran", requiresSubscription: true },
     { to: "/body-map", icon: Dumbbell, label: "Body Map", requiresSubscription: true },
+    { to: "/vbt", icon: Zap, label: "VBT", requiresSubscription: true },
   ];
 
   const premiumNavItems = [
