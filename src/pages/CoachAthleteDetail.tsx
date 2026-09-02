@@ -151,6 +151,29 @@ const CoachAthleteDetail = () => {
     [readiness, cutoffDate]
   );
 
+  const vbtFiltered = useMemo(
+    () => vbtSets.filter((v) => v.date >= cutoffDate && (vbtExercise === "all" || v.exercise === vbtExercise)),
+    [vbtSets, cutoffDate, vbtExercise]
+  );
+
+  const vbtExercises = useMemo(
+    () => Array.from(new Set(vbtSets.map((v) => v.exercise))).sort(),
+    [vbtSets]
+  );
+
+  const vbtTrend = useMemo(
+    () =>
+      vbtFiltered.map((v) => ({
+        date: v.date,
+        mean_velocity: v.mean_velocity ? Math.round(v.mean_velocity * 100) / 100 : null,
+        best_velocity: v.best_velocity ? Math.round(v.best_velocity * 100) / 100 : null,
+        est_1rm: v.est_1rm ?? null,
+      })),
+    [vbtFiltered]
+  );
+
+
+
   const totals = useMemo(() => {
     const planned = plannedActual.reduce((s, d) => s + d.planned, 0);
     const actual = plannedActual.reduce((s, d) => s + d.actual, 0);
