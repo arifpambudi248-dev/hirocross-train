@@ -157,13 +157,45 @@ export function BodyMapSection({ exercises, totalLoad = 0, periodLabel }: BodyMa
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                  formatter={(value: number, name: string) => [
-                    `${Math.round(value).toLocaleString()} (${Math.round((value / dist.total) * 100)}%)`,
-                    name,
-                  ]}
+                  cursor={false}
+                  content={({ active, payload }: any) => {
+                    if (!active || !payload?.length) return null;
+                    const p = payload[0].payload;
+                    const pct = dist.total > 0 ? (p.value / dist.total) * 100 : 0;
+                    return (
+                      <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: p.hex }} />
+                          <span className="text-xs font-semibold">{p.name}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Persentase: <span className="text-foreground font-medium">{pct.toFixed(1)}%</span>
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Kontribusi volume: <span className="text-foreground font-medium">{Math.round(p.value).toLocaleString()}</span>
+                        </p>
+                        {totalLoad > 0 && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Estimasi load: <span className="text-foreground font-medium">{Math.round((pct / 100) * totalLoad).toLocaleString()} AU</span>
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Legend
+                  wrapperStyle={{ fontSize: 11 }}
+                  formatter={(value: string) => {
+                    const item = donutData.find(d => d.name === value);
+                    if (!item) return value;
+                    const pct = dist.total > 0 ? (item.value / dist.total) * 100 : 0;
+                    return (
+                      <span className="text-xs text-muted-foreground">
+                        {value} — <span className="text-foreground font-medium">{pct.toFixed(1)}%</span> ({Math.round(item.value).toLocaleString()})
+                      </span>
+                    );
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>

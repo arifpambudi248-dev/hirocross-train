@@ -20,6 +20,7 @@ import AthleteManagement from "./pages/AthleteManagement";
 import AthleteComparison from "./pages/AthleteComparison";
 import CoachAthleteDetail from "./pages/CoachAthleteDetail";
 import BodyMapPage from "./pages/BodyMapPage";
+import VBT from "./pages/VBT";
 import Notifications from "./pages/Notifications";
 import Subscription from "./pages/Subscription";
 import AdminSubscriptions from "./pages/AdminSubscriptions";
@@ -108,6 +109,7 @@ const App = () => {
               <Route path="/athlete-comparison" element={<AthleteComparison />} />
               <Route path="/coach/athlete/:athleteId" element={<CoachAthleteDetail />} />
               <Route path="/body-map" element={<BodyMapPage />} />
+              <Route path="/vbt" element={<VBT />} />
               <Route path="/notifications" element={<Notifications />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
