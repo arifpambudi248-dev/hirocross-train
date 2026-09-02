@@ -376,6 +376,69 @@ const CoachAthleteDetail = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* VBT — riwayat & tren kecepatan */}
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Zap className="h-4 w-4 text-yellow-500" /> VBT — Riwayat & Tren Kecepatan
+              </CardTitle>
+              {vbtExercises.length > 0 && (
+                <Select value={vbtExercise} onValueChange={setVbtExercise}>
+                  <SelectTrigger className="w-full sm:w-[200px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua latihan</SelectItem>
+                    {vbtExercises.map((e) => (
+                      <SelectItem key={e} value={e}>{e}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {vbtFiltered.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Belum ada data VBT pada periode ini</p>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={vbtTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d) => format(parseISO(d), "d/M")} />
+                    <YAxis yAxisId="v" tick={{ fontSize: 10 }} unit=" m/s" />
+                    <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10 }} unit=" kg" />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Line yAxisId="v" type="monotone" dataKey="mean_velocity" name="Mean Velocity (m/s)" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
+                    <Line yAxisId="v" type="monotone" dataKey="best_velocity" name="Best Velocity (m/s)" stroke="hsl(142 71% 45%)" strokeWidth={2} dot={false} connectNulls />
+                    <Line yAxisId="r" type="monotone" dataKey="est_1rm" name="Estimasi 1RM (kg)" stroke="hsl(var(--chart-2))" strokeWidth={2} strokeDasharray="4 3" dot={false} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+                <div className="mt-3 space-y-1 max-h-60 overflow-y-auto">
+                  {[...vbtFiltered].reverse().map((v) => (
+                    <div key={v.id} className="flex items-center justify-between gap-2 text-xs border-b border-border py-1.5">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{v.exercise}</p>
+                        <p className="text-muted-foreground">
+                          {format(parseISO(v.date), "d MMM yyyy", { locale: idLocale })} · {v.load_kg ? `${v.load_kg} kg` : "BW"} · {v.reps} rep · {v.method}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-muted-foreground">
+                          {v.mean_velocity ? `${v.mean_velocity.toFixed(2)} m/s` : "-"}
+                          {v.velocity_loss_pct != null && ` · VL ${v.velocity_loss_pct}%`}
+                          {v.est_1rm ? ` · 1RM ${v.est_1rm} kg` : ""}
+                        </span>
+                        {v.zone && <Badge variant="outline" className="capitalize">{v.zone.replace(/_/g, " ")}</Badge>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
       <BottomNavigation />
     </div>
