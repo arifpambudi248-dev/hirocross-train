@@ -14,7 +14,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceArea, ReferenceLine,
 } from "recharts";
-import { ArrowLeft, Activity, Heart, Dumbbell, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Activity, Heart, Dumbbell, AlertTriangle, Zap } from "lucide-react";
 import {
   aggregateDailyLoad, computeFitnessFatigueForm, computeACWR,
 } from "@/lib/trainingLoad";
