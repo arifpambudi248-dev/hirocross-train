@@ -386,8 +386,11 @@ export type Database = {
           reps: number | null
           session_id: string
           sets: number | null
+          target_velocity_max: number | null
+          target_velocity_min: number | null
           total_volume: number | null
           updated_at: string
+          use_vbt: boolean
           weight_kg: number | null
         }
         Insert: {
@@ -405,8 +408,11 @@ export type Database = {
           reps?: number | null
           session_id: string
           sets?: number | null
+          target_velocity_max?: number | null
+          target_velocity_min?: number | null
           total_volume?: number | null
           updated_at?: string
+          use_vbt?: boolean
           weight_kg?: number | null
         }
         Update: {
@@ -424,8 +430,11 @@ export type Database = {
           reps?: number | null
           session_id?: string
           sets?: number | null
+          target_velocity_max?: number | null
+          target_velocity_min?: number | null
           total_volume?: number | null
           updated_at?: string
+          use_vbt?: boolean
           weight_kg?: number | null
         }
         Relationships: [
@@ -667,6 +676,11 @@ export type Database = {
           rep_velocities: Json
           reps: number
           rom_cm: number | null
+          session_exercise_id: string | null
+          session_id: string | null
+          set_number: number | null
+          target_velocity_max: number | null
+          target_velocity_min: number | null
           velocity_loss_pct: number | null
           zone: string | null
         }
@@ -686,6 +700,11 @@ export type Database = {
           rep_velocities?: Json
           reps?: number
           rom_cm?: number | null
+          session_exercise_id?: string | null
+          session_id?: string | null
+          set_number?: number | null
+          target_velocity_max?: number | null
+          target_velocity_min?: number | null
           velocity_loss_pct?: number | null
           zone?: string | null
         }
@@ -705,10 +724,30 @@ export type Database = {
           rep_velocities?: Json
           reps?: number
           rom_cm?: number | null
+          session_exercise_id?: string | null
+          session_id?: string | null
+          set_number?: number | null
+          target_velocity_max?: number | null
+          target_velocity_min?: number | null
           velocity_loss_pct?: number | null
           zone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vbt_sets_session_exercise_id_fkey"
+            columns: ["session_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "session_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vbt_sets_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "training_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_biomotor_actuals: {
         Row: {

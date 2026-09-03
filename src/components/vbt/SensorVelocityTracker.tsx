@@ -1,38 +1,56 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Smartphone, StopCircle, RotateCcw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Smartphone, StopCircle, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
+import { VelocitySpeedometer } from "./VelocitySpeedometer";
+import { playTing, playWarn, primeAudio } from "@/lib/sound";
 
 interface Props {
   romCm: number;
   onRep: (velocity: number) => void;
   reps: number[];
   onReset: () => void;
+  targetMin?: number | null;
+  targetMax?: number | null;
 }
 
 /**
  * Deteksi repetisi via sensor akselerometer HP (DeviceMotion).
  * HP diikat/digenggam pada barbell atau lengan; akselerasi vertikal diintegrasikan
- * untuk mendapat kecepatan puncak, dan durasi fase konsentrik untuk kecepatan rata-rata.
+ * untuk mendapat kecepatan sesaat, dan durasi fase konsentrik untuk kecepatan rata-rata.
  */
-export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) => {
+export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset, targetMin, targetMax }: Props) => {
   const [active, setActive] = useState(false);
   const [supported, setSupported] = useState(true);
-  const [accel, setAccel] = useState(0);
+  const [liveVel, setLiveVel] = useState(0);
+  const [lastVel, setLastVel] = useState<number | null>(null);
   const [phase, setPhase] = useState<"idle" | "naik" | "turun">("idle");
+  const [sound, setSound] = useState(true);
   const romRef = useRef(romCm);
+  const soundRef = useRef(true);
+  const targetRef = useRef<{ min?: number | null; max?: number | null }>({});
   const state = useRef({
     baseline: 9.81,
     lastT: 0,
     dir: 0 as -1 | 0 | 1,
     phaseStart: 0,
     smooth: 0,
+    vel: 0,
   });
 
   useEffect(() => {
     romRef.current = romCm;
   }, [romCm]);
+
+  useEffect(() => {
+    soundRef.current = sound;
+  }, [sound]);
+
+  useEffect(() => {
+    targetRef.current = { min: targetMin, max: targetMax };
+  }, [targetMin, targetMax]);
 
   useEffect(() => {
     setSupported(typeof window !== "undefined" && "DeviceMotionEvent" in window);
@@ -57,14 +75,31 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
     }
 
     s.smooth = s.smooth * 0.7 + a * 0.3;
-    setAccel(Math.min(1, Math.abs(s.smooth) / 8));
+
+    // integrasi kecepatan sesaat untuk tampilan speedometer
+    const dt = s.lastT ? Math.min(0.1, (now - s.lastT) / 1000) : 0;
+    if (Math.abs(s.smooth) < 0.6) {
+      s.vel *= 0.6; // peredam saat diam (anti-drift)
+    } else {
+      s.vel = Math.max(0, Math.min(4, s.vel + s.smooth * dt));
+    }
+    setLiveVel(Math.round(s.vel * 100) / 100);
 
     const dir: -1 | 0 | 1 = s.smooth > 1.2 ? 1 : s.smooth < -1.2 ? -1 : 0;
     if (dir !== 0 && dir !== s.dir) {
       const duration = (now - s.phaseStart) / 1000;
       if (s.dir === 1 && duration > 0.15 && duration < 4) {
         const velocity = romRef.current / 100 / duration;
-        if (velocity > 0.05 && velocity < 4) onRep(Math.round(velocity * 100) / 100);
+        if (velocity > 0.05 && velocity < 4) {
+          const v = Math.round(velocity * 100) / 100;
+          onRep(v);
+          setLastVel(v);
+          if (soundRef.current) {
+            const { min, max } = targetRef.current;
+            const out = min != null && max != null && (v < min || v > max);
+            out ? playWarn() : playTing();
+          }
+        }
       }
       s.dir = dir;
       s.phaseStart = now;
@@ -75,6 +110,7 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
 
   const start = async () => {
     try {
+      primeAudio();
       const anyDM = DeviceMotionEvent as any;
       if (typeof anyDM?.requestPermission === "function") {
         const res = await anyDM.requestPermission();
@@ -83,7 +119,14 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
           return;
         }
       }
-      state.current = { baseline: 9.81, lastT: 0, dir: 0, phaseStart: performance.now(), smooth: 0 };
+      state.current = {
+        baseline: 9.81,
+        lastT: 0,
+        dir: 0,
+        phaseStart: performance.now(),
+        smooth: 0,
+        vel: 0,
+      };
       window.addEventListener("devicemotion", handler);
       setActive(true);
     } catch (e: any) {
@@ -95,26 +138,39 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
     window.removeEventListener("devicemotion", handler);
     setActive(false);
     setPhase("idle");
+    setLiveVel(0);
   };
 
   return (
     <div className="space-y-3">
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          {!supported && (
-            <p className="text-sm text-destructive">
-              Perangkat/browser ini tidak mendukung sensor gerak. Gunakan mode kamera atau manual.
-            </p>
-          )}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">
+      <Card className="overflow-hidden border-primary/30 bg-gradient-to-b from-primary/10 to-transparent">
+        <CardContent className="p-4 flex flex-col items-center gap-3">
+          <VelocitySpeedometer
+            value={active ? liveVel : lastVel ?? 0}
+            max={2}
+            size={260}
+            targetMin={targetMin ?? undefined}
+            targetMax={targetMax ?? undefined}
+            sublabel={
+              targetMin != null && targetMax != null
+                ? `Target pelatih ${targetMin.toFixed(2)} – ${targetMax.toFixed(2)} m/s`
+                : undefined
+            }
+          />
+
+          <div className="flex w-full items-center justify-between text-sm">
+            <span className="font-medium">
               Fase: {phase === "naik" ? "Konsentrik ↑" : phase === "turun" ? "Eksentrik ↓" : "Diam"}
             </span>
-            <span className="text-xs text-muted-foreground">{active ? "Sensor aktif" : "Sensor mati"}</span>
+            <Badge variant={active ? "default" : "secondary"}>{active ? "Sensor aktif" : "Sensor mati"}</Badge>
           </div>
-          <div className="h-3 rounded bg-secondary overflow-hidden">
-            <div className="h-full bg-primary transition-all" style={{ width: `${accel * 100}%` }} />
-          </div>
+
+          {lastVel !== null && (
+            <p className="text-xs text-muted-foreground">
+              Rep terakhir: <span className="font-semibold text-foreground">{lastVel.toFixed(2)} m/s</span> • Total{" "}
+              {reps.length} rep
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -128,14 +184,34 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
             <StopCircle className="h-4 w-4" /> Hentikan
           </Button>
         )}
+        <Button
+          variant="outline"
+          onClick={() => {
+            setSound((s) => !s);
+            if (!sound) {
+              primeAudio();
+              playTing();
+            }
+          }}
+          className="gap-2"
+        >
+          {sound ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          {sound ? "Suara On" : "Suara Off"}
+        </Button>
         <Button variant="outline" onClick={onReset} className="gap-2" disabled={!reps.length}>
           <RotateCcw className="h-4 w-4" /> Reset Rep
         </Button>
       </div>
 
+      {!supported && (
+        <p className="text-sm text-destructive">
+          Perangkat/browser ini tidak mendukung sensor gerak. Gunakan mode kamera atau manual.
+        </p>
+      )}
+
       <p className="text-xs text-muted-foreground">
         Ikat HP pada barbell/lengan (layar menghadap keluar, posisi tegak). Sensor gerak hanya aktif pada
-        koneksi HTTPS dan perangkat mobile.
+        koneksi HTTPS dan perangkat mobile. Bunyi "ting" berbunyi tiap 1 repetisi terdeteksi.
       </p>
     </div>
   );
