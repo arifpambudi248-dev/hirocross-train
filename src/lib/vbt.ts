@@ -71,3 +71,39 @@ export function fatigueAdvice(loss: number | null): string {
   if (loss < 30) return "Zona hipertrofi/kekuatan. Perhatikan kualitas gerakan.";
   return "Velocity loss tinggi (>30%). Sebaiknya hentikan set untuk menjaga kualitas.";
 }
+
+/** Data satu repetisi hasil rekaman VBT. */
+export type RepData = {
+  velocity: number;      // mean concentric velocity (m/s)
+  peakVelocity: number;  // kecepatan puncak repetisi (m/s)
+  romCm: number;         // range of motion repetisi (cm)
+  power: number;         // rata-rata power repetisi (watt)
+  peakPower: number;     // power puncak repetisi (watt)
+};
+
+const G = 9.81;
+
+/** Power (watt) = massa x (gravitasi + akselerasi rata-rata) x kecepatan. */
+export function computePower(loadKg: number, velocity: number, romCm: number): number {
+  if (!loadKg || loadKg <= 0 || !velocity || velocity <= 0) return 0;
+  const romM = Math.max(0.1, (romCm || 60) / 100);
+  const accel = (velocity * velocity) / romM; // percepatan rata-rata fase konsentrik
+  return Math.round(loadKg * (G + accel) * velocity);
+}
+
+/** Bentuk RepData lengkap dari kecepatan rata-rata (dan opsional kecepatan puncak). */
+export function buildRep(
+  loadKg: number,
+  velocity: number,
+  romCm: number,
+  peakVelocity?: number | null
+): RepData {
+  const peak = peakVelocity && peakVelocity > velocity ? peakVelocity : velocity * 1.4;
+  return {
+    velocity: Math.round(velocity * 100) / 100,
+    peakVelocity: Math.round(peak * 100) / 100,
+    romCm: Math.round(romCm),
+    power: computePower(loadKg, velocity, romCm),
+    peakPower: computePower(loadKg, peak, romCm),
+  };
+}

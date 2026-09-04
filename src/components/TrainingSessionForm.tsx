@@ -18,6 +18,9 @@ export type MainExercise = {
   sets?: number;
   reps?: number;
   weight_or_distance?: number;
+  use_vbt?: boolean;
+  target_velocity_min?: number;
+  target_velocity_max?: number;
 };
 
 export type SessionFormData = {
@@ -179,7 +182,8 @@ export function TrainingSessionForm({ selectedDate, initialData, onSubmit, onCan
         {/* Exercise List */}
         <div className="space-y-3">
           {formData.mainExercises.map((exercise) => (
-            <div key={exercise.id} className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg border border-border">
+            <div key={exercise.id} className="space-y-2 p-3 bg-muted/30 rounded-lg border border-border">
+              <div className="flex items-center gap-2">
               <div className="flex-1">
                 <Input
                   placeholder="Nama Latihan"
@@ -233,6 +237,53 @@ export function TrainingSessionForm({ selectedDate, initialData, onSubmit, onCan
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
+              </div>
+
+              {/* VBT target kecepatan (khusus latihan kekuatan) */}
+              {exercise.exercise_type === "strength" && (
+                <div className="flex flex-wrap items-center gap-3 pl-1 pt-1 border-t border-border/60">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`vbt-${exercise.id}`}
+                      checked={!!exercise.use_vbt}
+                      onCheckedChange={(checked) => updateMainExercise(exercise.id, { use_vbt: !!checked })}
+                    />
+                    <Label htmlFor={`vbt-${exercise.id}`} className="text-xs font-medium cursor-pointer">
+                      Pakai VBT
+                    </Label>
+                  </div>
+                  {exercise.use_vbt && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground">Target kecepatan (m/s)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Min"
+                        value={exercise.target_velocity_min ?? ""}
+                        onChange={(e) =>
+                          updateMainExercise(exercise.id, {
+                            target_velocity_min: e.target.value ? Number(e.target.value) : undefined,
+                          })
+                        }
+                        className="w-20 bg-background border-border text-center"
+                      />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Maks"
+                        value={exercise.target_velocity_max ?? ""}
+                        onChange={(e) =>
+                          updateMainExercise(exercise.id, {
+                            target_velocity_max: e.target.value ? Number(e.target.value) : undefined,
+                          })
+                        }
+                        className="w-20 bg-background border-border text-center"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

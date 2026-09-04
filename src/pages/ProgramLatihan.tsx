@@ -36,6 +36,7 @@ import { exportSessionDetailToPDF, exportDailyProgramToPDF, exportWeeklyProgramT
 import { TrainingSessionForm, SessionFormData, MainExercise, ExerciseType } from "@/components/TrainingSessionForm";
 import { BulkSessionForm } from "@/components/BulkSessionForm";
 import { TrainingRecommendationCard } from "@/components/TrainingRecommendationCard";
+import { VbtSetRecorder } from "@/components/vbt/VbtSetRecorder";
 
 type SessionExercise = {
   id: string;
@@ -53,6 +54,9 @@ type SessionExercise = {
   notes: string | null;
   is_completed?: boolean;
   completed_at?: string | null;
+  use_vbt?: boolean;
+  target_velocity_min?: number | null;
+  target_velocity_max?: number | null;
 };
 
 type TrainingSession = {
@@ -126,6 +130,8 @@ export default function ProgramLatihan() {
   // View session dialog
   const [viewSessionOpen, setViewSessionOpen] = useState(false);
   const [viewingSession, setViewingSession] = useState<TrainingSession | null>(null);
+  const [vbtSets, setVbtSets] = useState<any[]>([]);
+  const [vbtTarget, setVbtTarget] = useState<SessionExercise | null>(null);
   
   // New form dialog
   const [newFormOpen, setNewFormOpen] = useState(false);
@@ -773,6 +779,9 @@ export default function ProgramLatihan() {
           total_volume: ex.exercise_type === 'strength' 
             ? (ex.sets || 0) * (ex.reps || 0) * (ex.weight_or_distance || 0)
             : ex.weight_or_distance || 0,
+          use_vbt: ex.exercise_type === 'strength' ? !!ex.use_vbt : false,
+          target_velocity_min: ex.exercise_type === 'strength' && ex.use_vbt ? ex.target_velocity_min ?? null : null,
+          target_velocity_max: ex.exercise_type === 'strength' && ex.use_vbt ? ex.target_velocity_max ?? null : null,
           notes: null,
         }));
 
@@ -842,6 +851,9 @@ export default function ProgramLatihan() {
           total_volume: ex.exercise_type === 'strength' 
             ? (ex.sets || 0) * (ex.reps || 0) * (ex.weight_or_distance || 0)
             : ex.weight_or_distance || 0,
+          use_vbt: ex.exercise_type === 'strength' ? !!ex.use_vbt : false,
+          target_velocity_min: ex.exercise_type === 'strength' && ex.use_vbt ? ex.target_velocity_min ?? null : null,
+          target_velocity_max: ex.exercise_type === 'strength' && ex.use_vbt ? ex.target_velocity_max ?? null : null,
           notes: null,
         }));
 
@@ -921,6 +933,9 @@ export default function ProgramLatihan() {
             total_volume: ex.exercise_type === 'strength' 
               ? (ex.sets || 0) * (ex.reps || 0) * (ex.weight_or_distance || 0)
               : ex.weight_or_distance || 0,
+            use_vbt: ex.exercise_type === 'strength' ? !!ex.use_vbt : false,
+            target_velocity_min: ex.exercise_type === 'strength' && ex.use_vbt ? ex.target_velocity_min ?? null : null,
+            target_velocity_max: ex.exercise_type === 'strength' && ex.use_vbt ? ex.target_velocity_max ?? null : null,
             notes: null,
           }));
 
@@ -963,6 +978,9 @@ export default function ProgramLatihan() {
         sets: ex.sets || undefined,
         reps: ex.reps || undefined,
         weight_or_distance: ex.weight_kg || ex.distance_meters || ex.repetitions || undefined,
+        use_vbt: !!ex.use_vbt,
+        target_velocity_min: ex.target_velocity_min ?? undefined,
+        target_velocity_max: ex.target_velocity_max ?? undefined,
       })) || [],
     };
   };

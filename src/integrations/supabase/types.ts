@@ -662,6 +662,7 @@ export type Database = {
       vbt_sets: {
         Row: {
           athlete_id: string
+          avg_velocity: number | null
           best_velocity: number | null
           created_at: string
           date: string
@@ -669,12 +670,16 @@ export type Database = {
           exercise: string
           id: string
           load_kg: number | null
+          mean_power: number | null
           mean_velocity: number | null
           method: string
           notes: string | null
+          peak_power: number | null
           peak_velocity: number | null
+          rep_powers: Json
           rep_velocities: Json
           reps: number
+          rom_auto: boolean
           rom_cm: number | null
           session_exercise_id: string | null
           session_id: string | null
@@ -686,6 +691,7 @@ export type Database = {
         }
         Insert: {
           athlete_id: string
+          avg_velocity?: number | null
           best_velocity?: number | null
           created_at?: string
           date?: string
@@ -693,12 +699,16 @@ export type Database = {
           exercise: string
           id?: string
           load_kg?: number | null
+          mean_power?: number | null
           mean_velocity?: number | null
           method?: string
           notes?: string | null
+          peak_power?: number | null
           peak_velocity?: number | null
+          rep_powers?: Json
           rep_velocities?: Json
           reps?: number
+          rom_auto?: boolean
           rom_cm?: number | null
           session_exercise_id?: string | null
           session_id?: string | null
@@ -710,6 +720,7 @@ export type Database = {
         }
         Update: {
           athlete_id?: string
+          avg_velocity?: number | null
           best_velocity?: number | null
           created_at?: string
           date?: string
@@ -717,12 +728,16 @@ export type Database = {
           exercise?: string
           id?: string
           load_kg?: number | null
+          mean_power?: number | null
           mean_velocity?: number | null
           method?: string
           notes?: string | null
+          peak_power?: number | null
           peak_velocity?: number | null
+          rep_powers?: Json
           rep_velocities?: Json
           reps?: number
+          rom_auto?: boolean
           rom_cm?: number | null
           session_exercise_id?: string | null
           session_id?: string | null
