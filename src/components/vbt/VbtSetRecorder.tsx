@@ -78,7 +78,7 @@ export function VbtSetRecorder({
   const est1rm = useMemo(() => estimate1RM(load, mv), [load, mv]);
 
   const pushRep = (velocity: number, detail?: { romCm: number; peakVelocity: number }) => {
-    const rom = detail?.romCm ?? Number(romCm) || 60;
+    const rom = detail?.romCm ?? (Number(romCm) || 60);
     const rep = buildRep(load, velocity, rom, detail?.peakVelocity);
     setRepData((p) => [...p, rep]);
     primeAudio();
