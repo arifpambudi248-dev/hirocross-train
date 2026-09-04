@@ -9,11 +9,15 @@ import { playTing, playWarn, primeAudio } from "@/lib/sound";
 
 interface Props {
   romCm: number;
-  onRep: (velocity: number) => void;
+  onRep: (velocity: number, detail?: { romCm: number; peakVelocity: number }) => void;
   reps: number[];
   onReset: () => void;
   targetMin?: number | null;
   targetMax?: number | null;
+  /** ROM dihitung otomatis dari integrasi sensor (tinggi/rendah gerakan). */
+  autoRom?: boolean;
+  /** Dilaporkan ke parent agar field ROM ikut terisi otomatis. */
+  onRomDetected?: (romCm: number) => void;
 }
 
 /**
@@ -21,12 +25,23 @@ interface Props {
  * HP diikat/digenggam pada barbell atau lengan; akselerasi vertikal diintegrasikan
  * untuk mendapat kecepatan sesaat, dan durasi fase konsentrik untuk kecepatan rata-rata.
  */
-export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset, targetMin, targetMax }: Props) => {
+export const SensorVelocityTracker = ({
+  romCm,
+  onRep,
+  reps,
+  onReset,
+  targetMin,
+  targetMax,
+  autoRom = true,
+  onRomDetected,
+}: Props) => {
   const [active, setActive] = useState(false);
   const [supported, setSupported] = useState(true);
   const [liveVel, setLiveVel] = useState(0);
   const [lastVel, setLastVel] = useState<number | null>(null);
   const [phase, setPhase] = useState<"idle" | "naik" | "turun">("idle");
+  const [lastRom, setLastRom] = useState<number | null>(null);
+  const [lastPeak, setLastPeak] = useState<number | null>(null);
   const [sound, setSound] = useState(true);
   const romRef = useRef(romCm);
   const soundRef = useRef(true);
@@ -38,6 +53,8 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset, targetMin, 
     phaseStart: 0,
     smooth: 0,
     vel: 0,
+    dist: 0,
+    peak: 0,
   });
 
   useEffect(() => {
@@ -85,15 +102,27 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset, targetMin, 
     }
     setLiveVel(Math.round(s.vel * 100) / 100);
 
+    // integrasi perpindahan selama fase konsentrik -> ROM otomatis
+    if (s.dir === 1) {
+      s.dist += s.vel * dt;
+      if (s.vel > s.peak) s.peak = s.vel;
+    }
+
     const dir: -1 | 0 | 1 = s.smooth > 1.2 ? 1 : s.smooth < -1.2 ? -1 : 0;
     if (dir !== 0 && dir !== s.dir) {
       const duration = (now - s.phaseStart) / 1000;
       if (s.dir === 1 && duration > 0.15 && duration < 4) {
-        const velocity = romRef.current / 100 / duration;
+        const detectedCm = Math.round(Math.min(200, Math.max(10, s.dist * 100)));
+        const usedRom = autoRom && s.dist > 0.05 ? detectedCm : romRef.current;
+        const velocity = usedRom / 100 / duration;
         if (velocity > 0.05 && velocity < 4) {
           const v = Math.round(velocity * 100) / 100;
-          onRep(v);
+          const peakV = Math.round(Math.max(s.peak, v) * 100) / 100;
+          onRep(v, { romCm: usedRom, peakVelocity: peakV });
           setLastVel(v);
+          setLastRom(usedRom);
+          setLastPeak(peakV);
+          if (autoRom && s.dist > 0.05) onRomDetected?.(usedRom);
           if (soundRef.current) {
             const { min, max } = targetRef.current;
             const out = min != null && max != null && (v < min || v > max);
@@ -103,6 +132,8 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset, targetMin, 
       }
       s.dir = dir;
       s.phaseStart = now;
+      s.dist = 0;
+      s.peak = 0;
       setPhase(dir === 1 ? "naik" : "turun");
     }
     s.lastT = now;
@@ -126,6 +157,8 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset, targetMin, 
         phaseStart: performance.now(),
         smooth: 0,
         vel: 0,
+        dist: 0,
+        peak: 0,
       };
       window.addEventListener("devicemotion", handler);
       setActive(true);
@@ -166,9 +199,10 @@ export const SensorVelocityTracker = ({ romCm, onRep, reps, onReset, targetMin, 
           </div>
 
           {lastVel !== null && (
-            <p className="text-xs text-muted-foreground">
-              Rep terakhir: <span className="font-semibold text-foreground">{lastVel.toFixed(2)} m/s</span> • Total{" "}
-              {reps.length} rep
+            <p className="text-xs text-muted-foreground text-center">
+              Rep terakhir: <span className="font-semibold text-foreground">{lastVel.toFixed(2)} m/s</span>
+              {lastPeak !== null && <> • Peak {lastPeak.toFixed(2)} m/s</>}
+              {lastRom !== null && <> • ROM {lastRom} cm{autoRom ? " (otomatis)" : ""}</>} • Total {reps.length} rep
             </p>
           )}
         </CardContent>
