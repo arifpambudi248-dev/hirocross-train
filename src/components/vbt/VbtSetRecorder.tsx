@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,7 +12,7 @@ import { Plus, Save } from "lucide-react";
 import { SensorVelocityTracker } from "./SensorVelocityTracker";
 import { CameraVelocityTracker } from "./CameraVelocityTracker";
 import { VelocitySpeedometer } from "./VelocitySpeedometer";
-import { estimate1RM, fatigueAdvice, getVelocityZone, mean, velocityLoss } from "@/lib/vbt";
+import { buildRep, estimate1RM, fatigueAdvice, getVelocityZone, mean, RepData, velocityLoss } from "@/lib/vbt";
 import { playTing, playWarn, primeAudio } from "@/lib/sound";
 
 interface Props {
@@ -44,25 +45,46 @@ export function VbtSetRecorder({
   onSaved,
 }: Props) {
   const [method, setMethod] = useState<"sensor" | "camera" | "manual">("sensor");
-  const [reps, setReps] = useState<number[]>([]);
+  const [repData, setRepData] = useState<RepData[]>([]);
   const [romCm, setRomCm] = useState("60");
+  const [autoRom, setAutoRom] = useState(true);
+  const [romDetected, setRomDetected] = useState(false);
   const [manual, setManual] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setReps([]);
+      setRepData([]);
       setNotes("");
       setManual("");
+      setRomDetected(false);
     }
   }, [open]);
 
+  const load = Number(loadKg ?? 0);
+  const reps = useMemo(() => repData.map((r) => r.velocity), [repData]);
+
   const mv = useMemo(() => (reps.length ? Math.round(mean(reps) * 100) / 100 : 0), [reps]);
-  const best = useMemo(() => (reps.length ? Math.max(...reps) : 0), [reps]);
+  const bestVel = useMemo(() => (reps.length ? Math.max(...reps) : 0), [reps]);
+  const peakVel = useMemo(() => (repData.length ? Math.max(...repData.map((r) => r.peakVelocity)) : 0), [repData]);
+  const avgPower = useMemo(
+    () => (repData.length ? Math.round(mean(repData.map((r) => r.power))) : 0),
+    [repData]
+  );
+  const peakPower = useMemo(() => (repData.length ? Math.max(...repData.map((r) => r.peakPower)) : 0), [repData]);
   const loss = useMemo(() => velocityLoss(reps), [reps]);
   const zone = useMemo(() => (mv ? getVelocityZone(mv) : null), [mv]);
-  const est1rm = useMemo(() => estimate1RM(Number(loadKg ?? 0), mv), [loadKg, mv]);
+  const est1rm = useMemo(() => estimate1RM(load, mv), [load, mv]);
+
+  const pushRep = (velocity: number, detail?: { romCm: number; peakVelocity: number }) => {
+    const rom = detail?.romCm ?? Number(romCm) || 60;
+    const rep = buildRep(load, velocity, rom, detail?.peakVelocity);
+    setRepData((p) => [...p, rep]);
+    primeAudio();
+    const out = targetMin != null && targetMax != null && (rep.velocity < targetMin || rep.velocity > targetMax);
+    out ? playWarn() : playTing();
+  };
 
   const addManual = () => {
     const v = Number(manual);
@@ -70,16 +92,12 @@ export function VbtSetRecorder({
       toast.error("Masukkan kecepatan 0.05 – 4.00 m/s");
       return;
     }
-    const rounded = Math.round(v * 100) / 100;
-    setReps((p) => [...p, rounded]);
+    pushRep(Math.round(v * 100) / 100);
     setManual("");
-    primeAudio();
-    const out = targetMin != null && targetMax != null && (rounded < targetMin || rounded > targetMax);
-    out ? playWarn() : playTing();
   };
 
   const save = async () => {
-    if (!reps.length) {
+    if (!repData.length) {
       toast.error("Belum ada repetisi yang terekam");
       return;
     }
@@ -90,15 +108,20 @@ export function VbtSetRecorder({
       exercise: exerciseName,
       load_kg: loadKg ?? null,
       method,
-      reps: reps.length,
+      reps: repData.length,
       rep_velocities: reps,
+      rep_powers: repData.map((r) => r.power),
+      mean_power: avgPower || null,
+      peak_power: peakPower || null,
+      avg_velocity: mv,
       mean_velocity: mv,
-      peak_velocity: best,
-      best_velocity: best,
+      peak_velocity: peakVel || bestVel,
+      best_velocity: bestVel,
       velocity_loss_pct: loss,
       zone: zone?.label ?? null,
       est_1rm: est1rm,
-      rom_cm: romCm ? Number(romCm) : null,
+      rom_cm: repData.length ? Math.round(mean(repData.map((r) => r.romCm))) : Number(romCm) || null,
+      rom_auto: autoRom && romDetected,
       notes: notes || null,
       session_id: sessionId,
       session_exercise_id: sessionExerciseId,
@@ -137,8 +160,24 @@ export function VbtSetRecorder({
               <Input value={loadKg ?? "-"} disabled />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">ROM (cm)</Label>
-              <Input type="number" value={romCm} onChange={(e) => setRomCm(e.target.value)} />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">ROM (cm)</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">Auto sensor</span>
+                  <Switch checked={autoRom} onCheckedChange={setAutoRom} />
+                </div>
+              </div>
+              <Input
+                type="number"
+                value={romCm}
+                disabled={autoRom && method === "sensor"}
+                onChange={(e) => setRomCm(e.target.value)}
+              />
+              {autoRom && method === "sensor" && (
+                <p className="text-[10px] text-muted-foreground">
+                  {romDetected ? "Terisi otomatis dari sensor HP" : "Akan terisi otomatis setelah repetisi pertama"}
+                </p>
+              )}
             </div>
           </div>
 
@@ -152,24 +191,25 @@ export function VbtSetRecorder({
             <TabsContent value="sensor" className="mt-4">
               <SensorVelocityTracker
                 romCm={Number(romCm) || 60}
-                onRep={(v) => setReps((p) => [...p, v])}
+                onRep={pushRep}
                 reps={reps}
-                onReset={() => setReps([])}
+                onReset={() => setRepData([])}
                 targetMin={targetMin}
                 targetMax={targetMax}
+                autoRom={autoRom}
+                onRomDetected={(cm) => {
+                  setRomCm(String(cm));
+                  setRomDetected(true);
+                }}
               />
             </TabsContent>
 
             <TabsContent value="camera" className="mt-4">
               <CameraVelocityTracker
                 romCm={Number(romCm) || 60}
-                onRep={(v) => {
-                  setReps((p) => [...p, v]);
-                  primeAudio();
-                  playTing();
-                }}
+                onRep={(v) => pushRep(v)}
                 reps={reps}
-                onReset={() => setReps([])}
+                onReset={() => setRepData([])}
               />
             </TabsContent>
 
@@ -198,25 +238,55 @@ export function VbtSetRecorder({
             </TabsContent>
           </Tabs>
 
-          {reps.length > 0 && (
+          {repData.length > 0 && (
             <div className="space-y-3 rounded-lg border border-border p-3">
-              <div className="flex flex-wrap gap-2">
-                {reps.map((v, i) => {
-                  const out = targetMin != null && targetMax != null && (v < targetMin || v > targetMax);
-                  return (
-                    <Badge key={i} variant={out ? "destructive" : "secondary"}>
-                      R{i + 1}: {v.toFixed(2)}
-                    </Badge>
-                  );
-                })}
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                <Stat label="Rep" value={String(reps.length)} />
-                <Stat label="Mean" value={`${mv.toFixed(2)} m/s`} />
-                <Stat label="Loss" value={loss !== null ? `${loss}%` : "—"} />
+              {/* Ringkasan kecepatan & power */}
+              <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                <Stat label="Rep" value={String(repData.length)} />
+                <Stat label="Avg Velocity" value={`${mv.toFixed(2)} m/s`} />
+                <Stat label="Peak Velocity" value={`${peakVel.toFixed(2)} m/s`} />
+                <Stat label="Avg Power" value={avgPower ? `${avgPower} W` : "—"} />
+                <Stat label="Peak Power" value={peakPower ? `${peakPower} W` : "—"} />
                 <Stat label="Est 1RM" value={est1rm ? `${est1rm} kg` : "—"} />
               </div>
-              <p className="text-xs text-muted-foreground">{fatigueAdvice(loss)}</p>
+
+              {/* Detail tiap repetisi */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr className="border-b border-border">
+                      <th className="py-1 text-left">Rep</th>
+                      <th className="py-1 text-right">Velocity</th>
+                      <th className="py-1 text-right">Peak Vel</th>
+                      <th className="py-1 text-right">ROM</th>
+                      <th className="py-1 text-right">Power</th>
+                      <th className="py-1 text-right">Peak Power</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {repData.map((r, i) => {
+                      const out =
+                        targetMin != null && targetMax != null && (r.velocity < targetMin || r.velocity > targetMax);
+                      return (
+                        <tr key={i} className="border-b border-border/50 last:border-0">
+                          <td className="py-1">
+                            <Badge variant={out ? "destructive" : "secondary"}>R{i + 1}</Badge>
+                          </td>
+                          <td className="py-1 text-right font-medium">{r.velocity.toFixed(2)}</td>
+                          <td className="py-1 text-right">{r.peakVelocity.toFixed(2)}</td>
+                          <td className="py-1 text-right">{r.romCm} cm</td>
+                          <td className="py-1 text-right font-medium">{r.power} W</td>
+                          <td className="py-1 text-right">{r.peakPower} W</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Velocity loss {loss !== null ? `${loss}%` : "—"} • {fatigueAdvice(loss)}
+              </p>
               <div className="space-y-1">
                 <Label className="text-xs">Catatan</Label>
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Catatan set..." />
