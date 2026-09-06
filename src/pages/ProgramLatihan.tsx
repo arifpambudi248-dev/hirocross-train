@@ -2414,7 +2414,7 @@ export default function ProgramLatihan() {
         <VbtSetRecorder
           open={!!vbtTarget}
           onOpenChange={(v) => !v && setVbtTarget(null)}
-          athleteId={viewingSession.user_id || userId || ""}
+          athleteId={userId || ""}
           sessionId={viewingSession.id}
           sessionDate={viewingSession.date}
           sessionExerciseId={vbtTarget.id}
