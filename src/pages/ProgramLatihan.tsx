@@ -709,10 +709,22 @@ export default function ProgramLatihan() {
     setPhaseNotes({ warmup: "", cooldown: "", recovery: "" });
   };
 
+  const loadVbtSets = async (sessionId: string) => {
+    const { data } = await supabase
+      .from("vbt_sets" as any)
+      .select("*")
+      .eq("session_id", sessionId)
+      .order("set_number", { ascending: true });
+    setVbtSets((data as any[]) || []);
+  };
+
   const handleViewSession = (session: TrainingSession) => {
     setViewingSession(session);
     setViewSessionOpen(true);
+    setVbtSets([]);
+    loadVbtSets(session.id);
   };
+
 
   const handleOpenNewForm = (dateStr: string) => {
     setSelectedFormDate(dateStr);
@@ -1110,7 +1122,70 @@ export default function ProgramLatihan() {
                     <span>Repetisi: <span className={`${c.text} font-semibold`}>{ex.repetitions}</span></span>
                   )}
                 </div>
+                {type === 'strength' && ex.use_vbt && (
+                  <div className="mt-2 space-y-2 rounded-md border border-border bg-background/60 p-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        Target kecepatan:{" "}
+                        <span className="font-semibold text-primary">
+                          {ex.target_velocity_min != null && ex.target_velocity_max != null
+                            ? `${Number(ex.target_velocity_min).toFixed(2)} – ${Number(ex.target_velocity_max).toFixed(2)} m/s`
+                            : "bebas"}
+                        </span>
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => setVbtTarget(ex)}
+                      >
+                        <Zap className="w-3 h-3" /> Rekam VBT
+                      </Button>
+                    </div>
+                    {(() => {
+                      const sets = vbtSets.filter((s) => s.session_exercise_id === ex.id);
+                      if (!sets.length) {
+                        return <p className="text-[11px] text-muted-foreground">Belum ada set VBT terekam.</p>;
+                      }
+                      return (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-[11px]">
+                            <thead className="text-muted-foreground">
+                              <tr className="border-b border-border">
+                                <th className="py-1 text-left">Set</th>
+                                <th className="py-1 text-right">Rep</th>
+                                <th className="py-1 text-right">Avg Vel</th>
+                                <th className="py-1 text-right">Peak Vel</th>
+                                <th className="py-1 text-right">Avg Power</th>
+                                <th className="py-1 text-right">Peak Power</th>
+                                <th className="py-1 text-right">Loss</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sets.map((s) => (
+                                <tr key={s.id} className="border-b border-border/50 last:border-0">
+                                  <td className="py-1">#{s.set_number ?? "-"}</td>
+                                  <td className="py-1 text-right">{s.reps}</td>
+                                  <td className="py-1 text-right font-medium">
+                                    {Number(s.avg_velocity ?? s.mean_velocity ?? 0).toFixed(2)}
+                                  </td>
+                                  <td className="py-1 text-right">{Number(s.peak_velocity ?? 0).toFixed(2)}</td>
+                                  <td className="py-1 text-right">{s.mean_power ? `${s.mean_power} W` : "—"}</td>
+                                  <td className="py-1 text-right">{s.peak_power ? `${s.peak_power} W` : "—"}</td>
+                                  <td className="py-1 text-right">
+                                    {s.velocity_loss_pct != null ? `${s.velocity_loss_pct}%` : "—"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
+
             </div>
           ))}
         </div>
@@ -2335,7 +2410,24 @@ export default function ProgramLatihan() {
           </div>
         </DialogContent>
       </Dialog>
+      {vbtTarget && viewingSession && (
+        <VbtSetRecorder
+          open={!!vbtTarget}
+          onOpenChange={(v) => !v && setVbtTarget(null)}
+          athleteId={(isCoach && selectedAthleteId ? selectedAthleteId : userId) || ""}
+          sessionId={viewingSession.id}
+          sessionDate={viewingSession.date}
+          sessionExerciseId={vbtTarget.id}
+          exerciseName={vbtTarget.exercise_name}
+          loadKg={vbtTarget.weight_kg}
+          targetMin={vbtTarget.target_velocity_min}
+          targetMax={vbtTarget.target_velocity_max}
+          nextSetNumber={vbtSets.filter((s) => s.session_exercise_id === vbtTarget.id).length + 1}
+          onSaved={() => loadVbtSets(viewingSession.id)}
+        />
+      )}
       <BottomNavigation />
+
 
     </DndContext>
   );
