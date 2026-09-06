@@ -415,26 +415,86 @@ const CoachAthleteDetail = () => {
                     <Line yAxisId="r" type="monotone" dataKey="est_1rm" name="Estimasi 1RM (kg)" stroke="hsl(var(--chart-2))" strokeWidth={2} strokeDasharray="4 3" dot={false} connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
-                <div className="mt-3 space-y-1 max-h-60 overflow-y-auto">
-                  {[...vbtFiltered].reverse().map((v) => (
-                    <div key={v.id} className="flex items-center justify-between gap-2 text-xs border-b border-border py-1.5">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{v.exercise}</p>
-                        <p className="text-muted-foreground">
-                          {format(parseISO(v.date), "d MMM yyyy", { locale: idLocale })} · {v.load_kg ? `${v.load_kg} kg` : "BW"} · {v.reps} rep · {v.method}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-muted-foreground">
-                          {v.mean_velocity ? `${v.mean_velocity.toFixed(2)} m/s` : "-"}
-                          {v.velocity_loss_pct != null && ` · VL ${v.velocity_loss_pct}%`}
-                          {v.est_1rm ? ` · 1RM ${v.est_1rm} kg` : ""}
-                        </span>
-                        {v.zone && <Badge variant="outline" className="capitalize">{v.zone.replace(/_/g, " ")}</Badge>}
-                      </div>
-                    </div>
-                  ))}
+                <div className="mt-3 space-y-3 max-h-80 overflow-y-auto">
+                  {(() => {
+                    const byDay = new Map<string, any[]>();
+                    [...vbtFiltered].reverse().forEach((v) => {
+                      const k = v.date;
+                      byDay.set(k, [...(byDay.get(k) || []), v]);
+                    });
+                    return Array.from(byDay.entries()).map(([day, daySets]) => {
+                      const byExercise = new Map<string, any[]>();
+                      daySets.forEach((v) => byExercise.set(v.exercise, [...(byExercise.get(v.exercise) || []), v]));
+                      return (
+                        <div key={day} className="rounded-lg border border-border p-2">
+                          <p className="text-xs font-semibold text-primary">
+                            {format(parseISO(day), "EEEE, d MMM yyyy", { locale: idLocale })}
+                            {daySets[0]?.session_id ? " · dari program latihan" : " · sesi mandiri"}
+                          </p>
+                          {Array.from(byExercise.entries()).map(([exName, sets]) => (
+                            <div key={exName} className="mt-2">
+                              <p className="text-xs font-medium">{exName}</p>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-[11px]">
+                                  <thead className="text-muted-foreground">
+                                    <tr className="border-b border-border">
+                                      <th className="py-1 text-left">Set</th>
+                                      <th className="py-1 text-right">Beban</th>
+                                      <th className="py-1 text-right">Rep</th>
+                                      <th className="py-1 text-right">Avg Vel</th>
+                                      <th className="py-1 text-right">Peak Vel</th>
+                                      <th className="py-1 text-right">Avg Pwr</th>
+                                      <th className="py-1 text-right">Peak Pwr</th>
+                                      <th className="py-1 text-right">VL</th>
+                                      <th className="py-1 text-right">Target</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {sets.map((v, i) => (
+                                      <tr key={v.id} className="border-b border-border/50 last:border-0">
+                                        <td className="py-1">#{v.set_number ?? i + 1}</td>
+                                        <td className="py-1 text-right">{v.load_kg ? `${v.load_kg} kg` : "BW"}</td>
+                                        <td className="py-1 text-right">{v.reps}</td>
+                                        <td className="py-1 text-right font-medium">
+                                          {Number(v.avg_velocity ?? v.mean_velocity ?? 0).toFixed(2)}
+                                        </td>
+                                        <td className="py-1 text-right">{Number(v.peak_velocity ?? 0).toFixed(2)}</td>
+                                        <td className="py-1 text-right">{v.mean_power ? `${v.mean_power} W` : "—"}</td>
+                                        <td className="py-1 text-right">{v.peak_power ? `${v.peak_power} W` : "—"}</td>
+                                        <td className="py-1 text-right">
+                                          {v.velocity_loss_pct != null ? `${v.velocity_loss_pct}%` : "—"}
+                                        </td>
+                                        <td className="py-1 text-right">
+                                          {v.target_velocity_min != null && v.target_velocity_max != null
+                                            ? `${Number(v.target_velocity_min).toFixed(2)}–${Number(v.target_velocity_max).toFixed(2)}`
+                                            : "—"}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              {sets.map((v) =>
+                                Array.isArray(v.rep_velocities) && v.rep_velocities.length ? (
+                                  <p key={`${v.id}-reps`} className="mt-1 text-[10px] text-muted-foreground">
+                                    Set #{v.set_number ?? "-"} per rep:{" "}
+                                    {(v.rep_velocities as number[])
+                                      .map((rv: number, idx: number) => {
+                                        const pw = Array.isArray(v.rep_powers) ? v.rep_powers[idx] : null;
+                                        return `${Number(rv).toFixed(2)} m/s${pw ? ` (${pw} W)` : ""}`;
+                                      })
+                                      .join(" · ")}
+                                  </p>
+                                ) : null
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
+
               </>
             )}
           </CardContent>
