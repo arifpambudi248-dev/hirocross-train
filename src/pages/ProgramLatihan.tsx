@@ -709,10 +709,22 @@ export default function ProgramLatihan() {
     setPhaseNotes({ warmup: "", cooldown: "", recovery: "" });
   };
 
+  const loadVbtSets = async (sessionId: string) => {
+    const { data } = await supabase
+      .from("vbt_sets" as any)
+      .select("*")
+      .eq("session_id", sessionId)
+      .order("set_number", { ascending: true });
+    setVbtSets((data as any[]) || []);
+  };
+
   const handleViewSession = (session: TrainingSession) => {
     setViewingSession(session);
     setViewSessionOpen(true);
+    setVbtSets([]);
+    loadVbtSets(session.id);
   };
+
 
   const handleOpenNewForm = (dateStr: string) => {
     setSelectedFormDate(dateStr);
