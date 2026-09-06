@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, CameraOff, RotateCcw } from "lucide-react";
+import { Camera, CameraOff, RotateCcw, Upload, Play } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -32,9 +32,16 @@ export const CameraVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
     smoothY: null as number | null,
   });
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoUrlRef = useRef<string | null>(null);
+  const sourceRef = useRef<"camera" | "file">("camera");
+
   const [active, setActive] = useState(false);
   const [motion, setMotion] = useState(0);
   const [phase, setPhase] = useState<"idle" | "turun" | "naik">("idle");
+  const [mode, setMode] = useState<"camera" | "file">("camera");
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
     romRef.current = romCm;
@@ -48,7 +55,51 @@ export const CameraVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
     streamRef.current = null;
     prevFrame.current = null;
     setActive(false);
+    setAnalyzing(false);
     setPhase("idle");
+  };
+
+  const pickVideo = () => fileInputRef.current?.click();
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    stop();
+    if (videoUrlRef.current) URL.revokeObjectURL(videoUrlRef.current);
+    const url = URL.createObjectURL(file);
+    videoUrlRef.current = url;
+    setFileName(file.name);
+    setMode("file");
+    sourceRef.current = "file";
+    const video = videoRef.current;
+    if (video) {
+      video.srcObject = null;
+      video.src = url;
+      video.muted = true;
+      video.load();
+    }
+  };
+
+  const analyzeVideo = async () => {
+    const video = videoRef.current;
+    if (!video || !videoUrlRef.current) {
+      toast.error("Pilih video terlebih dahulu");
+      return;
+    }
+    try {
+      onReset();
+      prevFrame.current = null;
+      stateRef.current = { lastY: null, direction: 0, phaseStart: 0, phaseStartY: 0, smoothY: null };
+      sourceRef.current = "file";
+      video.currentTime = 0;
+      await video.play();
+      setActive(true);
+      setAnalyzing(true);
+      loop();
+    } catch (e: any) {
+      toast.error("Tidak bisa memutar video: " + (e?.message ?? "format tidak didukung"));
+    }
   };
 
   const start = async () => {
@@ -58,7 +109,9 @@ export const CameraVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
         audio: false,
       });
       streamRef.current = stream;
+      sourceRef.current = "camera";
       if (videoRef.current) {
+        videoRef.current.src = "";
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
@@ -111,12 +164,22 @@ export const CameraVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
       }
     }
     prevFrame.current = new Uint8ClampedArray(frame);
+    if (sourceRef.current === "file" && video.ended) {
+      setActive(false);
+      setAnalyzing(false);
+      setPhase("idle");
+      toast.success("Analisis video selesai");
+      return;
+    }
     rafRef.current = requestAnimationFrame(loop);
   };
 
   const detectRep = (y: number) => {
     const s = stateRef.current;
-    const now = performance.now();
+    const now =
+      sourceRef.current === "file" && videoRef.current
+        ? videoRef.current.currentTime * 1000
+        : performance.now();
     if (s.lastY === null) {
       s.lastY = y;
       s.phaseStart = now;
@@ -147,7 +210,7 @@ export const CameraVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
         <CardContent className="p-0 relative bg-black">
           <video ref={videoRef} playsInline muted className="w-full aspect-video object-cover" />
           <canvas ref={canvasRef} className="hidden" />
-          {!active && (
+          {!active && !fileName && (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
               Kamera belum aktif
             </div>
@@ -166,13 +229,30 @@ export const CameraVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
       </Card>
 
       <div className="flex flex-wrap gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={handleFile}
+        />
         {!active ? (
-          <Button onClick={start} className="gap-2">
-            <Camera className="h-4 w-4" /> Mulai Kamera
-          </Button>
+          <>
+            <Button onClick={start} className="gap-2">
+              <Camera className="h-4 w-4" /> Mulai Kamera
+            </Button>
+            <Button variant="outline" onClick={pickVideo} className="gap-2">
+              <Upload className="h-4 w-4" /> Unggah Video
+            </Button>
+            {mode === "file" && fileName && (
+              <Button onClick={analyzeVideo} className="gap-2">
+                <Play className="h-4 w-4" /> Analisis Video
+              </Button>
+            )}
+          </>
         ) : (
           <Button variant="secondary" onClick={stop} className="gap-2">
-            <CameraOff className="h-4 w-4" /> Hentikan
+            <CameraOff className="h-4 w-4" /> {analyzing ? "Hentikan Analisis" : "Hentikan"}
           </Button>
         )}
         <Button variant="outline" onClick={onReset} className="gap-2" disabled={!reps.length}>
@@ -184,6 +264,12 @@ export const CameraVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
         Letakkan HP menyamping ±2–3 m dari atlet, pastikan hanya atlet yang bergerak dalam frame.
         Isi ROM (jarak tempuh barbell) agar konversi kecepatan akurat.
       </p>
+      {fileName && (
+        <p className="text-xs text-muted-foreground">
+          Video terpilih: <span className="font-medium">{fileName}</span>. Rekam video menyamping,
+          kamera diam (pakai tripod), hanya atlet yang bergerak di frame.
+        </p>
+      )}
     </div>
   );
 };
