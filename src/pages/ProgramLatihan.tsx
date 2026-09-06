@@ -2410,7 +2410,24 @@ export default function ProgramLatihan() {
           </div>
         </DialogContent>
       </Dialog>
+      {vbtTarget && viewingSession && (
+        <VbtSetRecorder
+          open={!!vbtTarget}
+          onOpenChange={(v) => !v && setVbtTarget(null)}
+          athleteId={viewingSession.user_id || userId || ""}
+          sessionId={viewingSession.id}
+          sessionDate={viewingSession.date}
+          sessionExerciseId={vbtTarget.id}
+          exerciseName={vbtTarget.exercise_name}
+          loadKg={vbtTarget.weight_kg}
+          targetMin={vbtTarget.target_velocity_min}
+          targetMax={vbtTarget.target_velocity_max}
+          nextSetNumber={vbtSets.filter((s) => s.session_exercise_id === vbtTarget.id).length + 1}
+          onSaved={() => loadVbtSets(viewingSession.id)}
+        />
+      )}
       <BottomNavigation />
+
 
     </DndContext>
   );
