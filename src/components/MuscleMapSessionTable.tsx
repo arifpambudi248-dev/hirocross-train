@@ -49,12 +49,26 @@ function dominantMuscle(exercises: MuscleMapSession["exercises"]) {
   return { label: REGION_LABEL[best], pct: Math.round((value / dist.total) * 100) };
 }
 
+export interface SessionVbtSummary {
+  avgVelocity: number | null;
+  peakVelocity: number | null;
+  avgPower: number | null;
+  peakPower: number | null;
+  velocityLoss: number | null;
+  rom: number | null;
+  sets: number;
+}
+
 interface Props {
   sessions: MuscleMapSession[];
   periodLabel?: string;
+  vbtBySession?: Record<string, SessionVbtSummary>;
 }
 
-export function MuscleMapSessionTable({ sessions, periodLabel }: Props) {
+const fmt = (v: number | null | undefined, digits = 2) =>
+  v === null || v === undefined ? "—" : Number(v).toFixed(digits);
+
+export function MuscleMapSessionTable({ sessions, periodLabel, vbtBySession }: Props) {
   const rows = useMemo(
     () =>
       [...sessions]
@@ -107,6 +121,22 @@ export function MuscleMapSessionTable({ sessions, periodLabel }: Props) {
                       "—"
                     )}
                   </p>
+                  {vbtBySession?.[r.id] && (
+                    <div className="mt-1 rounded-md bg-secondary/50 p-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
+                      <span className="text-muted-foreground">Avg / Peak velocity</span>
+                      <span className="text-right font-medium">
+                        {fmt(vbtBySession[r.id].avgVelocity)} / {fmt(vbtBySession[r.id].peakVelocity)} m/s
+                      </span>
+                      <span className="text-muted-foreground">Avg / Peak power</span>
+                      <span className="text-right font-medium">
+                        {fmt(vbtBySession[r.id].avgPower, 0)} / {fmt(vbtBySession[r.id].peakPower, 0)} W
+                      </span>
+                      <span className="text-muted-foreground">Velocity loss</span>
+                      <span className="text-right font-medium">{fmt(vbtBySession[r.id].velocityLoss, 1)}%</span>
+                      <span className="text-muted-foreground">ROM</span>
+                      <span className="text-right font-medium">{fmt(vbtBySession[r.id].rom, 0)} cm</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -122,7 +152,13 @@ export function MuscleMapSessionTable({ sessions, periodLabel }: Props) {
                     <th className="text-right py-2 pr-3 font-medium">Durasi</th>
                     <th className="text-right py-2 pr-3 font-medium">RPE</th>
                     <th className="text-right py-2 pr-3 font-medium">Load (AU)</th>
-                    <th className="text-left py-2 font-medium">Otot Dominan</th>
+                    <th className="text-left py-2 pr-3 font-medium">Otot Dominan</th>
+                    <th className="text-right py-2 pr-3 font-medium">Avg Vel (m/s)</th>
+                    <th className="text-right py-2 pr-3 font-medium">Peak Vel (m/s)</th>
+                    <th className="text-right py-2 pr-3 font-medium">Avg Power (W)</th>
+                    <th className="text-right py-2 pr-3 font-medium">Peak Power (W)</th>
+                    <th className="text-right py-2 pr-3 font-medium">Vel Loss (%)</th>
+                    <th className="text-right py-2 font-medium">ROM (cm)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -138,7 +174,7 @@ export function MuscleMapSessionTable({ sessions, periodLabel }: Props) {
                       <td className="py-2 pr-3 text-right font-medium">
                         {Math.round(r.load_final || 0).toLocaleString()}
                       </td>
-                      <td className="py-2">
+                      <td className="py-2 pr-3">
                         {r.dominant ? (
                           <Badge variant="outline" className="text-[10px]">
                             {r.dominant.label} · {r.dominant.pct}%
@@ -147,6 +183,12 @@ export function MuscleMapSessionTable({ sessions, periodLabel }: Props) {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.avgVelocity)}</td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.peakVelocity)}</td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.avgPower, 0)}</td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.peakPower, 0)}</td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.velocityLoss, 1)}</td>
+                      <td className="py-2 text-right">{fmt(vbtBySession?.[r.id]?.rom, 0)}</td>
                     </tr>
                   ))}
                 </tbody>
