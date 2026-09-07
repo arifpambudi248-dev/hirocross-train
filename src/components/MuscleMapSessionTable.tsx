@@ -152,7 +152,13 @@ export function MuscleMapSessionTable({ sessions, periodLabel, vbtBySession }: P
                     <th className="text-right py-2 pr-3 font-medium">Durasi</th>
                     <th className="text-right py-2 pr-3 font-medium">RPE</th>
                     <th className="text-right py-2 pr-3 font-medium">Load (AU)</th>
-                    <th className="text-left py-2 font-medium">Otot Dominan</th>
+                    <th className="text-left py-2 pr-3 font-medium">Otot Dominan</th>
+                    <th className="text-right py-2 pr-3 font-medium">Avg Vel (m/s)</th>
+                    <th className="text-right py-2 pr-3 font-medium">Peak Vel (m/s)</th>
+                    <th className="text-right py-2 pr-3 font-medium">Avg Power (W)</th>
+                    <th className="text-right py-2 pr-3 font-medium">Peak Power (W)</th>
+                    <th className="text-right py-2 pr-3 font-medium">Vel Loss (%)</th>
+                    <th className="text-right py-2 font-medium">ROM (cm)</th>
                   </tr>
                 </thead>
                 <tbody>
