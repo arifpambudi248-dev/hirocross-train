@@ -174,7 +174,7 @@ export function MuscleMapSessionTable({ sessions, periodLabel, vbtBySession }: P
                       <td className="py-2 pr-3 text-right font-medium">
                         {Math.round(r.load_final || 0).toLocaleString()}
                       </td>
-                      <td className="py-2">
+                      <td className="py-2 pr-3">
                         {r.dominant ? (
                           <Badge variant="outline" className="text-[10px]">
                             {r.dominant.label} · {r.dominant.pct}%
@@ -183,6 +183,12 @@ export function MuscleMapSessionTable({ sessions, periodLabel, vbtBySession }: P
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.avgVelocity)}</td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.peakVelocity)}</td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.avgPower, 0)}</td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.peakPower, 0)}</td>
+                      <td className="py-2 pr-3 text-right">{fmt(vbtBySession?.[r.id]?.velocityLoss, 1)}</td>
+                      <td className="py-2 text-right">{fmt(vbtBySession?.[r.id]?.rom, 0)}</td>
                     </tr>
                   ))}
                 </tbody>
