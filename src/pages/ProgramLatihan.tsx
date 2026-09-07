@@ -330,9 +330,19 @@ export default function ProgramLatihan() {
     }
   };
 
+  const fetchAllVbtSets = async (uid: string) => {
+    const { data } = await supabase
+      .from("vbt_sets" as any)
+      .select("*")
+      .eq("athlete_id", uid)
+      .order("date", { ascending: false });
+    setAllVbtSets((data as any[]) || []);
+  };
+
   const fetchSessions = async (uid: string) => {
     try {
       setLoading(true);
+      fetchAllVbtSets(uid);
       const { data, error } = await supabase
         .from("training_sessions")
         .select("*")
