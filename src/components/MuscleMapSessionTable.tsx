@@ -49,12 +49,26 @@ function dominantMuscle(exercises: MuscleMapSession["exercises"]) {
   return { label: REGION_LABEL[best], pct: Math.round((value / dist.total) * 100) };
 }
 
+export interface SessionVbtSummary {
+  avgVelocity: number | null;
+  peakVelocity: number | null;
+  avgPower: number | null;
+  peakPower: number | null;
+  velocityLoss: number | null;
+  rom: number | null;
+  sets: number;
+}
+
 interface Props {
   sessions: MuscleMapSession[];
   periodLabel?: string;
+  vbtBySession?: Record<string, SessionVbtSummary>;
 }
 
-export function MuscleMapSessionTable({ sessions, periodLabel }: Props) {
+const fmt = (v: number | null | undefined, digits = 2) =>
+  v === null || v === undefined ? "—" : Number(v).toFixed(digits);
+
+export function MuscleMapSessionTable({ sessions, periodLabel, vbtBySession }: Props) {
   const rows = useMemo(
     () =>
       [...sessions]
