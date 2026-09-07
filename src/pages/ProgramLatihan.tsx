@@ -1319,6 +1319,34 @@ export default function ProgramLatihan() {
     });
   }, [sessions, bodyMapInterval]);
 
+  const vbtBySession = useMemo(() => {
+    const map: Record<string, any> = {};
+    const grouped: Record<string, any[]> = {};
+    for (const s of allVbtSets) {
+      if (!s.session_id) continue;
+      (grouped[s.session_id] ||= []).push(s);
+    }
+    const avg = (nums: number[]) => (nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null);
+    for (const [sid, sets] of Object.entries(grouped)) {
+      const vels = sets.map((s) => Number(s.avg_velocity ?? s.mean_velocity)).filter((n) => !isNaN(n) && n > 0);
+      const peaks = sets.map((s) => Number(s.peak_velocity ?? s.best_velocity)).filter((n) => !isNaN(n) && n > 0);
+      const powers = sets.map((s) => Number(s.mean_power)).filter((n) => !isNaN(n) && n > 0);
+      const peakPowers = sets.map((s) => Number(s.peak_power)).filter((n) => !isNaN(n) && n > 0);
+      const losses = sets.map((s) => Number(s.velocity_loss_pct)).filter((n) => !isNaN(n));
+      const roms = sets.map((s) => Number(s.rom_cm)).filter((n) => !isNaN(n) && n > 0);
+      map[sid] = {
+        avgVelocity: avg(vels),
+        peakVelocity: peaks.length ? Math.max(...peaks) : null,
+        avgPower: avg(powers),
+        peakPower: peakPowers.length ? Math.max(...peakPowers) : null,
+        velocityLoss: avg(losses),
+        rom: avg(roms),
+        sets: sets.length,
+      };
+    }
+    return map;
+  }, [allVbtSets]);
+
   const getBodyMapExercises = () => bodyMapSessions.flatMap(s => s.exercises || []);
 
   const getBodyMapTotalLoad = () => bodyMapSessions.reduce((sum, s) => sum + (s.load_final || 0), 0);
