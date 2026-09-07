@@ -121,6 +121,22 @@ export function MuscleMapSessionTable({ sessions, periodLabel, vbtBySession }: P
                       "—"
                     )}
                   </p>
+                  {vbtBySession?.[r.id] && (
+                    <div className="mt-1 rounded-md bg-secondary/50 p-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
+                      <span className="text-muted-foreground">Avg / Peak velocity</span>
+                      <span className="text-right font-medium">
+                        {fmt(vbtBySession[r.id].avgVelocity)} / {fmt(vbtBySession[r.id].peakVelocity)} m/s
+                      </span>
+                      <span className="text-muted-foreground">Avg / Peak power</span>
+                      <span className="text-right font-medium">
+                        {fmt(vbtBySession[r.id].avgPower, 0)} / {fmt(vbtBySession[r.id].peakPower, 0)} W
+                      </span>
+                      <span className="text-muted-foreground">Velocity loss</span>
+                      <span className="text-right font-medium">{fmt(vbtBySession[r.id].velocityLoss, 1)}%</span>
+                      <span className="text-muted-foreground">ROM</span>
+                      <span className="text-right font-medium">{fmt(vbtBySession[r.id].rom, 0)} cm</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
