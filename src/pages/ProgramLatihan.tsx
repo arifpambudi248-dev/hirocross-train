@@ -131,6 +131,7 @@ export default function ProgramLatihan() {
   const [viewSessionOpen, setViewSessionOpen] = useState(false);
   const [viewingSession, setViewingSession] = useState<TrainingSession | null>(null);
   const [vbtSets, setVbtSets] = useState<any[]>([]);
+  const [allVbtSets, setAllVbtSets] = useState<any[]>([]);
   const [vbtTarget, setVbtTarget] = useState<SessionExercise | null>(null);
   
   // New form dialog
