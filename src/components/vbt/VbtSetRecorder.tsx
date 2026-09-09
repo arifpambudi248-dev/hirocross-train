@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Save } from "lucide-react";
+import { Plus, Save, Activity, RotateCcw } from "lucide-react";
 import { SensorVelocityTracker } from "./SensorVelocityTracker";
 import { CameraVelocityTracker } from "./CameraVelocityTracker";
 import { VelocitySpeedometer } from "./VelocitySpeedometer";
@@ -141,25 +141,31 @@ export function VbtSetRecorder({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[94vh] max-w-5xl overflow-y-auto border-border bg-background p-0">
         <DialogHeader>
-          <DialogTitle>
-            VBT — {exerciseName} (Set {nextSetNumber})
-          </DialogTitle>
-          <DialogDescription>
-            {targetMin != null && targetMax != null
-              ? `Target kecepatan pelatih: ${Number(targetMin).toFixed(2)} – ${Number(targetMax).toFixed(2)} m/s`
-              : "Tidak ada target kecepatan khusus untuk latihan ini."}
-          </DialogDescription>
+          <div className="flex items-start justify-between border-b border-border bg-card px-5 py-4 pr-12 sm:px-7">
+            <div>
+              <p className="font-vbt-heading text-lg uppercase text-primary">HIROCROSS</p>
+              <DialogTitle className="font-vbt-heading text-base uppercase sm:text-xl">{exerciseName}</DialogTitle>
+              <DialogDescription className="mt-1 uppercase tracking-wide">Velocity Based Training</DialogDescription>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">Set</p>
+              <p className="font-vbt-heading text-3xl tabular-nums">{String(nextSetNumber).padStart(2, "0")}</p>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_310px]">
+          <section className="space-y-4 p-4 sm:p-6">
+          <div className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border">
             <div className="space-y-1">
-              <Label className="text-xs">Beban (kg)</Label>
-              <Input value={loadKg ?? "-"} disabled />
+              <div className="bg-card p-3 sm:p-4">
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground">Beban (kg)</Label>
+                <p className="font-vbt-heading text-2xl tabular-nums">{loadKg ?? "—"}</p>
+              </div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 bg-card p-3 sm:p-4">
               <div className="flex items-center justify-between">
                 <Label className="text-xs">ROM (cm)</Label>
                 <div className="flex items-center gap-2">
@@ -214,7 +220,7 @@ export function VbtSetRecorder({
             </TabsContent>
 
             <TabsContent value="manual" className="mt-4 space-y-3">
-              <div className="flex justify-center">
+              <div className="flex justify-center border border-border bg-card py-4">
                 <VelocitySpeedometer
                   value={reps.length ? reps[reps.length - 1] : 0}
                   size={220}
@@ -237,11 +243,35 @@ export function VbtSetRecorder({
               </div>
             </TabsContent>
           </Tabs>
+          </section>
 
-          {repData.length > 0 && (
-            <div className="space-y-3 rounded-lg border border-border p-3">
+          <aside className="space-y-4 border-t border-border bg-card p-4 lg:border-l lg:border-t-0 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Repetisi saat ini</p>
+                <p className="font-vbt-heading text-3xl tabular-nums">{String(repData.length).padStart(2, "0")}</p>
+              </div>
+              <Activity className="h-6 w-6 text-primary" />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex h-20 items-end gap-1 border-b border-border pb-1">
+                {Array.from({ length: Math.max(6, repData.length) }).map((_, i) => {
+                  const rep = repData[i];
+                  const height = rep ? Math.max(14, Math.min(100, (rep.velocity / 2) * 100)) : 4;
+                  const out = rep && targetMin != null && targetMax != null && (rep.velocity < targetMin || rep.velocity > targetMax);
+                  return <div key={i} className={`min-w-0 flex-1 transition-all ${rep ? (out ? "bg-warning" : "bg-primary") : "border border-dashed border-border"}`} style={{ height: `${height}%` }} />;
+                })}
+              </div>
+              <div className="flex justify-between text-[10px] font-bold uppercase text-muted-foreground">
+                <span>Riwayat rep</span><span>{loss !== null ? `Loss ${loss}%` : "Loss —"}</span>
+              </div>
+            </div>
+
+          {repData.length > 0 ? (
+            <div className="space-y-3">
               {/* Ringkasan kecepatan & power */}
-              <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border text-sm">
                 <Stat label="Rep" value={String(repData.length)} />
                 <Stat label="Avg Velocity" value={`${mv.toFixed(2)} m/s`} />
                 <Stat label="Peak Velocity" value={`${peakVel.toFixed(2)} m/s`} />
@@ -251,7 +281,7 @@ export function VbtSetRecorder({
               </div>
 
               {/* Detail tiap repetisi */}
-              <div className="overflow-x-auto">
+              <div className="max-h-48 overflow-auto border-y border-border">
                 <table className="w-full text-xs">
                   <thead className="text-muted-foreground">
                     <tr className="border-b border-border">
@@ -295,7 +325,13 @@ export function VbtSetRecorder({
                 <Save className="h-4 w-4" /> Simpan Set {nextSetNumber}
               </Button>
             </div>
+          ) : (
+            <div className="border border-dashed border-border p-5 text-center">
+              <RotateCcw className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Mulai pengukuran untuk melihat data tiap repetisi.</p>
+            </div>
           )}
+          </aside>
         </div>
       </DialogContent>
     </Dialog>
@@ -304,9 +340,9 @@ export function VbtSetRecorder({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-muted/50 p-2">
+    <div className="bg-card p-2">
       <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
-      <p className="font-semibold">{value}</p>
+      <p className="font-vbt-heading tabular-nums">{value}</p>
     </div>
   );
 }

@@ -59,8 +59,8 @@ export function VelocitySpeedometer({
 
   const cx = size / 2;
   const cy = size / 2;
-  const stroke = size * 0.085;
-  const r = (size - stroke) / 2 - size * 0.06;
+  const stroke = size * 0.055;
+  const r = (size - stroke) / 2 - size * 0.055;
   const pct = Math.min(1, Math.max(0, display / max));
   const angle = START + pct * SWEEP;
   const zone = getVelocityZone(display);
@@ -72,17 +72,16 @@ export function VelocitySpeedometer({
   const tail = polar(cx, cy, -r * 0.12, angle);
 
   const gid = `vbt-gauge-${size}`;
+  const delta = targetMin != null ? display - targetMin : null;
 
   return (
-    <div className="relative inline-flex flex-col items-center">
+    <div className="relative inline-flex flex-col items-center font-vbt">
       <svg width={size} height={size * 0.82} viewBox={`0 0 ${size} ${size * 0.82}`}>
         <defs>
           <linearGradient id={gid} x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(0 75% 55%)" />
-            <stop offset="35%" stopColor="hsl(25 90% 55%)" />
-            <stop offset="60%" stopColor="hsl(45 90% 50%)" />
-            <stop offset="82%" stopColor="hsl(150 70% 45%)" />
-            <stop offset="100%" stopColor="hsl(190 90% 50%)" />
+            <stop offset="0%" stopColor="hsl(var(--primary))" />
+            <stop offset="70%" stopColor="hsl(var(--primary))" />
+            <stop offset="100%" stopColor="hsl(var(--primary-glow))" />
           </linearGradient>
           <filter id={`${gid}-glow`} x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation={size * 0.02} result="b" />
@@ -114,7 +113,7 @@ export function VelocitySpeedometer({
               START + Math.min(1, targetMax / max) * SWEEP
             )}
             fill="none"
-            stroke="hsl(150 70% 45%)"
+            stroke="hsl(var(--success))"
             strokeWidth={stroke * 1.15}
             strokeLinecap="butt"
             opacity={0.35}
@@ -173,12 +172,12 @@ export function VelocitySpeedometer({
           y1={tail.y}
           x2={needle.x}
           y2={needle.y}
-          stroke={inTarget ? "hsl(150 70% 45%)" : zone.color}
+          stroke={inTarget ? "hsl(var(--success))" : "hsl(var(--primary))"}
           strokeWidth={size * 0.016}
           strokeLinecap="round"
           filter={`url(#${gid}-glow)`}
         />
-        <circle cx={cx} cy={cy} r={size * 0.045} fill="hsl(var(--background))" stroke={zone.color} strokeWidth={2} />
+        <circle cx={cx} cy={cy} r={size * 0.045} fill="hsl(var(--card))" stroke="hsl(var(--primary))" strokeWidth={2} />
 
         {/* angka */}
         <text
@@ -186,8 +185,8 @@ export function VelocitySpeedometer({
           y={cy + r * 0.42}
           textAnchor="middle"
           fill="hsl(var(--foreground))"
-          fontSize={size * 0.17}
-          fontWeight="700"
+          fontSize={size * 0.19}
+          fontWeight="900"
         >
           {display.toFixed(2)}
         </text>
@@ -204,7 +203,12 @@ export function VelocitySpeedometer({
       </svg>
 
       <div className="-mt-2 text-center">
-        <p className="text-sm font-semibold" style={{ color: inTarget ? "hsl(150 70% 45%)" : zone.color }}>
+        {delta !== null && display > 0 && (
+          <p className="mb-1 inline-flex rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+            {delta >= 0 ? "+" : ""}{delta.toFixed(2)} dari batas bawah
+          </p>
+        )}
+        <p className="text-sm font-semibold text-foreground">
           {inTarget ? "Dalam Target" : zone.label}
         </p>
         {sublabel && <p className="text-xs text-muted-foreground">{sublabel}</p>}
