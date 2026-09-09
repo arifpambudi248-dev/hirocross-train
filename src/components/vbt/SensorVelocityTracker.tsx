@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Smartphone, StopCircle, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
@@ -176,8 +175,8 @@ export const SensorVelocityTracker = ({
 
   return (
     <div className="space-y-3">
-      <Card className="overflow-hidden border-primary/30 bg-gradient-to-b from-primary/10 to-transparent">
-        <CardContent className="p-4 flex flex-col items-center gap-3">
+      <div className="overflow-hidden border border-border bg-card">
+        <div className="flex flex-col items-center gap-3 p-4 sm:p-6">
           <VelocitySpeedometer
             value={active ? liveVel : lastVel ?? 0}
             max={2}
@@ -205,8 +204,8 @@ export const SensorVelocityTracker = ({
               {lastRom !== null && <> • ROM {lastRom} cm{autoRom ? " (otomatis)" : ""}</>} • Total {reps.length} rep
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {!active ? (
