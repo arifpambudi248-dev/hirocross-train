@@ -93,6 +93,7 @@ export const SidebarNavigation = () => {
   ];
 
   const premiumNavItems = [
+    ...(isCoach ? [{ to: "/coach/vbt", icon: Zap, label: "Dashboard VBT", requiresSubscription: true }] : []),
     { to: "/athlete-management", icon: Users, label: "Monitoring Atlet", requiresSubscription: true },
     { to: "/laporan", icon: TrendingUp, label: "Monitoring Plan", requiresSubscription: true },
     { to: "/readiness", icon: Activity, label: "Readiness Check", requiresSubscription: true },

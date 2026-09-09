@@ -109,6 +109,7 @@ export const Navigation = () => {
   const coachNavItems = [
     { to: "/athlete-management", icon: Users, label: "Kelola Atlet", requiresSubscription: true },
     { to: "/athlete-comparison", icon: TrendingUp, label: "Perbandingan Atlet", requiresSubscription: true },
+    { to: "/coach/vbt", icon: Zap, label: "Dashboard VBT", requiresSubscription: true },
     { to: "/notifications", icon: Bell, label: "Notifikasi", requiresSubscription: true },
   ];
 
