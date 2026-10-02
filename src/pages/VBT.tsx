@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Navigation } from "@/components/Navigation";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,14 +42,12 @@ import { SensorVelocityTracker } from "@/components/vbt/SensorVelocityTracker";
 import { VelocitySpeedometer } from "@/components/vbt/VelocitySpeedometer";
 import {
   VBT_EXERCISES,
-  VELOCITY_ZONES,
   buildRep,
   estimate1RM,
   fatigueAdvice,
   getVelocityZone,
   mean,
   velocityLoss,
-  velocityToPercent1RM,
   type VbtMethod,
 } from "@/lib/vbt";
 
@@ -258,7 +256,7 @@ export default function VBT() {
                 </TabsList>
                 <div className="flex min-h-[340px] flex-1 items-center justify-center py-4">
                   {method !== "sensor" && (
-                    <VelocitySpeedometer value={reps.at(-1) ?? 0} max={2} size={330} targetMin={Number(targetMin)} targetMax={Number(targetMax)} sublabel={`Target ${targetMin} – ${targetMax} m/s`} />
+                    <VelocitySpeedometer value={reps.length ? reps[reps.length - 1] : 0} max={2} size={330} targetMin={Number(targetMin)} targetMax={Number(targetMax)} sublabel={`Target ${targetMin} – ${targetMax} m/s`} />
                   )}
                   <TabsContent value="sensor" className="mt-0 w-full">
                     <SensorVelocityTracker romCm={Number(romCm) || 60} onRep={addRep} reps={reps} onReset={() => setReps([])} targetMin={Number(targetMin)} targetMax={Number(targetMax)} autoRom onRomDetected={(value) => setRomCm(String(value))} />
@@ -415,7 +413,7 @@ const Metric = ({ label, value, emphasis = false }: { label: string; value: stri
   </div>
 );
 
-const InstrumentHeading = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
+const InstrumentHeading = ({ icon, title }: { icon: ReactNode; title: string }) => (
   <div className="flex items-center gap-2 border-b border-border pb-3 text-primary">
     {icon}<h2 className="font-vbt-heading text-sm uppercase text-foreground">{title}</h2>
   </div>
