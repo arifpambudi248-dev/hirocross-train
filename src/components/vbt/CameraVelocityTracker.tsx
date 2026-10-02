@@ -206,13 +206,14 @@ export const CameraVelocityTracker = ({ romCm, onRep, reps, onReset }: Props) =>
 
   return (
     <div className="space-y-3">
-      <Card className="overflow-hidden">
-        <CardContent className="p-0 relative bg-black">
+      <Card className="overflow-hidden rounded-none border-border">
+        <CardContent className="relative bg-background p-0">
           <video ref={videoRef} playsInline muted className="w-full aspect-video object-cover" />
           <canvas ref={canvasRef} className="hidden" />
           {!active && !fileName && (
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-              Kamera belum aktif
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <Camera className="h-8 w-8" />
+              <span className="text-xs font-bold uppercase">Kamera belum aktif</span>
             </div>
           )}
           {active && (
