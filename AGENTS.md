@@ -1,0 +1,1 @@
+Keep jump measurement in a dedicated module separate from lifting VBT trackers, because flight-time protocols and sensor signals differ from barbell movement.
