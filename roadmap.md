@@ -1,0 +1,3 @@
+- [ ] Add camera video review and frame-confirmed flight-time measurement for VJ/CMJ.
+- [ ] Add phone-motion flight detection with explicit experimental-quality labeling.
+- [ ] Save accepted jump results to physical-test history and verify the preview.
